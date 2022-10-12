@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Decode, Encode, Output};
+use codec::{Decode, Encode};
 use frame_support::traits::Randomness;
 use frame_support::RuntimeDebug;
 use libsecp256k1::{Message, PublicKey, Signature};
@@ -172,7 +172,38 @@ pub mod pallet {
     // These functions materialize as "extrinsics", which are often compared to transactions.
     // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
     #[pallet::call]
-    impl<T: Config> Pallet<T> {}
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(0)]
+        pub fn submit_signature_commitment(
+            origin: OriginFor<T>,
+            commitment: Commitment,
+            validator_proof: ValidatorProof,
+            latest_mmr_leaf: BeefyMMRLeaf,
+            proof: SimplifiedMMRProof,
+        ) -> DispatchResultWithPostInfo {
+            let signer = ensure_signed(origin)?;
+            ensure!(
+                commitment.validator_set_id == Self::validator_registry_id(),
+                Error::<T>::InvalidValidatorSetId
+            );
+            Self::verify_commitment(&commitment, &validator_proof)?;
+            Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &commitment.payload, &proof)?;
+            Self::process_payload(&commitment.payload, commitment.block_number.into())?;
+
+            LatestRandomSeed::<T>::set(latest_mmr_leaf.random_seed);
+
+            Self::deposit_event(Event::VerificationSuccessful(
+                signer,
+                commitment.block_number,
+            ));
+            Self::apply_validator_set_changes(
+                latest_mmr_leaf.next_authority_set_id,
+                latest_mmr_leaf.next_authority_set_len,
+                latest_mmr_leaf.next_authority_set_root,
+            )?;
+            Ok(().into())
+        }
+    }
 
     impl<T: Config> Pallet<T> {
         pub fn add_known_mmr_root(root: [u8; 32]) -> u32 {
@@ -227,36 +258,6 @@ pub mod pallet {
 
         pub fn create_initial_bitfield(bits_to_set: Vec<u128>, length: u128) -> Vec<u128> {
             bitfield::create_bitfield(bits_to_set, length)
-        }
-
-        pub fn submit_signature_commitment(
-            origin: OriginFor<T>,
-            commitment: Commitment,
-            validator_proof: ValidatorProof,
-            latest_mmr_leaf: BeefyMMRLeaf,
-            proof: SimplifiedMMRProof,
-        ) -> DispatchResultWithPostInfo {
-            let signer = ensure_signed(origin)?;
-            ensure!(
-                commitment.validator_set_id == Self::validator_registry_id(),
-                Error::<T>::InvalidValidatorSetId
-            );
-            Self::verify_commitment(&commitment, &validator_proof)?;
-            Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &commitment.payload, &proof)?;
-            Self::process_payload(&commitment.payload, commitment.block_number.into())?;
-
-            LatestRandomSeed::<T>::set(latest_mmr_leaf.random_seed);
-
-            Self::deposit_event(Event::VerificationSuccessful(
-                signer,
-                commitment.block_number,
-            ));
-            Self::apply_validator_set_changes(
-                latest_mmr_leaf.next_authority_set_id,
-                latest_mmr_leaf.next_authority_set_len,
-                latest_mmr_leaf.next_authority_set_root,
-            )?;
-            Ok(().into())
         }
 
         /* Private Functions */

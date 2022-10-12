@@ -1,8 +1,12 @@
+use codec::{Decode, Encode};
 use ethabi::{encode_packed, Token};
+use frame_support::RuntimeDebug;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
 
-#[derive(Clone)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub struct SimplifiedMMRProof {
     pub merkle_proof_items: Vec<[u8; 32]>,
     pub merkle_proof_order_bit_field: u64,
