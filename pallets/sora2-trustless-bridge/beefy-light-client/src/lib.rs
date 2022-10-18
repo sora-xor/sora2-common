@@ -33,6 +33,16 @@ pub fn prepare_message(msg: &[u8]) -> Message {
     Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
 }
 
+impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
+    fn random(subject: &[u8]) -> (Output, BlockNumber) {
+        todo!()
+    }
+
+    fn random_seed() -> (Output, BlockNumber) {
+        Self::random(&[][..])
+    }
+}
+
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
 )]
@@ -42,16 +52,6 @@ pub struct Commitment {
     pub payload_suffix: Vec<u8>,
     pub block_number: u32,
     pub validator_set_id: u64,
-}
-
-impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
-    fn random(subject: &[u8]) -> (Output, BlockNumber) {
-        todo!()
-    }
-
-    fn random_seed() -> (Output, BlockNumber) {
-        Self::random(&[][..])
-    }
 }
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
@@ -77,6 +77,15 @@ pub struct BeefyMMRLeaf {
     pub digest_hash: [u8; 32],
 }
 
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo, Default
+)]
+pub struct ValidatorSet {
+    pub id: u128,
+    pub length: u128,
+    pub root: [u8; 32],
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -84,8 +93,8 @@ pub mod pallet {
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
 
+    use ethabi::{encode_packed, Token};
     use frame_support::fail;
-    // use ethabi::{encode_packed, Token};
 
     pub const MMR_ROOT_HISTORY_SIZE: u32 = 30;
 
@@ -108,6 +117,7 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
     // The pallet's runtime storage items.
@@ -139,6 +149,14 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn validator_registry_id)]
     pub type ValidatorRegistryId<T> = StorageValue<_, u64, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn current_validator_set)]
+    pub type CurrentValidatorSet<T> = StorageValue<_, ValidatorSet, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn next_validator_set)]
+    pub type NextValidatorSet<T> = StorageValue<_, ValidatorSet, ValueQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -182,11 +200,20 @@ pub mod pallet {
             proof: SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
-            ensure!(
-                commitment.validator_set_id == Self::validator_registry_id(),
-                Error::<T>::InvalidValidatorSetId
-            );
-            Self::verify_commitment(&commitment, &validator_proof)?;
+            let current_validator_set = Self::current_validator_set();
+            let next_validator_set = Self::next_validator_set();
+            let vset = match (commitment.validator_set_id as u128) == current_validator_set.id {
+                true => {
+                    current_validator_set
+                },
+                false => {
+                    match (commitment.validator_set_id as u128) == next_validator_set.id {
+                        true => next_validator_set,
+                        false => fail!(Error::<T>::InvalidValidatorSetId),
+                    } 
+                },
+            };
+            Self::verify_commitment(&commitment, &validator_proof, vset)?;
             Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &commitment.payload, &proof)?;
             Self::process_payload(&commitment.payload, commitment.block_number.into())?;
 
@@ -310,10 +337,12 @@ pub mod pallet {
             next_authority_set_root: [u8; 32],
         ) -> DispatchResultWithPostInfo {
             if next_authority_set_id > Self::validator_registry_id() {
+                let next_validator_set = Self::next_validator_set();
                 ensure!(
-                    next_authority_set_id > Self::validator_registry_id(),
+                    next_authority_set_id as u128 > next_validator_set.id,
                     Error::<T>::CannotSwitchOldValidatorSet
                 );
+                CurrentValidatorSet::<T>::set(next_validator_set);
                 Self::validator_registry_update(
                     next_authority_set_root,
                     next_authority_set_len as u128,
@@ -341,7 +370,7 @@ pub mod pallet {
             validator_claims_bitfield: Vec<u128>,
         ) -> DispatchResultWithPostInfo {
             let threshold = num_of_validators - (num_of_validators - 1) / 3;
-            todo!("finish");
+            // todo!("finish");
             // ensure!(bitgield::count_set_bits(validator_claims_bitfield) >= threshold, Error::<T>::NotEnoughValidatorSignatures);
             Ok(().into())
         }
@@ -350,8 +379,29 @@ pub mod pallet {
         pub fn verify_commitment(
             commitment: &Commitment,
             proof: &ValidatorProof,
+            vset: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
-            todo!()
+            let number_of_validators = vset.length;
+            let required_num_of_signatures =
+                Self::get_required_number_of_signatures(number_of_validators);
+            Self::check_commitment_signatures_threshold(
+                number_of_validators,
+                proof.validator_claims_bitfield.clone(),
+            )?;
+            let random_bitfield = Self::random_n_bits_with_prior_check(
+                &proof.validator_claims_bitfield,
+                required_num_of_signatures,
+                number_of_validators,
+            )?;
+            Self::verify_validator_proof_lengths(required_num_of_signatures, proof.clone())?;
+            let commitment_hash = Self::create_commitment_hash(commitment.clone());
+            Self::verify_validator_proof_signatures(
+                random_bitfield,
+                proof.clone(),
+                required_num_of_signatures,
+                commitment_hash,
+            )?;
+            Ok(().into())
         }
 
         pub fn verify_validator_proof_lengths(
@@ -479,12 +529,41 @@ pub mod pallet {
             )
         }
 
-        // fn get_random() -> [u8; 32] {
-        // 	let seed = LatestRandomSeed::<T>::get();
-        // 	let rand = T::Randomness::random(&seed);
-        // 	// codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_256)
-        // 	// rand.1
-        // 	todo!()
-        // }
+        // TODO: Finish
+        pub fn random_n_bits_with_prior_check(
+            prior: &Vec<u128>,
+            n: u128,
+            length: u128,
+        ) -> Result<Vec<u128>, Error<T>> {
+            let mut bitfield = Vec::with_capacity(prior.len());
+            for found in 0..n {
+                let randomness = sp_core::blake2_128(&encode_packed(&[Token::Bytes(
+                    (Self::seed() + found).to_be_bytes().to_vec(),
+                )]));
+
+                let index = u128::from_be_bytes(randomness) % length;
+
+                if !bitfield::is_set(prior, index) {
+                    continue;   
+                }
+
+                if bitfield::is_set(&bitfield, index) {
+                    continue;
+                }
+
+                bitfield::set(&mut bitfield, index);
+            }
+            Ok(bitfield)
+        }
+
+        fn seed() -> u128 {
+            u128::from_be_bytes(Self::get_random())
+        }
+
+        fn get_random() -> [u8; 16] {
+        	let seed = LatestRandomSeed::<T>::get();
+        	let rand = T::Randomness::random(&seed);
+        	codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_128)
+        }
     }
 }
