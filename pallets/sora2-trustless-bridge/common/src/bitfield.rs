@@ -30,6 +30,12 @@ pub fn clear(self_val: &mut Vec<u128>, index: u128) {
     self_val[element as usize] = self_val[element as usize] & !(1 << within);
 }
 
+// TODO
+pub fn count_set_bits(_self_val: Vec<u128>) -> u128 {
+    let count = 0;
+    count
+}
+
 #[cfg(test)]
 mod test {
     #[test]

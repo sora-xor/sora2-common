@@ -78,7 +78,16 @@ pub struct BeefyMMRLeaf {
 }
 
 #[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo, Default
+    Encode,
+    Decode,
+    Clone,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
+    Default,
 )]
 pub struct ValidatorSet {
     pub id: u128,
@@ -203,14 +212,10 @@ pub mod pallet {
             let current_validator_set = Self::current_validator_set();
             let next_validator_set = Self::next_validator_set();
             let vset = match (commitment.validator_set_id as u128) == current_validator_set.id {
-                true => {
-                    current_validator_set
-                },
-                false => {
-                    match (commitment.validator_set_id as u128) == next_validator_set.id {
-                        true => next_validator_set,
-                        false => fail!(Error::<T>::InvalidValidatorSetId),
-                    } 
+                true => current_validator_set,
+                false => match (commitment.validator_set_id as u128) == next_validator_set.id {
+                    true => next_validator_set,
+                    false => fail!(Error::<T>::InvalidValidatorSetId),
                 },
             };
             Self::verify_commitment(&commitment, &validator_proof, vset)?;
@@ -278,9 +283,15 @@ pub mod pallet {
             Self::is_known_root(proof_root)
         }
 
-        // RELAYER?
-        pub fn create_random_bit_field(validator_claims_bitfield: Vec<u128>) -> Vec<u128> {
-            todo!()
+        pub fn create_random_bit_field(
+            validator_claims_bitfield: Vec<u128>,
+            number_of_validators: u128,
+        ) -> Result<Vec<u128>, Error<T>> {
+            Self::random_n_bits_with_prior_check(
+                &validator_claims_bitfield,
+                Self::get_required_number_of_signatures(number_of_validators),
+                number_of_validators,
+            )
         }
 
         pub fn create_initial_bitfield(bits_to_set: Vec<u128>, length: u128) -> Vec<u128> {
@@ -310,7 +321,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // TODO!!!!!
+        // TODO
         // u64 casting to u32!!!!!!!
         pub fn process_payload(
             payload: &[u8; 32],
@@ -370,8 +381,7 @@ pub mod pallet {
             validator_claims_bitfield: Vec<u128>,
         ) -> DispatchResultWithPostInfo {
             let threshold = num_of_validators - (num_of_validators - 1) / 3;
-            // todo!("finish");
-            // ensure!(bitgield::count_set_bits(validator_claims_bitfield) >= threshold, Error::<T>::NotEnoughValidatorSignatures);
+            ensure!(bitfield::count_set_bits(validator_claims_bitfield) >= threshold, Error::<T>::NotEnoughValidatorSignatures);
             Ok(().into())
         }
 
@@ -544,7 +554,7 @@ pub mod pallet {
                 let index = u128::from_be_bytes(randomness) % length;
 
                 if !bitfield::is_set(prior, index) {
-                    continue;   
+                    continue;
                 }
 
                 if bitfield::is_set(&bitfield, index) {
@@ -561,9 +571,9 @@ pub mod pallet {
         }
 
         fn get_random() -> [u8; 16] {
-        	let seed = LatestRandomSeed::<T>::get();
-        	let rand = T::Randomness::random(&seed);
-        	codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_128)
+            let seed = LatestRandomSeed::<T>::get();
+            let rand = T::Randomness::random(&seed);
+            codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_128)
         }
     }
 }
