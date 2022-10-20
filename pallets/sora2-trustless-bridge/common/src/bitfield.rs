@@ -1,9 +1,23 @@
-use core::{ops::Deref, usize};
+use core::{
+    ops::{Deref, DerefMut},
+    usize,
+};
 
-use scale_info::prelude::vec::Vec;
 use bitvec::{prelude::*, ptr::BitSpanError};
+use codec::{Decode, Encode};
+use frame_support::RuntimeDebug;
+use scale_info::prelude::vec::Vec;
 
 pub const SIZE: u128 = core::mem::size_of::<u128>() as u128;
+
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
+pub struct BitFieldEncoded {
+    pub data: Vec<u8>,
+    pub remain_len: u8,
+}
+
 pub struct BitField(BitVec<u8, Msb0>);
 
 impl BitField {
@@ -17,7 +31,36 @@ impl BitField {
         Ok(Self(BitVec::try_from_slice(slice)?))
     }
 
+    pub fn try_from_bit_field_encoded(
+        encoded_bitfield: BitFieldEncoded,
+    ) -> Result<Self, BitSpanError<u8>> {
+        if encoded_bitfield.data.len() == 0 {
+            return Self::try_from_slice(&[]);
+        }
+
+        if encoded_bitfield.remain_len == 0 {
+            return Ok(Self::try_from_slice(&encoded_bitfield.data)?);
+        }
+
+        let mut result_bitfield =
+            Self::try_from_slice(&encoded_bitfield.data[0..encoded_bitfield.data.len() - 1])?;
+
+        let last = encoded_bitfield.data[encoded_bitfield.data.len() - 1];
+        for i in 0..encoded_bitfield.remain_len {
+            result_bitfield.push((last >> 7 - i & 1) == 1);
+        }
+        Ok(result_bitfield)
+    }
+
     // Util
+
+    pub fn to_bitfield_encoded(self) -> BitFieldEncoded {
+        let remain_len = (self.len() % 8) as u8;
+        BitFieldEncoded {
+            data: self.to_bits(),
+            remain_len,
+        }
+    }
 
     pub fn count_set_bits(&self) -> u128 {
         self.0.count_ones() as u128
@@ -45,6 +88,12 @@ impl Deref for BitField {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl DerefMut for BitField {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 
@@ -96,10 +145,16 @@ pub fn count_set_bits_bv(bitvec: BitField) -> u128 {
 
 #[cfg(test)]
 mod test {
+    use super::{BitField, BitFieldEncoded};
+
     #[test]
-    fn is_set_returns_ok() {
-        let a = 0b0010 as u8;
-        assert_eq!(a >> 1 & 1, 1)
-        // assert_eq!(a & 1 << 1, 1)
+    fn bitfield_from_encoded() {
+        let bf_encoded = BitFieldEncoded {
+            data: vec![0, 1, 128],
+            remain_len: 1,
+        };
+        let bf = BitField::try_from_bit_field_encoded(bf_encoded).unwrap();
+        assert_eq!(bf.len(), 17);
+        assert_eq!(bf[bf.len() - 1], true);
     }
 }

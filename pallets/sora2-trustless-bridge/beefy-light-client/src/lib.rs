@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bridge_common::bitfield;
 use codec::{Decode, Encode};
 use frame_support::traits::Randomness;
 use frame_support::RuntimeDebug;
@@ -381,7 +382,10 @@ pub mod pallet {
             validator_claims_bitfield: Vec<u128>,
         ) -> DispatchResultWithPostInfo {
             let threshold = num_of_validators - (num_of_validators - 1) / 3;
-            ensure!(bitfield::count_set_bits(validator_claims_bitfield) >= threshold, Error::<T>::NotEnoughValidatorSignatures);
+            ensure!(
+                bitfield::count_set_bits(validator_claims_bitfield) >= threshold,
+                Error::<T>::NotEnoughValidatorSignatures
+            );
             Ok(().into())
         }
 
