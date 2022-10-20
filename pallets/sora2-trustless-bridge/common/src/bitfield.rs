@@ -18,16 +18,18 @@ pub struct BitFieldEncoded {
     pub remain_len: u8,
 }
 
-#[derive( Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BitField(BitVec<u8, Msb0>);
 
 impl BitField {
     // Constuctors:
 
-    pub fn with_capacity(bit: bool, len: usize) -> Self {
-        Self(BitVec::repeat(bit, len))
+    #[inline]
+    pub fn with_capacity(len: usize) -> Self {
+        Self(BitVec::with_capacity(len))
     }
 
+    #[inline]
     pub fn try_from_slice(slice: &[u8]) -> Result<Self, BitSpanError<u8>> {
         Ok(Self(BitVec::try_from_slice(slice)?))
     }
@@ -56,8 +58,17 @@ impl BitField {
         Ok(result_bitfield)
     }
 
+    #[inline]
+    pub fn random_n_bits_with_prior_check<E>(
+        prior: &BitField,
+        n: u128,
+        length: u128,
+    ) -> Result<Self, E> {
+        todo!()
+    }
     // Util
 
+    #[inline]
     pub fn to_bitfield_encoded(self) -> BitFieldEncoded {
         let remain_len = (self.len() % 8) as u8;
         BitFieldEncoded {
@@ -66,22 +77,27 @@ impl BitField {
         }
     }
 
+    #[inline]
     pub fn count_set_bits(&self) -> u128 {
         self.0.count_ones() as u128
     }
 
+    #[inline]
     pub fn to_bits(self) -> Vec<u8> {
         self.0.into_vec()
     }
 
+    #[inline]
     pub fn set(&mut self, index: usize) {
         self.0.set(index, true)
     }
 
+    #[inline]
     pub fn clear(&mut self, index: usize) {
         self.0.set(index, false)
     }
 
+    #[inline]
     pub fn is_set(&self, index: usize) -> bool {
         self.0[index] == true
     }
@@ -139,13 +155,13 @@ pub fn count_set_bits_bv(bitvec: BitField) -> u128 {
     bitvec.count_ones() as u128
 }
 
-// pub fn create_bitfield_bv(bits_to_set: Vec<u128>, length: u128) -> BitField {
-//     // let mut bv = bitvec![u8, Msb0;];
-//     // let mut bv = BitVec::repeat(false, 10);
-//     // bv.push(false);
-//     // bv.push(true);
-//     // bv
-// }
+pub fn create_bitfield_bv(bits_to_set: Vec<u128>, length: u128) -> BitField {
+    // let mut bv = bitvec![u8, Msb0;];
+    // let mut bv = BitVec::repeat(false, 10);
+    // bv.push(false);
+    // bv.push(true);
+    // bv
+}
 
 #[cfg(test)]
 mod test {

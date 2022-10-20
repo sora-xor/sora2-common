@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bitfield::{BitField, BitFieldEncoded};
 use bridge_common::bitfield;
 use codec::{Decode, Encode};
 use frame_support::traits::Randomness;
@@ -9,7 +10,6 @@ pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
-use sp_io::hashing::blake2_128;
 
 // #[cfg(test)]
 // mod mock;
@@ -58,7 +58,7 @@ pub struct Commitment {
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ValidatorProof {
-    pub validator_claims_bitfield: Vec<u128>,
+    pub validator_claims_bitfield: BitFieldEncoded,
     pub signatures: Vec<Vec<u8>>,
     pub positions: Vec<u128>,
     pub public_keys: Vec<EthAddress>,
@@ -269,10 +269,12 @@ pub mod pallet {
             false
         }
 
+        #[inline]
         pub fn get_latest_mmr_root() -> [u8; 32] {
             LatestMMRRoots::<T>::get(LatestMMRRootIndex::<T>::get() as u128)
         }
 
+        #[inline]
         pub fn verity_beefy_merkle_leaf(
             beefy_mmr_leaf: [u8; 32],
             proof: SimplifiedMMRProof,
@@ -285,10 +287,11 @@ pub mod pallet {
             Self::is_known_root(proof_root)
         }
 
+        #[inline]
         pub fn create_random_bit_field(
-            validator_claims_bitfield: Vec<u128>,
+            validator_claims_bitfield: BitField,
             number_of_validators: u128,
-        ) -> Result<Vec<u128>, Error<T>> {
+        ) -> Result<BitField, Error<T>> {
             Self::random_n_bits_with_prior_check(
                 &validator_claims_bitfield,
                 Self::get_required_number_of_signatures(number_of_validators),
@@ -296,6 +299,7 @@ pub mod pallet {
             )
         }
 
+        #[inline]
         pub fn create_initial_bitfield(bits_to_set: Vec<u128>, length: u128) -> Vec<u128> {
             bitfield::create_bitfield(bits_to_set, length)
         }
@@ -380,13 +384,11 @@ pub mod pallet {
         // ON RELAYER???????
         pub fn check_commitment_signatures_threshold(
             num_of_validators: u128,
-            validator_claims_bitfield: Vec<u128>,
+            validator_claims_bitfield: BitField,
         ) -> DispatchResultWithPostInfo {
             let threshold = num_of_validators - (num_of_validators - 1) / 3;
-            ensure!(
-                bitfield::count_set_bits(validator_claims_bitfield) >= threshold,
-                Error::<T>::NotEnoughValidatorSignatures
-            );
+            let count = validator_claims_bitfield.count_set_bits();
+            ensure!(count >= threshold, Error::<T>::NotEnoughValidatorSignatures);
             Ok(().into())
         }
 
@@ -399,12 +401,13 @@ pub mod pallet {
             let number_of_validators = vset.length;
             let required_num_of_signatures =
                 Self::get_required_number_of_signatures(number_of_validators);
+            let bf = BitField::try_from_bit_field_encoded(proof.validator_claims_bitfield.clone()).unwrap(); // TODO hande unwrap
             Self::check_commitment_signatures_threshold(
                 number_of_validators,
-                proof.validator_claims_bitfield.clone(),
+                bf.clone(),
             )?;
             let random_bitfield = Self::random_n_bits_with_prior_check(
-                &proof.validator_claims_bitfield,
+                &bf,
                 required_num_of_signatures,
                 number_of_validators,
             )?;
@@ -443,7 +446,7 @@ pub mod pallet {
         }
 
         pub fn verify_validator_proof_signatures(
-            random_bitfield: Vec<u128>,
+            random_bitfield: BitField,
             proof: ValidatorProof,
             required_num_of_signatures: u128,
             commitment_hash: [u8; 32],
@@ -463,7 +466,7 @@ pub mod pallet {
         }
 
         pub fn verify_validator_signature(
-            mut random_bitfield: Vec<u128>,
+            mut random_bitfield: BitField,
             signature: Vec<u8>,
             position: u128,
             public_key: EthAddress,
@@ -471,10 +474,10 @@ pub mod pallet {
             commitment_hash: [u8; 32],
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                bitfield::is_set(&random_bitfield, position),
+                random_bitfield.is_set(position as usize),
                 Error::<T>::ValidatorNotOnceInbitfield
             );
-            bitfield::clear(&mut random_bitfield, position);
+            random_bitfield.clear(position as usize);
             ensure!(
                 Self::check_validator_in_set(public_key, position, public_key_merkle_proof),
                 Error::<T>::ValidatorSetIncorrectPosition
@@ -546,27 +549,27 @@ pub mod pallet {
 
         // TODO: Finish
         pub fn random_n_bits_with_prior_check(
-            prior: &Vec<u128>,
+            prior: &BitField,
             n: u128,
             length: u128,
-        ) -> Result<Vec<u128>, Error<T>> {
-            let mut bitfield = Vec::with_capacity(prior.len());
+        ) -> Result<BitField, Error<T>> {
+            let mut bitfield = BitField::with_capacity(prior.len());
             for found in 0..n {
-                let randomness = blake2_128(&encode_packed(&[Token::Bytes(
+                let randomness = sp_io::hashing::blake2_128(&encode_packed(&[Token::Bytes(
                     (Self::seed() + found).to_be_bytes().to_vec(),
                 )]));
 
                 let index = u128::from_be_bytes(randomness) % length;
 
-                if !bitfield::is_set(prior, index) {
+                if !prior.is_set(index as usize) {
                     continue;
                 }
 
-                if bitfield::is_set(&bitfield, index) {
+                if bitfield.is_set(index as usize) {
                     continue;
                 }
 
-                bitfield::set(&mut bitfield, index);
+                bitfield.set(index as usize);
             }
             Ok(bitfield)
         }
