@@ -18,6 +18,7 @@ pub struct BitFieldEncoded {
     pub remain_len: u8,
 }
 
+#[derive( Clone, PartialEq, Eq)]
 pub struct BitField(BitVec<u8, Msb0>);
 
 impl BitField {
@@ -151,10 +152,16 @@ mod test {
     fn bitfield_from_encoded() {
         let bf_encoded = BitFieldEncoded {
             data: vec![0, 1, 128],
-            remain_len: 1,
+            remain_len: 3,
         };
-        let bf = BitField::try_from_bit_field_encoded(bf_encoded).unwrap();
-        assert_eq!(bf.len(), 17);
-        assert_eq!(bf[bf.len() - 1], true);
+        let bf = BitField::try_from_bit_field_encoded(bf_encoded.clone()).unwrap();
+        assert_eq!(bf.len(), 19);
+        // assert_eq!(bf[bf.len() - 1], true);
+        let bf_encoded_from = bf.clone().to_bitfield_encoded();
+        let new_bf = BitField::try_from_bit_field_encoded(bf_encoded_from.clone()).unwrap();
+        assert_eq!(new_bf.len(), bf.len());
+        for i in 0..bf.len() {
+            assert_eq!(bf[i], new_bf[i])
+        }
     }
 }
