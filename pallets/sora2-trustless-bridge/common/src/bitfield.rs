@@ -58,15 +58,15 @@ impl BitField {
         Ok(result_bitfield)
     }
 
-    #[inline]
-    pub fn random_n_bits_with_prior_check<E>(
-        prior: &BitField,
-        n: u128,
-        length: u128,
-    ) -> Result<Self, E> {
-        todo!()
+    pub fn create_bitfield(bits_to_set: Vec<u128>, length: u128) -> Self  {
+        let mut bitfield = Self::with_capacity(length as usize);
+        for i in 0..bits_to_set.len() {
+            bitfield.set(bits_to_set[i] as usize)
+        }
+        bitfield
     }
-    // Util
+
+    // Util:
 
     #[inline]
     pub fn to_bitfield_encoded(self) -> BitFieldEncoded {
@@ -115,52 +115,6 @@ impl DerefMut for BitField {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
-}
-
-pub fn create_bitfield(bits_to_set: Vec<u128>, length: u128) -> Vec<u128> {
-    let array_length = (length + 255) / 256;
-    let mut bitfield = Vec::with_capacity(array_length as usize);
-    for i in 0..bits_to_set.len() {
-        set(&mut bitfield, bits_to_set[i])
-    }
-    bitfield
-}
-
-pub fn set(self_val: &mut Vec<u128>, index: u128) {
-    let element = index / SIZE;
-    let within = (index % SIZE) as u8;
-    // unsafe casting!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    self_val[element as usize] = self_val[element as usize] | 1 << within;
-}
-
-pub fn is_set(self_val: &Vec<u128>, index: u128) -> bool {
-    let element = index / SIZE;
-    let within = (index % SIZE) as u8;
-    self_val[element as usize] >> within & 1 == 1
-}
-
-pub fn clear(self_val: &mut Vec<u128>, index: u128) {
-    let element = index / SIZE;
-    let within = (index % SIZE) as u8;
-    self_val[element as usize] = self_val[element as usize] & !(1 << within);
-}
-
-// TODO
-pub fn count_set_bits(_self_val: Vec<u128>) -> u128 {
-    let count = 0;
-    count
-}
-
-pub fn count_set_bits_bv(bitvec: BitField) -> u128 {
-    bitvec.count_ones() as u128
-}
-
-pub fn create_bitfield_bv(bits_to_set: Vec<u128>, length: u128) -> BitField {
-    // let mut bv = bitvec![u8, Msb0;];
-    // let mut bv = BitVec::repeat(false, 10);
-    // bv.push(false);
-    // bv.push(true);
-    // bv
 }
 
 #[cfg(test)]

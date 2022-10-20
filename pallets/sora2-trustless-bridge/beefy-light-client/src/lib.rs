@@ -300,8 +300,8 @@ pub mod pallet {
         }
 
         #[inline]
-        pub fn create_initial_bitfield(bits_to_set: Vec<u128>, length: u128) -> Vec<u128> {
-            bitfield::create_bitfield(bits_to_set, length)
+        pub fn create_initial_bitfield(bits_to_set: Vec<u128>, length: u128) -> BitField {
+            BitField::create_bitfield(bits_to_set, length)
         }
 
         /* Private Functions */
