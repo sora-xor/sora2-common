@@ -49,6 +49,9 @@ impl BitField {
         let last = encoded_bitfield.data[encoded_bitfield.data.len() - 1];
         for i in 0..encoded_bitfield.remain_len {
             result_bitfield.push((last >> 7 - i & 1) == 1);
+            if i >= 7 {
+                break;
+            }
         }
         Ok(result_bitfield)
     }

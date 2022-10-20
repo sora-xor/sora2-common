@@ -9,6 +9,7 @@ pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::H160;
 use sp_io::hashing::keccak_256;
+use sp_io::hashing::blake2_128;
 
 // #[cfg(test)]
 // mod mock;
@@ -551,7 +552,7 @@ pub mod pallet {
         ) -> Result<Vec<u128>, Error<T>> {
             let mut bitfield = Vec::with_capacity(prior.len());
             for found in 0..n {
-                let randomness = sp_core::blake2_128(&encode_packed(&[Token::Bytes(
+                let randomness = blake2_128(&encode_packed(&[Token::Bytes(
                     (Self::seed() + found).to_be_bytes().to_vec(),
                 )]));
 
