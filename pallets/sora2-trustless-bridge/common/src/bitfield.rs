@@ -6,7 +6,7 @@ use core::{
 use bitvec::{prelude::*, ptr::BitSpanError};
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
-use scale_info::prelude::vec::Vec;
+use scale_info::{prelude::vec::Vec, TypeInfo};
 
 pub const SIZE: u128 = core::mem::size_of::<u128>() as u128;
 
@@ -18,8 +18,36 @@ pub struct BitFieldEncoded {
     pub remain_len: u8,
 }
 
+// #[derive(Clone, PartialEq, Eq)]
+// pub struct BitField{
+//     pub bitvec: BitVec<u8, Msb0>, 
+//     pub remain_len: u8,
+// }
+
 #[derive(Clone, PartialEq, Eq)]
-pub struct BitField(BitVec<u8, Msb0>);
+pub struct BitField(
+    pub BitVec<u8, Msb0>
+);
+
+// impl Encode for BitField {
+
+// }
+
+// impl Decode for BitField {
+//     const TYPE_INFO: TypeInfo = TypeInfo::Unknown;
+
+//     fn decode<I: codec::Input>(input: &mut I) -> Result<Self, codec::Error> {
+//         todo!()
+//     }
+// }
+
+// impl scale_info::TypeInfo for BitField {
+//     type Identity;
+
+//     fn type_info() -> scale_info::Type {
+//         todo!()
+//     }
+// }
 
 impl BitField {
     // Constuctors:
