@@ -1,14 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bitfield::{BitField, BitFieldEncoded};
-use bridge_common::{bitfield, beefy_types::*};
-use codec::{Decode, Encode};
+use bitfield::BitField;
+use bridge_common::{beefy_types::*, bitfield};
+use codec::{Encode};
 use frame_support::traits::Randomness;
-use frame_support::RuntimeDebug;
 use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
-use sp_core::H160;
 use sp_io::hashing::keccak_256;
 
 // #[cfg(test)]
@@ -34,7 +32,7 @@ pub fn prepare_message(msg: &[u8]) -> Message {
 }
 
 impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
-    fn random(subject: &[u8]) -> (Output, BlockNumber) {
+    fn random(_: &[u8]) -> (Output, BlockNumber) {
         todo!()
     }
 
@@ -46,7 +44,7 @@ impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_common::{bitfield, merkle_proof, simplified_mmr_proof::*};
+    use bridge_common::{merkle_proof, simplified_mmr_proof::*};
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
 
@@ -347,13 +345,14 @@ pub mod pallet {
             let number_of_validators = vset.length;
             let required_num_of_signatures =
                 Self::get_required_number_of_signatures(number_of_validators);
-            let bf = BitField::try_from_bit_field_encoded(proof.validator_claims_bitfield.clone()).unwrap(); // TODO hande unwrap
+            // let bf = BitField::try_from_bit_field_encoded(proof.validator_claims_bitfield.clone()).unwrap(); // TODO hande unwrap
             Self::check_commitment_signatures_threshold(
                 number_of_validators,
-                bf.clone(),
+                // bf.clone(),
+                proof.validator_claims_bitfield.clone(),
             )?;
             let random_bitfield = Self::random_n_bits_with_prior_check(
-                &bf,
+                &proof.validator_claims_bitfield,
                 required_num_of_signatures,
                 number_of_validators,
             )?;

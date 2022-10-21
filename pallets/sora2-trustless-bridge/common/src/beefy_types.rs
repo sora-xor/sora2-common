@@ -1,6 +1,5 @@
-use crate::bitfield::{BitField, BitFieldEncoded};
+use crate::bitfield::BitField;
 use codec::{Decode, Encode};
-use frame_support::traits::Randomness;
 use frame_support::RuntimeDebug;
 use sp_core::H160;
 
@@ -19,7 +18,7 @@ pub struct Commitment {
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ValidatorProof {
-    pub validator_claims_bitfield: BitFieldEncoded,
+    pub validator_claims_bitfield: BitField,
     pub signatures: Vec<Vec<u8>>,
     pub positions: Vec<u128>,
     pub public_keys: Vec<EthAddress>,
