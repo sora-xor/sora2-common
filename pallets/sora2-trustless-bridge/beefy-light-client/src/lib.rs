@@ -493,40 +493,46 @@ pub mod pallet {
         }
 
         // TODO: Finish
-        pub fn random_n_bits_with_prior_check(
-            prior: &BitField,
-            n: u128,
-            length: u128,
-        ) -> Result<BitField, Error<T>> {
-            let mut bitfield = BitField::with_capacity(prior.len());
-            for found in 0..n {
-                let randomness = sp_io::hashing::blake2_128(&encode_packed(&[Token::Bytes(
-                    (Self::seed() + found).to_be_bytes().to_vec(),
-                )]));
+        // pub fn random_n_bits_with_prior_check(
+        //     prior: &BitField,
+        //     n: u128,
+        //     length: u128,
+        // ) -> Result<BitField, Error<T>> {
+        //     let mut bitfield = BitField::with_capacity(prior.len());
+        //     for found in 0..n {
+        //         let randomness = sp_io::hashing::blake2_128(&encode_packed(&[Token::Bytes(
+        //             (Self::seed() + found).to_be_bytes().to_vec(),
+        //         )]));
 
-                let index = u128::from_be_bytes(randomness) % length;
+        //         let index = u128::from_be_bytes(randomness) % length;
 
-                if !prior.is_set(index as usize) {
-                    continue;
-                }
+        //         if !prior.is_set(index as usize) {
+        //             continue;
+        //         }
 
-                if bitfield.is_set(index as usize) {
-                    continue;
-                }
+        //         if bitfield.is_set(index as usize) {
+        //             continue;
+        //         }
 
-                bitfield.set(index as usize);
-            }
-            Ok(bitfield)
+        //         bitfield.set(index as usize);
+        //     }
+        //     Ok(bitfield)
+        // }
+
+        pub fn random_n_bits_with_prior_check(prior: &BitField, n: u128, length: u128) -> Result<BitField, Error<T>> {
+            let raw_seed = T::Randomness::random_seed();
+            let seed = codec::Encode::using_encoded(&raw_seed, sp_io::hashing::blake2_128);
+            Ok(BitField::create_random_bitfield(prior, n, length, u128::from_be_bytes(seed)))
         }
 
-        fn seed() -> u128 {
-            u128::from_be_bytes(Self::get_random())
-        }
+        // fn seed() -> u128 {
+        //     u128::from_be_bytes(Self::get_random())
+        // }
 
-        fn get_random() -> [u8; 16] {
-            let seed = LatestRandomSeed::<T>::get();
-            let rand = T::Randomness::random(&seed);
-            codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_128)
-        }
+        // fn get_random() -> [u8; 16] {
+        //     let seed = LatestRandomSeed::<T>::get();
+        //     let rand = T::Randomness::random(&seed);
+        //     codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_128)
+        // }
     }
 }
