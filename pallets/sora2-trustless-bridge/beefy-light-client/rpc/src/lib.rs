@@ -47,12 +47,12 @@ pub trait BeefyLightClientAPI<BHash> {
     fn get(&self, at:  Option<BHash>) -> Result<u64>;
 }
 
-pub struct BeefyLightClient<C, B> {
+pub struct BeefyLightClientClient<C, B> {
     client: Arc<C>,
     _marker: std::marker::PhantomData<B>,
 }
 
-impl<C, B> BeefyLightClient<C, B> {
+impl<C, B> BeefyLightClientClient<C, B> {
     /// Construct default `TradingPairClient`.
     pub fn new(client: Arc<C>) -> Self {
         Self {
@@ -62,7 +62,7 @@ impl<C, B> BeefyLightClient<C, B> {
     }
 }
 
-impl<C, B> BeefyLightClientAPIServer<<B as BlockT>::Hash> for BeefyLightClient<C, B>
+impl<C, B> BeefyLightClientAPIServer<<B as BlockT>::Hash> for BeefyLightClientClient<C, B>
 where
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<B> + HeaderBackend<B>,

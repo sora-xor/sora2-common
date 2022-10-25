@@ -543,5 +543,9 @@ pub mod pallet {
         //     let rand = T::Randomness::random(&seed);
         //     codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_128)
         // }
+
+        pub fn get() -> u64 {
+            42
+        }
     }
 }
