@@ -2,7 +2,7 @@
 
 use bitfield::BitField;
 use bridge_common::{beefy_types::*, bitfield};
-use codec::{Encode};
+use codec::Encode;
 use frame_support::traits::Randomness;
 use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
@@ -519,10 +519,19 @@ pub mod pallet {
         //     Ok(bitfield)
         // }
 
-        pub fn random_n_bits_with_prior_check(prior: &BitField, n: u128, length: u128) -> Result<BitField, Error<T>> {
+        pub fn random_n_bits_with_prior_check(
+            prior: &BitField,
+            n: u128,
+            length: u128,
+        ) -> Result<BitField, Error<T>> {
             let raw_seed = T::Randomness::random_seed();
             let seed = codec::Encode::using_encoded(&raw_seed, sp_io::hashing::blake2_128);
-            Ok(BitField::create_random_bitfield(prior, n, length, u128::from_be_bytes(seed)))
+            Ok(BitField::create_random_bitfield(
+                prior,
+                n,
+                length,
+                u128::from_be_bytes(seed),
+            ))
         }
 
         // fn seed() -> u128 {

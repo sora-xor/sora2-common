@@ -1,8 +1,8 @@
 use crate::bitfield::BitField;
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
-use sp_core::H160;
 use scale_info::prelude::vec::Vec;
+use sp_core::H160;
 
 pub type EthAddress = H160;
 

@@ -28,54 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use jsonrpsee::{
-    core::{Error as RpcError, RpcResult as Result},
-    proc_macros::rpc,
-    types::error::CallError,
-};
-use sp_api::ProvideRuntimeApi;
-use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
-use sp_runtime::traits::Block as BlockT;
-use std::sync::Arc;
+#![cfg_attr(not(feature = "std"), no_std)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::unnecessary_mut_passed)]
 
-pub use beefy_light_client_runtime_api::BeefyLightClientAPI as BeefyLightClientRuntimeAPI;
+use codec::Codec;
+use sp_std::prelude::*;
 
-#[rpc(client, server)]
-pub trait BeefyLightClientAPI<BHash> {
-    #[method(name = "get")]
-    fn get(&self, at:  Option<BHash>) -> Result<u64>;
-}
-
-pub struct BeefyLightClient<C, B> {
-    client: Arc<C>,
-    _marker: std::marker::PhantomData<B>,
-}
-
-impl<C, B> BeefyLightClient<C, B> {
-    /// Construct default `TradingPairClient`.
-    pub fn new(client: Arc<C>) -> Self {
-        Self {
-            client,
-            _marker: Default::default(),
-        }
-    }
-}
-
-impl<C, B> BeefyLightClientAPIServer<<B as BlockT>::Hash> for BeefyLightClient<C, B>
-where
-    C: Send + Sync + 'static,
-    C: ProvideRuntimeApi<B> + HeaderBackend<B>,
-    C::Api: BeefyLightClientRuntimeAPI<B>,
-    B: BlockT,
-{
-    fn get(&self, at: Option<<B as BlockT>::Hash>) -> Result<u64> {
-        let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
-            // If the block hash is not supplied assume the best block.
-            self.client.info().best_hash,
-        ));
-        api.get(&at)
-            .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
+sp_api::decl_runtime_apis! {
+    pub trait BeefyLightClientAPI
+    {
+        fn get() -> u64;
     }
 }

@@ -189,6 +189,7 @@ dependencies = [
 name = "beefy-light-client-rpc"
 version = "0.1.0"
 dependencies = [
+ "beefy-light-client-runtime-api",
  "jsonrpsee",
  "parity-scale-codec",
  "serde",
@@ -196,6 +197,18 @@ dependencies = [
  "sp-blockchain",
  "sp-core",
  "sp-rpc",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "beefy-light-client-runtime-api"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
  "sp-runtime",
  "sp-std",
 ]
