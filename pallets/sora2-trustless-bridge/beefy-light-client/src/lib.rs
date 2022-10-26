@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bitfield::BitField;
 use bridge_common::{beefy_types::*, bitfield};
 use codec::Encode;
 use frame_support::traits::Randomness;
@@ -8,6 +7,8 @@ use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
+
+pub use bitfield::BitField;
 
 // #[cfg(test)]
 // mod mock;
