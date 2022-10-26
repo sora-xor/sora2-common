@@ -6,13 +6,23 @@ use core::{
 use bitvec::{prelude::*, ptr::BitSpanError};
 use codec::{Decode, Encode};
 use ethabi::{encode_packed, Token};
-use frame_support::{RuntimeDebug};
+use frame_support::RuntimeDebug;
 use scale_info::prelude::vec::Vec;
 
 pub const SIZE: u128 = core::mem::size_of::<u128>() as u128;
 
 #[derive(
-    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo, serde::Serialize, serde::Deserialize
+    Encode,
+    Decode,
+    Clone,
+    RuntimeDebug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    scale_info::TypeInfo,
+    serde::Serialize,
+    serde::Deserialize,
 )]
 pub struct BitField(pub BitVec<u8, Msb0>);
 
