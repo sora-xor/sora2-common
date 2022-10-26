@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use codec::Codec;
 use jsonrpsee::{
     core::{Error as RpcError, RpcResult as Result},
     proc_macros::rpc,
@@ -38,14 +39,19 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
-use codec::Codec;
 
 pub use beefy_light_client_runtime_api::BeefyLightClientAPI as BeefyLightClientRuntimeAPI;
 
 #[rpc(client, server)]
 pub trait BeefyLightClientAPI<BHash, Bitfield> {
     #[method(name = "get_random_bitfield")]
-    fn get_random_bitfield(&self, at: Option<BHash>, prior: Bitfield, n: u128, length: u128) -> Result<Bitfield>;
+    fn get_random_bitfield(
+        &self,
+        at: Option<BHash>,
+        prior: Bitfield,
+        n: u128,
+        length: u128,
+    ) -> Result<Bitfield>;
 }
 
 pub struct BeefyLightClientClient<C, B> {
@@ -63,7 +69,8 @@ impl<C, B> BeefyLightClientClient<C, B> {
     }
 }
 
-impl<C, B, Bitfield> BeefyLightClientAPIServer<<B as BlockT>::Hash, Bitfield> for BeefyLightClientClient<C, B>
+impl<C, B, Bitfield> BeefyLightClientAPIServer<<B as BlockT>::Hash, Bitfield>
+    for BeefyLightClientClient<C, B>
 where
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<B> + HeaderBackend<B>,
@@ -71,7 +78,13 @@ where
     B: BlockT,
     Bitfield: Codec,
 {
-    fn get_random_bitfield(&self, at: Option<<B as BlockT>::Hash>, prior: Bitfield, n: u128, length: u128) -> Result<Bitfield> {
+    fn get_random_bitfield(
+        &self,
+        at: Option<<B as BlockT>::Hash>,
+        prior: Bitfield,
+        n: u128,
+        length: u128,
+    ) -> Result<Bitfield> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.

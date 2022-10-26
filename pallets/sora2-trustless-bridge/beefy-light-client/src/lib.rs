@@ -45,9 +45,9 @@ impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<
 pub mod pallet {
     use super::*;
     use bridge_common::{merkle_proof, simplified_mmr_proof::*};
+    use frame_support::fail;
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
-    use frame_support::fail;
 
     pub const MMR_ROOT_HISTORY_SIZE: u32 = 30;
 
