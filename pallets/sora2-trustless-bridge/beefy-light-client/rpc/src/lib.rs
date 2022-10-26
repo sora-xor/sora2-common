@@ -44,7 +44,7 @@ pub use beefy_light_client_runtime_api::BeefyLightClientAPI as BeefyLightClientR
 
 #[rpc(client, server)]
 pub trait BeefyLightClientAPI<BHash, Bitfield> {
-    #[method(name = "get_random_bitfield")]
+    #[method(name = "beefyLightClient_getRandomBitfield")]
     fn get_random_bitfield(
         &self,
         at: Option<BHash>,
