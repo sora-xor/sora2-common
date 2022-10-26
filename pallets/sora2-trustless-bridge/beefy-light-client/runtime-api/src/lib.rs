@@ -33,11 +33,11 @@
 #![allow(clippy::unnecessary_mut_passed)]
 
 use codec::Codec;
-use sp_std::prelude::*;
+// use sp_std::prelude::*;
 
 sp_api::decl_runtime_apis! {
-    pub trait BeefyLightClientAPI
+    pub trait BeefyLightClientAPI<Bitfield> where Bitfield: Codec
     {
-        fn get() -> u64;
+        fn get_random_bitfield(prior: Bitfield, n: u128, length: u128) -> Bitfield;
     }
 }

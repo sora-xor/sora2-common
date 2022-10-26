@@ -47,8 +47,6 @@ pub mod pallet {
     use bridge_common::{merkle_proof, simplified_mmr_proof::*};
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
-
-    use ethabi::{encode_packed, Token};
     use frame_support::fail;
 
     pub const MMR_ROOT_HISTORY_SIZE: u32 = 30;
@@ -492,33 +490,6 @@ pub mod pallet {
             )
         }
 
-        // TODO: Finish
-        // pub fn random_n_bits_with_prior_check(
-        //     prior: &BitField,
-        //     n: u128,
-        //     length: u128,
-        // ) -> Result<BitField, Error<T>> {
-        //     let mut bitfield = BitField::with_capacity(prior.len());
-        //     for found in 0..n {
-        //         let randomness = sp_io::hashing::blake2_128(&encode_packed(&[Token::Bytes(
-        //             (Self::seed() + found).to_be_bytes().to_vec(),
-        //         )]));
-
-        //         let index = u128::from_be_bytes(randomness) % length;
-
-        //         if !prior.is_set(index as usize) {
-        //             continue;
-        //         }
-
-        //         if bitfield.is_set(index as usize) {
-        //             continue;
-        //         }
-
-        //         bitfield.set(index as usize);
-        //     }
-        //     Ok(bitfield)
-        // }
-
         pub fn random_n_bits_with_prior_check(
             prior: &BitField,
             n: u128,
@@ -532,20 +503,6 @@ pub mod pallet {
                 length,
                 u128::from_be_bytes(seed),
             ))
-        }
-
-        // fn seed() -> u128 {
-        //     u128::from_be_bytes(Self::get_random())
-        // }
-
-        // fn get_random() -> [u8; 16] {
-        //     let seed = LatestRandomSeed::<T>::get();
-        //     let rand = T::Randomness::random(&seed);
-        //     codec::Encode::using_encoded(&rand, sp_io::hashing::blake2_128)
-        // }
-
-        pub fn get() -> u64 {
-            42
         }
     }
 }

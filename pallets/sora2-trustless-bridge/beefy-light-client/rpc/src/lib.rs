@@ -38,13 +38,14 @@ use sp_blockchain::HeaderBackend;
 use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
+use codec::Codec;
 
 pub use beefy_light_client_runtime_api::BeefyLightClientAPI as BeefyLightClientRuntimeAPI;
 
 #[rpc(client, server)]
-pub trait BeefyLightClientAPI<BHash> {
-    #[method(name = "get")]
-    fn get(&self, at:  Option<BHash>) -> Result<u64>;
+pub trait BeefyLightClientAPI<BHash, Bitfield> {
+    #[method(name = "get_random_bitfield")]
+    fn get_random_bitfield(&self, at: Option<BHash>, prior: Bitfield, n: u128, length: u128) -> Result<Bitfield>;
 }
 
 pub struct BeefyLightClientClient<C, B> {
@@ -62,20 +63,21 @@ impl<C, B> BeefyLightClientClient<C, B> {
     }
 }
 
-impl<C, B> BeefyLightClientAPIServer<<B as BlockT>::Hash> for BeefyLightClientClient<C, B>
+impl<C, B, Bitfield> BeefyLightClientAPIServer<<B as BlockT>::Hash, Bitfield> for BeefyLightClientClient<C, B>
 where
     C: Send + Sync + 'static,
     C: ProvideRuntimeApi<B> + HeaderBackend<B>,
-    C::Api: BeefyLightClientRuntimeAPI<B>,
+    C::Api: BeefyLightClientRuntimeAPI<B, Bitfield>,
     B: BlockT,
+    Bitfield: Codec,
 {
-    fn get(&self, at: Option<<B as BlockT>::Hash>) -> Result<u64> {
+    fn get_random_bitfield(&self, at: Option<<B as BlockT>::Hash>, prior: Bitfield, n: u128, length: u128) -> Result<Bitfield> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.get(&at)
+        api.get_random_bitfield(&at, prior, n, length)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }
