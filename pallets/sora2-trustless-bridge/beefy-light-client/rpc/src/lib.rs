@@ -44,12 +44,12 @@ pub use beefy_light_client_runtime_api::BeefyLightClientAPI as BeefyLightClientR
 
 #[rpc(client, server)]
 pub trait BeefyLightClientAPI<BHash, Bitfield> {
-    #[method(name = "get_random_bitfield")]
+    #[method(name = "beefyLightClient_getRandomBitfield")]
     fn get_random_bitfield(
         &self,
-        at: Option<BHash>,
         prior: Bitfield,
         num_of_validators: u128,
+        at: Option<BHash>,
     ) -> Result<Bitfield>;
 }
 
@@ -79,9 +79,9 @@ where
 {
     fn get_random_bitfield(
         &self,
-        at: Option<<B as BlockT>::Hash>,
         prior: Bitfield,
         num_of_validators: u128,
+        at: Option<<B as BlockT>::Hash>,
     ) -> Result<Bitfield> {
         let api = self.client.runtime_api();
         let at = BlockId::hash(at.unwrap_or(
