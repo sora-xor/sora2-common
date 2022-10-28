@@ -1,0 +1,26 @@
+[workspace]
+members = [
+    "common",
+    "pallets/assets",
+    "pallets/permissions",
+    "pallets/technical",
+    "pallets/trustless-eth-bridge/ethereum-light-client",
+    "pallets/trustless-eth-bridge/channel",
+    "pallets/trustless-eth-bridge/channel/rpc",
+    "pallets/trustless-eth-bridge/dispatch",
+    "pallets/trustless-eth-bridge/eth-app",
+    "pallets/trustless-eth-bridge/erc20-app",
+    "pallets/trustless-eth-bridge/migration-app",
+    "pallets/trustless-eth-bridge/leaf-provider",
+    "pallets/trustless-eth-bridge/leaf-provider/runtime-api",
+    "pallets/trustless-eth-bridge/leaf-provider/rpc",
+    "pallets/trustless-eth-bridge/types",
+    "pallets/trustless-eth-bridge/evm-bridge-proxy",
+    "pallets/trustless-eth-bridge/evm-bridge-proxy/rpc",
+    "pallets/trustless-eth-bridge/evm-bridge-proxy/runtime-api",
+]
+
+resolver = "2"
+
+[profile.release]
+panic = 'unwind'
