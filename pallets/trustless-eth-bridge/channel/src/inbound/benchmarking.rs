@@ -13,7 +13,7 @@ use sp_std::prelude::*;
 use bridge_types::types::{Message, MessageId, Proof};
 use bridge_types::{Header, Log};
 
-const BASE_NETWORK_ID: EthNetworkId = EthNetworkId::zero();
+const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 #[allow(unused_imports)]
 use crate::inbound::Pallet as BridgeInboundChannel;
@@ -39,19 +39,11 @@ benchmarks! {
     submit {
         let caller: T::AccountId = whitelisted_caller();
         let (header, message) = dot_unlock_data();
-        let envelope: events::Envelope<T> = rlp::decode::<Log>(&message.data)
+        let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
         <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
-
-        T::Verifier::initialize_storage(
-            BASE_NETWORK_ID,
-            vec![header],
-            0,
-            0, // forces all headers to be finalized
-        )?;
-
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID,message)
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
@@ -78,19 +70,11 @@ benchmarks! {
     submit_eth_mint {
         let caller: T::AccountId = whitelisted_caller();
         let (header, message) = eth_mint_data();
-        let envelope: events::Envelope<T> = rlp::decode::<Log>(&message.data)
+        let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
         <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
-
-        T::Verifier::initialize_storage(
-            BASE_NETWORK_ID,
-            vec![header],
-            0,
-            0, // forces all headers to be finalized
-        )?;
-
     }: submit(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
@@ -105,19 +89,11 @@ benchmarks! {
     submit_erc20_mint {
         let caller: T::AccountId = whitelisted_caller();
         let (header, message) = erc20_mint_data();
-        let envelope: events::Envelope<T> = rlp::decode::<Log>(&message.data)
+        let envelope: envelope::Envelope<T> = rlp::decode::<Log>(&message.data)
             .map(|log| log.try_into().unwrap())
             .unwrap();
         <ChannelNonces<T>>::insert(BASE_NETWORK_ID, envelope.nonce - 1);
         <ChannelAddresses<T>>::insert(BASE_NETWORK_ID, envelope.channel);
-
-        T::Verifier::initialize_storage(
-            BASE_NETWORK_ID,
-            vec![header],
-            0,
-            0, // forces all headers to be finalized
-        )?;
-
     }: submit(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)
     verify {
         assert_eq!(envelope.nonce, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
@@ -130,10 +106,9 @@ benchmarks! {
 
     register_channel {
 
-    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, H160::repeat_byte(123), H160::repeat_byte(234))
+    }: _(RawOrigin::Root, BASE_NETWORK_ID + 1, H160::repeat_byte(123))
     verify {
-        assert_eq!(InboundChannelAddresses::<T>::get(BASE_NETWORK_ID + 1), Some(H160::repeat_byte(123)));
-        assert_eq!(ChannelAddresses::<T>::get(BASE_NETWORK_ID + 1), Some(H160::repeat_byte(234)));
+        assert_eq!(ChannelAddresses::<T>::get(BASE_NETWORK_ID + 1), Some(H160::repeat_byte(123)));
     }
 }
 
@@ -253,6 +228,6 @@ fn dot_unlock_data() -> (Header, Message) {
 
 impl_benchmark_test_suite!(
     BridgeInboundChannel,
-    crate::inbound::test::new_tester(Default::default(), Default::default()),
+    crate::inbound::test::new_tester(Default::default()),
     crate::inbound::test::Test,
 );

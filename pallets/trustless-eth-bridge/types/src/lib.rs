@@ -9,14 +9,16 @@ pub mod log;
 mod mpt;
 pub mod network_config;
 pub mod receipt;
+pub mod substrate;
 pub mod traits;
 pub mod types;
 
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
 
-use codec::Encode;
+use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H160, H256, H64, U256};
+use frame_support::RuntimeDebug;
 use sp_std::vec;
 use sp_std::vec::Vec;
 
@@ -46,13 +48,69 @@ impl From<ethabi::Error> for DecodeError {
     }
 }
 
-pub type EthNetworkId = U256;
+pub type EVMChainId = U256;
+
+#[derive(
+    Encode,
+    Decode,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub enum SubNetworkId {
+    Mainnet,
+    Kusama,
+    Polkadot,
+    Rococo,
+    Custom(u32),
+}
+
+#[derive(
+    Encode,
+    Decode,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub enum GenericNetworkId {
+    EVM(EVMChainId),
+    Sub(SubNetworkId),
+}
+
+impl From<EVMChainId> for GenericNetworkId {
+    fn from(id: EVMChainId) -> Self {
+        GenericNetworkId::EVM(id)
+    }
+}
+
+impl From<SubNetworkId> for GenericNetworkId {
+    fn from(id: SubNetworkId) -> Self {
+        GenericNetworkId::Sub(id)
+    }
+}
+
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub enum GenericAccount<AccountId> {
+    EVM(H160),
+    Sora(AccountId),
+    Parachain(xcm::VersionedMultiLocation),
+}
 
 pub const CHANNEL_INDEXING_PREFIX: &'static [u8] = b"commitment";
 
-pub fn import_digest(network_id: &EthNetworkId, header: &Header) -> Vec<u8>
+pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
 where
-    EthNetworkId: Encode,
+    EVMChainId: Encode,
     Header: Encode,
 {
     let mut digest = vec![];

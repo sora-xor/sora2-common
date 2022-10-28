@@ -28,7 +28,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 assets = { path = "../../assets", default-features = false }
 common = { path = "../../../common", default-features = false }
 permissions = { path = "../../permissions", default-features = false }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.28", package = "orml-traits", default-features = false }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits", default-features = false }
 technical = { path = "../../technical", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
@@ -41,10 +41,10 @@ once_cell = { version = "1.5.2", default-features = false, features = [
 [dev-dependencies]
 pallet-balances = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 permissions = { path = "../../permissions" }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.28", package = "orml-tokens" }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.28", package = "orml-traits" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-tokens" }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-traits" }
 common = { path = "../../../common", features = ["test"] }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.28", package = "orml-currencies" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", package = "orml-currencies" }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28" }
 hex-literal = { version = "0.3.1" }
 rlp = { version = "0.5" }

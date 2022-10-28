@@ -24,34 +24,44 @@ use codec::{Decode, Encode};
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
-pub struct RawOrigin<NetworkId, Source, OriginOutput: traits::OriginOutput<NetworkId, Source>> {
+pub struct RawOrigin<
+    NetworkId,
+    Additional,
+    OriginOutput: traits::OriginOutput<NetworkId, Additional>,
+> {
     pub origin: OriginOutput,
     network_id: sp_std::marker::PhantomData<NetworkId>,
-    source: sp_std::marker::PhantomData<Source>,
+    additional: sp_std::marker::PhantomData<Additional>,
 }
 
-impl<NetworkId, Source, OriginOutput: traits::OriginOutput<NetworkId, Source>>
-    RawOrigin<NetworkId, Source, OriginOutput>
+impl<NetworkId, Additional, OriginOutput: traits::OriginOutput<NetworkId, Additional>>
+    RawOrigin<NetworkId, Additional, OriginOutput>
 {
     pub fn new(origin: OriginOutput) -> Self {
         Self {
             origin,
             network_id: Default::default(),
-            source: Default::default(),
+            additional: Default::default(),
         }
     }
 }
 
 #[derive(Default)]
-pub struct EnsureAccount<NetworkId, Source, OriginOutput: traits::OriginOutput<NetworkId, Source>>(
-    sp_std::marker::PhantomData<(NetworkId, Source, OriginOutput)>,
-);
+pub struct EnsureAccount<
+    NetworkId,
+    Additional,
+    OriginOutput: traits::OriginOutput<NetworkId, Additional>,
+>(sp_std::marker::PhantomData<(NetworkId, Additional, OriginOutput)>);
 
-impl<NetworkId, Source, OuterOrigin, OriginOutput: traits::OriginOutput<NetworkId, Source>>
-    EnsureOrigin<OuterOrigin> for EnsureAccount<NetworkId, Source, OriginOutput>
+impl<
+        NetworkId,
+        Additional,
+        OuterOrigin,
+        OriginOutput: traits::OriginOutput<NetworkId, Additional>,
+    > EnsureOrigin<OuterOrigin> for EnsureAccount<NetworkId, Additional, OriginOutput>
 where
-    OuterOrigin: Into<Result<RawOrigin<NetworkId, Source, OriginOutput>, OuterOrigin>>
-        + From<RawOrigin<NetworkId, Source, OriginOutput>>,
+    OuterOrigin: Into<Result<RawOrigin<NetworkId, Additional, OriginOutput>, OuterOrigin>>
+        + From<RawOrigin<NetworkId, Additional, OriginOutput>>,
 {
     type Success = OriginOutput;
 
@@ -93,13 +103,13 @@ pub mod pallet {
         /// The Id of the network (i.e. Ethereum network id).
         type NetworkId;
 
-        /// The source of origin.
-        type Source;
+        /// The additional data for origin.
+        type Additional;
 
-        type OriginOutput: traits::OriginOutput<Self::NetworkId, Self::Source>;
+        type OriginOutput: traits::OriginOutput<Self::NetworkId, Self::Additional>;
 
         /// The overarching origin type.
-        type Origin: From<RawOrigin<Self::NetworkId, Self::Source, Self::OriginOutput>>;
+        type Origin: From<RawOrigin<Self::NetworkId, Self::Additional, Self::OriginOutput>>;
 
         /// Id of the message. Whenever message is passed to the dispatch module, it emits
         /// event with this id + dispatch result.
@@ -141,19 +151,21 @@ pub mod pallet {
     #[allow(type_alias_bounds)]
     pub type Origin<T: Config<I>, I: 'static = ()> = RawOrigin<
         <T as Config<I>>::NetworkId,
-        <T as Config<I>>::Source,
+        <T as Config<I>>::Additional,
         <T as Config<I>>::OriginOutput,
     >;
 
-    impl<T: Config> traits::MessageDispatch<T, T::NetworkId, T::Source, T::MessageId> for Pallet<T> {
+    impl<T: Config<I>, I: 'static>
+        traits::MessageDispatch<T, T::NetworkId, T::MessageId, T::Additional> for Pallet<T, I>
+    {
         fn dispatch(
             network_id: T::NetworkId,
-            source: T::Source,
             message_id: T::MessageId,
             timestamp: u64,
             payload: &[u8],
+            additional: T::Additional,
         ) {
-            let call = match <T as Config>::Call::decode(&mut &payload[..]) {
+            let call = match <T as Config<I>>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
                     Self::deposit_event(Event::MessageDecodeFailed(message_id));
@@ -168,9 +180,9 @@ pub mod pallet {
 
             let origin = RawOrigin::new(<T::OriginOutput as traits::OriginOutput<_, _>>::new(
                 network_id,
-                source,
-                message_id.using_encoded(|v| <T as Config>::Hashing::hash(v)),
+                message_id.using_encoded(|v| <T as Config<I>>::Hashing::hash(v)),
                 timestamp,
+                additional,
             ))
             .into();
             let result = call.dispatch(origin);
@@ -185,7 +197,8 @@ pub mod pallet {
         fn successful_dispatch_event(
             id: T::MessageId,
         ) -> Option<<T as frame_system::Config>::Event> {
-            let event: <T as Config>::Event = Event::<T>::MessageDispatched(id, Ok(())).into();
+            let event: <T as Config<I>>::Event =
+                Event::<T, I>::MessageDispatched(id, Ok(())).into();
             Some(event.into())
         }
     }
@@ -195,8 +208,8 @@ pub mod pallet {
 mod tests {
     use super::*;
     use bridge_types::traits::MessageDispatch as _;
-    use bridge_types::types;
-    use bridge_types::{EthNetworkId, H160};
+    use bridge_types::types::{self, AdditionalEVMInboundData};
+    use bridge_types::{EVMChainId, H160};
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
     use frame_support::traits::{ConstU32, Everything};
@@ -266,9 +279,9 @@ mod tests {
 
     impl dispatch::Config for Test {
         type Event = Event;
-        type NetworkId = EthNetworkId;
-        type Source = H160;
-        type OriginOutput = types::CallOriginOutput<EthNetworkId, H160, H256>;
+        type NetworkId = EVMChainId;
+        type Additional = AdditionalEVMInboundData;
+        type OriginOutput = types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
         type Origin = Origin;
         type MessageId = types::MessageId;
         type Hashing = Keccak256;
@@ -294,7 +307,13 @@ mod tests {
                     .encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(2u32.into(), source, id, 0, &message);
+            Dispatch::dispatch(
+                2u32.into(),
+                id,
+                0,
+                &message,
+                AdditionalEVMInboundData { source },
+            );
 
             assert_eq!(
                 System::events(),
@@ -319,7 +338,13 @@ mod tests {
             let message: Vec<u8> = vec![1, 2, 3];
 
             System::set_block_number(1);
-            Dispatch::dispatch(2u32.into(), source, id, 0, &message);
+            Dispatch::dispatch(
+                2u32.into(),
+                id,
+                0,
+                &message,
+                AdditionalEVMInboundData { source },
+            );
 
             assert_eq!(
                 System::events(),
@@ -343,7 +368,13 @@ mod tests {
                     .encode();
 
             System::set_block_number(1);
-            Dispatch::dispatch(2u32.into(), source, id, 0, &message);
+            Dispatch::dispatch(
+                2u32.into(),
+                id,
+                0,
+                &message,
+                AdditionalEVMInboundData { source },
+            );
 
             assert_eq!(
                 System::events(),

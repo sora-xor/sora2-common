@@ -1,0 +1,226 @@
+//! Channel for passing messages from ethereum to substrate.
+
+use bridge_types::traits::{MessageDispatch, Verifier};
+use bridge_types::types::MessageId;
+use bridge_types::SubNetworkId;
+use frame_support::dispatch::DispatchResult;
+use frame_support::traits::Get;
+use frame_system::ensure_signed;
+use sp_core::U256;
+
+use sp_runtime::traits::{Convert, Zero};
+use sp_runtime::Perbill;
+use traits::MultiCurrency;
+
+mod benchmarking;
+
+pub mod weights;
+pub use weights::WeightInfo;
+
+#[cfg(test)]
+mod test;
+
+type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
+    <T as frame_system::Config>::AccountId,
+>>::Balance;
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use bridge_types::types::ParachainMessage;
+    use frame_support::log::{debug, warn};
+    use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
+    use frame_system::pallet_prelude::*;
+    use sp_std::prelude::*;
+
+    #[pallet::config]
+    pub trait Config:
+        frame_system::Config + assets::Config + technical::Config + pallet_timestamp::Config
+    {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+
+        /// Verifier module for message verification.
+        type Verifier: Verifier<
+            SubNetworkId,
+            ParachainMessage<BalanceOf<Self>>,
+            Result = Vec<ParachainMessage<BalanceOf<Self>>>,
+        >;
+
+        /// Verifier module for message verification.
+        type MessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
+
+        type FeeConverter: Convert<U256, BalanceOf<Self>>;
+
+        /// The base asset as the core asset in all trading pairs
+        type FeeAssetId: Get<Self::AssetId>;
+
+        type FeeTechAccountId: Get<Self::TechAccountId>;
+
+        type TreasuryTechAccountId: Get<Self::TechAccountId>;
+
+        /// Weight information for extrinsics in this pallet
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::storage]
+    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn reward_fraction)]
+    pub(super) type RewardFraction<T: Config> =
+        StorageValue<_, Perbill, ValueQuery, DefaultRewardFraction>;
+
+    #[pallet::type_value]
+    pub(super) fn DefaultRewardFraction() -> Perbill {
+        Perbill::from_percent(80)
+    }
+
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::event]
+    //#[pallet::generate_deposit(pub(super) fn deposit_event)]
+    /// This module has no events
+    pub enum Event<T: Config> {}
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Message came from an invalid network.
+        InvalidNetwork,
+        /// Message came from an invalid outbound channel on the Ethereum side.
+        InvalidSourceChannel,
+        /// Message has an invalid envelope.
+        InvalidEnvelope,
+        /// Message has an unexpected nonce.
+        InvalidNonce,
+        /// Incorrect reward fraction
+        InvalidRewardFraction,
+        /// This contract already exists
+        ContractExists,
+        /// Call encoding failed.
+        CallEncodeFailed,
+    }
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::weight(<T as Config>::WeightInfo::submit())]
+        pub fn submit(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            message: ParachainMessage<BalanceOf<T>>,
+        ) -> DispatchResultWithPostInfo {
+            let relayer = ensure_signed(origin)?;
+            debug!("Received message from {:?}", relayer);
+            // submit message to verifier for verification
+            let messages = T::Verifier::verify(network_id, &message)?;
+
+            for message in messages {
+                // Verify message nonce
+                <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                    if message.nonce != *nonce + 1 {
+                        Err(Error::<T>::InvalidNonce.into())
+                    } else {
+                        *nonce += 1;
+                        Ok(())
+                    }
+                })?;
+
+                Self::handle_fee(message.fee, &relayer);
+
+                let message_id = MessageId::inbound(message.nonce);
+                T::MessageDispatch::dispatch(
+                    network_id,
+                    message_id.into(),
+                    message.timestamp,
+                    &message.payload,
+                    (),
+                );
+            }
+            Ok(().into())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::set_reward_fraction())]
+        pub fn set_reward_fraction(
+            origin: OriginFor<T>,
+            fraction: Perbill,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            RewardFraction::<T>::set(fraction);
+            Ok(().into())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        /*
+         * Pay the message submission fee into the relayer and treasury account.
+         *
+         * - If the fee is zero, do nothing
+         * - Otherwise, withdraw the fee amount from the DotApp module account, returning a negative imbalance
+         * - Figure out the fraction of the fee amount that should be paid to the relayer
+         * - Pay the relayer if their account exists, returning a positive imbalance.
+         * - Adjust the negative imbalance by offsetting the amount paid to the relayer
+         * - Resolve the negative imbalance by depositing it into the treasury account
+         */
+        pub fn handle_fee(amount: BalanceOf<T>, relayer: &T::AccountId) {
+            if amount.is_zero() {
+                return;
+            }
+            let reward_fraction: Perbill = RewardFraction::<T>::get();
+            let reward_amount = reward_fraction.mul_ceil(amount);
+
+            if let Err(err) = technical::Pallet::<T>::transfer_out(
+                &T::FeeAssetId::get(),
+                &T::FeeTechAccountId::get(),
+                relayer,
+                reward_amount,
+            ) {
+                warn!("Unable to transfer reward to relayer: {:?}", err);
+                return;
+            }
+
+            if let Some(treasure_amount) = amount.checked_sub(reward_amount) {
+                if let Err(err) = technical::Pallet::<T>::transfer(
+                    &T::FeeAssetId::get(),
+                    &T::FeeTechAccountId::get(),
+                    &T::TreasuryTechAccountId::get(),
+                    treasure_amount,
+                ) {
+                    warn!("Unable to transfer to treasury: {:?}", err);
+                }
+            }
+        }
+    }
+
+    #[pallet::genesis_config]
+    pub struct GenesisConfig {
+        pub reward_fraction: Perbill,
+    }
+
+    #[cfg(feature = "std")]
+    impl Default for GenesisConfig {
+        fn default() -> Self {
+            Self {
+                reward_fraction: Default::default(),
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+        fn build(&self) {
+            RewardFraction::<T>::set(self.reward_fraction);
+        }
+    }
+}

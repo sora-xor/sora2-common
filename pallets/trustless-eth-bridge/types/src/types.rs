@@ -2,7 +2,7 @@
 
 use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
-use ethereum_types::H160;
+use ethereum_types::{H160, U256};
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use sp_core::H256;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
 
-pub use crate::EthNetworkId;
+use crate::GenericNetworkId;
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum MessageDirection {
@@ -57,6 +57,16 @@ pub struct Message {
     pub proof: Proof,
 }
 
+/// A message relayed from Parachain.
+#[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub struct ParachainMessage<Balance> {
+    pub payload: Vec<u8>,
+    pub nonce: MessageNonce,
+    pub timestamp: u64,
+    pub fee: Balance,
+}
+
 /// Verification input for the message verifier.
 ///
 /// This data type allows us to support multiple verification schemes. In the near future,
@@ -95,7 +105,7 @@ impl From<Digest> for AuxiliaryDigest {
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
-    Commitment(EthNetworkId, H256),
+    Commitment(GenericNetworkId, H256),
 }
 
 impl Into<DigestItem> for AuxiliaryDigestItem {
@@ -135,13 +145,33 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
 /// - Thischain: a Sora asset.
 /// - Sidechain: an Ethereum token.
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Copy, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
 pub enum AssetKind {
     Thischain,
     Sidechain,
 }
 
-#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
 pub enum MessageStatus {
     InQueue,
     Committed,
@@ -150,21 +180,52 @@ pub enum MessageStatus {
     Failed,
 }
 
-#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AppKind {
     EthApp,
     ERC20App,
     SidechainApp,
+    SubstrateApp,
 }
 
-#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
 pub struct LeafExtraData<Hash, RandomSeed> {
     pub random_seed: RandomSeed,
     pub digest_hash: Hash,
 }
 
-#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BridgeAssetInfo<AssetId> {
     pub asset_id: AssetId,
@@ -172,11 +233,56 @@ pub struct BridgeAssetInfo<AssetId> {
     pub app_kind: AppKind,
 }
 
-#[derive(Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct BridgeAppInfo {
     pub evm_address: H160,
     pub app_kind: AppKind,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    Default,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct AdditionalEVMOutboundData {
+    pub max_gas: U256,
+    pub target: H160,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    Default,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct AdditionalEVMInboundData {
+    pub source: H160,
 }
 
 #[derive(
@@ -192,22 +298,27 @@ pub struct BridgeAppInfo {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct CallOriginOutput<NetworkId, Contract, MessageId> {
+pub struct CallOriginOutput<NetworkId, MessageId, Additional> {
     pub network_id: NetworkId,
     pub message_id: MessageId,
-    pub contract: Contract,
     pub timestamp: u64,
+    pub additional: Additional,
 }
 
-impl<NetworkId, Source> crate::traits::OriginOutput<NetworkId, Source>
-    for CallOriginOutput<NetworkId, Source, H256>
+impl<NetworkId, Additional> crate::traits::OriginOutput<NetworkId, Additional>
+    for CallOriginOutput<NetworkId, H256, Additional>
 {
-    fn new(network_id: NetworkId, source: Source, message_id: H256, timestamp: u64) -> Self {
+    fn new(
+        network_id: NetworkId,
+        message_id: H256,
+        timestamp: u64,
+        additional: Additional,
+    ) -> Self {
         Self {
             network_id,
             message_id,
-            contract: source,
             timestamp,
+            additional,
         }
     }
 }

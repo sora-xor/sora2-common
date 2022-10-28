@@ -1,6 +1,6 @@
 use crate::{
     difficulty::{ClassicForkConfig, ForkConfig},
-    EthNetworkId,
+    EVMChainId,
 };
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
@@ -37,13 +37,13 @@ pub enum NetworkConfig {
     Classic,
     Mordor,
     Custom {
-        chain_id: EthNetworkId,
+        chain_id: EVMChainId,
         consensus: Consensus,
     },
 }
 
 impl NetworkConfig {
-    pub fn chain_id(&self) -> EthNetworkId {
+    pub fn chain_id(&self) -> EVMChainId {
         match self {
             NetworkConfig::Mainnet => 1u32.into(),
             NetworkConfig::Ropsten => 3u32.into(),
