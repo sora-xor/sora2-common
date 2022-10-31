@@ -7,6 +7,7 @@ use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
+use frame_support::log;
 
 pub use bitfield::BitField;
 
@@ -154,6 +155,10 @@ pub mod pallet {
             proof: SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
+            log::debug!("BeefyLightClient: submit_signature_commitment: {:?}", commitment);
+            log::debug!("BeefyLightClient: submit_signature_commitment validator proof: {:?}", validator_proof);
+            log::debug!("BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}", latest_mmr_leaf);
+            log::debug!("BeefyLightClient: submit_signature_commitment proof: {:?}", proof);
             let current_validator_set = Self::current_validator_set();
             let next_validator_set = Self::next_validator_set();
             let vset = match (commitment.validator_set_id as u128) == current_validator_set.id {
