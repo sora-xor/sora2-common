@@ -2,12 +2,12 @@
 
 use bridge_common::{beefy_types::*, bitfield};
 use codec::Encode;
+use frame_support::log;
 use frame_support::traits::Randomness;
 use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
-use frame_support::log;
 
 pub use bitfield::BitField;
 
@@ -147,6 +147,20 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::weight(0)]
+        pub fn initialise(
+            origin: OriginFor<T>,
+            latest_beefy_block: u32,
+            validator_set: ValidatorSet,
+            next_validator_set: ValidatorSet,
+        ) -> DispatchResultWithPostInfo {
+            LatestBeefyBlock::<T>::set(latest_beefy_block);
+            CurrentValidatorSet::<T>::set(validator_set);
+            NextValidatorSet::<T>::set(next_validator_set);
+            let _ = ensure_root(origin)?;
+            Ok(().into())
+        }
+
+        #[pallet::weight(0)]
         pub fn submit_signature_commitment(
             origin: OriginFor<T>,
             commitment: Commitment,
@@ -155,10 +169,22 @@ pub mod pallet {
             proof: SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
-            log::debug!("BeefyLightClient: submit_signature_commitment: {:?}", commitment);
-            log::debug!("BeefyLightClient: submit_signature_commitment validator proof: {:?}", validator_proof);
-            log::debug!("BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}", latest_mmr_leaf);
-            log::debug!("BeefyLightClient: submit_signature_commitment proof: {:?}", proof);
+            log::debug!(
+                "BeefyLightClient: submit_signature_commitment: {:?}",
+                commitment
+            );
+            log::debug!(
+                "BeefyLightClient: submit_signature_commitment validator proof: {:?}",
+                validator_proof
+            );
+            log::debug!(
+                "BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}",
+                latest_mmr_leaf
+            );
+            log::debug!(
+                "BeefyLightClient: submit_signature_commitment proof: {:?}",
+                proof
+            );
             let current_validator_set = Self::current_validator_set();
             let next_validator_set = Self::next_validator_set();
             let vset = match (commitment.validator_set_id as u128) == current_validator_set.id {

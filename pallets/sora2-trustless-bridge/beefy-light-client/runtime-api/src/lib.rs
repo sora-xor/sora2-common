@@ -40,4 +40,3 @@ sp_api::decl_runtime_apis! {
         fn get_random_bitfield(prior: Bitfield, num_of_validators: u128) -> Bitfield;
     }
 }
-
