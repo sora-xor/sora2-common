@@ -152,7 +152,6 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Users should burn their holdings to release funds on the Ethereum side
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
-
         pub fn burn(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -165,7 +164,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
-
         pub fn mint(
             origin: OriginFor<T>,
             sender: H160,
@@ -204,7 +202,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
-
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -234,7 +231,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
-
         pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,

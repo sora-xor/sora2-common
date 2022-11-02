@@ -177,7 +177,6 @@ pub mod pallet {
          */
 
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
-
         pub fn mint(
             origin: OriginFor<T>,
             token: H160,
@@ -237,7 +236,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_asset_internal())]
-
         pub fn register_asset_internal(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -320,7 +318,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-
         pub fn register_existing_erc20_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -350,7 +347,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_native_asset())]
-
         pub fn register_native_asset(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -382,7 +378,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
-
         pub fn register_native_app(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -399,7 +394,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_app())]
-
         pub fn register_erc20_app(
             origin: OriginFor<T>,
             network_id: EthNetworkId,

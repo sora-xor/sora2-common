@@ -128,7 +128,6 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Send ERC20 tokens to ERC20 App address and register tokens.
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
-
         pub fn migrate_erc20(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -178,7 +177,6 @@ pub mod pallet {
 
         // Transfer ownership of tokens to Sidechain App and register tokens.
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
-
         pub fn migrate_sidechain(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
@@ -224,7 +222,6 @@ pub mod pallet {
 
         // Transfer Eth tokens to Eth App contract
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
-
         pub fn migrate_eth(origin: OriginFor<T>, network_id: EthNetworkId) -> DispatchResult {
             ensure_root(origin)?;
             let target = Addresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
@@ -246,7 +243,6 @@ pub mod pallet {
         }
 
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
-
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: EthNetworkId,
