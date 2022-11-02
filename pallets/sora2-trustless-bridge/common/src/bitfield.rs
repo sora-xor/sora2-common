@@ -35,12 +35,17 @@ impl BitField {
     }
 
     #[inline]
+    pub fn with_zeroes(len: usize) -> Self {
+        Self(BitVec::repeat(false, len))
+    }
+
+    #[inline]
     pub fn try_from_slice(slice: &[u8]) -> Result<Self, BitSpanError<u8>> {
         Ok(Self(BitVec::try_from_slice(slice)?))
     }
 
     pub fn create_bitfield(bits_to_set: Vec<u128>, length: u128) -> Self {
-        let mut bitfield = Self::with_capacity(length as usize);
+        let mut bitfield = Self::with_zeroes(length as usize);
         for i in 0..bits_to_set.len() {
             bitfield.set(bits_to_set[i] as usize)
         }
@@ -48,7 +53,7 @@ impl BitField {
     }
 
     pub fn create_random_bitfield(prior: &BitField, n: u128, length: u128, seed: u128) -> Self {
-        let mut bitfield = BitField::with_capacity(prior.len());
+        let mut bitfield = BitField::with_zeroes(prior.len());
         for found in 0..n {
             let randomness = sp_io::hashing::blake2_128(&encode_packed(&[Token::Bytes(
                 (seed + found).to_be_bytes().to_vec(),
@@ -107,5 +112,18 @@ impl Deref for BitField {
 impl DerefMut for BitField {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+#[cfg(test)] 
+mod test {
+    #[test]
+    pub fn create_bitfield_success() {
+        let bits_to_set = vec![0, 1, 2];
+        let len = 3;
+        let bf = super::BitField::create_bitfield(bits_to_set, len);
+        assert!(bf[0]);
+        assert!(bf[1]);
+        assert!(bf[2]);
     }
 }
