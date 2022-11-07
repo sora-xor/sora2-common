@@ -58,7 +58,8 @@ pub mod pallet {
 
     pub const NUMBER_OF_BLOCKS_PER_SESSION: u64 = 600;
     pub const ERROR_AND_SAFETY_BUFFER: u64 = 10;
-    pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
+    // pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
+    pub const MAXIMUM_BLOCK_GAP: u64 = 20;
 
     pub const MMR_ROOT_ID: [u8; 2] = [0x6d, 0x68];
 
@@ -170,19 +171,19 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
             log::debug!(
-                "BeefyLightClient: submit_signature_commitment: {:?}",
+                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment: {:?}",
                 commitment
             );
             log::debug!(
-                "BeefyLightClient: submit_signature_commitment validator proof: {:?}",
+                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment validator proof: {:?}",
                 validator_proof
             );
             log::debug!(
-                "BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}",
+                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}",
                 latest_mmr_leaf
             );
             log::debug!(
-                "BeefyLightClient: submit_signature_commitment proof: {:?}",
+                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment proof: {:?}",
                 proof
             );
             let current_validator_set = Self::current_validator_set();
