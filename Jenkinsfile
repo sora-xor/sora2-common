@@ -35,7 +35,7 @@ pipeline {
                 script {
                     sshagent(['soramitsu-bot-ssh']) {
                         sh """
-                        git submodule update --init --recursive
+                            git submodule update --init --recursive
                         """
                     }
                 }
