@@ -154,10 +154,10 @@ pub mod pallet {
             validator_set: ValidatorSet,
             next_validator_set: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
+            let _ = ensure_root(origin)?;
             LatestBeefyBlock::<T>::set(latest_beefy_block);
             CurrentValidatorSet::<T>::set(validator_set);
             NextValidatorSet::<T>::set(next_validator_set);
-            let _ = ensure_root(origin)?;
             Ok(().into())
         }
 
@@ -170,6 +170,15 @@ pub mod pallet {
             proof: SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
             log::debug!(
                 "tokio-runtime-worker BeefyLightClient: submit_signature_commitment: {:?}",
                 commitment
@@ -210,6 +219,15 @@ pub mod pallet {
                 latest_mmr_leaf.next_authority_set_len as u128,
                 latest_mmr_leaf.next_authority_set_root,
             )?;
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
             Ok(().into())
         }
     }
