@@ -372,7 +372,6 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // ON RELAYER???????
         pub fn verify_commitment(
             commitment: &Commitment,
             proof: &ValidatorProof,
@@ -381,10 +380,8 @@ pub mod pallet {
             let number_of_validators = vset.length;
             let required_num_of_signatures =
                 Self::get_required_number_of_signatures(number_of_validators);
-            // let bf = BitField::try_from_bit_field_encoded(proof.validator_claims_bitfield.clone()).unwrap(); // TODO hande unwrap
             Self::check_commitment_signatures_threshold(
                 number_of_validators,
-                // bf.clone(),
                 proof.validator_claims_bitfield.clone(),
             )?;
             let random_bitfield = Self::random_n_bits_with_prior_check(
@@ -392,6 +389,14 @@ pub mod pallet {
                 required_num_of_signatures,
                 number_of_validators,
             )?;
+            log::debug!(
+                "tokio-runtime-worker: BeefyLightClient verify_commitment validator_claims_bitfield: {:?}",
+                proof.validator_claims_bitfield.clone()
+            );
+            log::debug!(
+                "tokio-runtime-worker: BeefyLightClient verify_commitment random_bitfield: {:?}",
+                random_bitfield.clone()
+            );
             Self::verify_validator_proof_lengths(required_num_of_signatures, proof.clone())?;
             let commitment_hash = Self::create_commitment_hash(commitment.clone());
             Self::verify_validator_proof_signatures(

@@ -97,7 +97,7 @@ impl BitField {
 
     #[inline]
     pub fn is_set(&self, index: usize) -> bool {
-        self.0[index] == true
+        self.0[index]
     }
 }
 
