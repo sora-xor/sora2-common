@@ -17,16 +17,6 @@ pipeline {
         label agentLabel
     }
     stages {
-        stage('Secret scanner') {
-            steps {
-                script {
-                    gitNotify('main-CI', 'PENDING', 'This commit is being built')
-                    docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
-                        secretScanner(disableSecretScanner, secretScannerExclusion)
-                    }
-                }
-            }
-        }
         stage('Init submodule') {
             environment {
                 GIT_SSH_COMMAND = "ssh -o UserKnownHostsFile=/dev/null StrictHostKeyChecking=no"
@@ -37,6 +27,16 @@ pipeline {
                         sh """
                             git submodule update --init --recursive
                         """
+                    }
+                }
+            }
+        }
+        stage('Secret scanner') {
+            steps {
+                script {
+                    gitNotify('main-CI', 'PENDING', 'This commit is being built')
+                    docker.withRegistry('https://' + registry, dockerBuildToolsUserId) {
+                        secretScanner(disableSecretScanner, secretScannerExclusion)
                     }
                 }
             }
