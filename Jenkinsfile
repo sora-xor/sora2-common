@@ -3,7 +3,6 @@
 String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
-String dockerRegistryRWUserId = 'bot-sora2-rw'
 String cargoAuditImage        = registry + '/build-tools/cargo_audit'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
@@ -45,7 +44,7 @@ pipeline {
         stage('Tests') {
             steps {
                 script {
-                    docker.withRegistry('https://' + registry, dockerRegistryRWUserId) {
+                    docker.withRegistry( 'https://' + registry, dockerBuildToolsUserId) {
                         docker.image(cargoAuditImage + ':latest').inside(){
                                 sh """
                                     cargo test  --release --features runtime-benchmarks
