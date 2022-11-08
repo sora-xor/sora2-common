@@ -98,13 +98,13 @@ pub mod pallet {
     #[pallet::getter(fn validator_registry_root)]
     pub type ValidatorRegistryRoot<T> = StorageValue<_, [u8; 32], ValueQuery>;
 
-    #[pallet::storage]
-    #[pallet::getter(fn validator_registry_num_of_validators)]
-    pub type NumOfValidators<T> = StorageValue<_, u128, ValueQuery>;
+    // #[pallet::storage]
+    // #[pallet::getter(fn validator_registry_num_of_validators)]
+    // pub type NumOfValidators<T> = StorageValue<_, u128, ValueQuery>;
 
-    #[pallet::storage]
-    #[pallet::getter(fn validator_registry_id)]
-    pub type ValidatorRegistryId<T> = StorageValue<_, u64, ValueQuery>;
+    // #[pallet::storage]
+    // #[pallet::getter(fn validator_registry_id)]
+    // pub type ValidatorRegistryId<T> = StorageValue<_, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn current_validator_set)]
@@ -206,8 +206,8 @@ pub mod pallet {
                 commitment.block_number,
             ));
             Self::apply_validator_set_changes(
-                latest_mmr_leaf.next_authority_set_id,
-                latest_mmr_leaf.next_authority_set_len,
+                latest_mmr_leaf.next_authority_set_id as u128,
+                latest_mmr_leaf.next_authority_set_len as u128,
                 latest_mmr_leaf.next_authority_set_root,
             )?;
             Ok(().into())
@@ -324,28 +324,33 @@ pub mod pallet {
         }
 
         pub fn apply_validator_set_changes(
-            next_authority_set_id: u64,
-            next_authority_set_len: u32,
+            next_authority_set_id: u128,
+            next_authority_set_len: u128,
             next_authority_set_root: [u8; 32],
         ) -> DispatchResultWithPostInfo {
-            if next_authority_set_id > Self::validator_registry_id() {
-                let next_validator_set = Self::next_validator_set();
+            let next_validator_set = Self::next_validator_set();
+            if next_authority_set_id > next_validator_set.id {    
                 ensure!(
                     next_authority_set_id as u128 > next_validator_set.id,
                     Error::<T>::CannotSwitchOldValidatorSet
                 );
                 CurrentValidatorSet::<T>::set(next_validator_set);
-                Self::validator_registry_update(
-                    next_authority_set_root,
-                    next_authority_set_len as u128,
-                    next_authority_set_id,
-                );
+                NextValidatorSet::<T>::set(ValidatorSet{
+                    id: next_authority_set_id,
+                    length: next_authority_set_len,
+                    root: next_authority_set_root
+                });
+                // Self::validator_registry_update(
+                //     next_authority_set_root,
+                //     next_authority_set_len as u128,
+                //     next_authority_set_id,
+                // );
             }
             Ok(().into())
         }
 
         pub fn required_number_of_signatures() -> u128 {
-            Self::get_required_number_of_signatures(Self::validator_registry_num_of_validators())
+            Self::get_required_number_of_signatures(Self::current_validator_set().length)
         }
 
         pub fn get_required_number_of_signatures(num_validators: u128) -> u128 {
@@ -355,7 +360,7 @@ pub mod pallet {
 
         /**
         	* @dev https://github.com/sora-xor/substrate/blob/7d914ce3ed34a27d7bb213caed374d64cde8cfa8/client/beefy/src/round.rs#L62
-        	*/
+        */
         // ON RELAYER???????
         pub fn check_commitment_signatures_threshold(
             num_of_validators: u128,
@@ -497,20 +502,20 @@ pub mod pallet {
             keccak_256(&leaf)
         }
 
-        pub fn validator_registry_update(
-            new_root: [u8; 32],
-            new_num_of_validators: u128,
-            new_id: u64,
-        ) {
-            ValidatorRegistryRoot::<T>::set(new_root);
-            NumOfValidators::<T>::set(new_num_of_validators);
-            ValidatorRegistryId::<T>::set(new_id);
-            Self::deposit_event(Event::<T>::ValidatorRegistryUpdated(
-                new_root,
-                new_num_of_validators,
-                new_id,
-            ));
-        }
+        // pub fn validator_registry_update(
+        //     new_root: [u8; 32],
+        //     new_num_of_validators: u128,
+        //     new_id: u64,
+        // ) {
+        //     ValidatorRegistryRoot::<T>::set(new_root);
+        //     NumOfValidators::<T>::set(new_num_of_validators);
+        //     ValidatorRegistryId::<T>::set(new_id);
+        //     Self::deposit_event(Event::<T>::ValidatorRegistryUpdated(
+        //         new_root,
+        //         new_num_of_validators,
+        //         new_id,
+        //     ));
+        // }
 
         pub fn check_validator_in_set(addr: EthAddress, pos: u128, proof: Vec<[u8; 32]>) -> bool {
             let hashed_leaf = keccak_256(&addr.encode());
@@ -518,7 +523,7 @@ pub mod pallet {
                 Self::validator_registry_root(),
                 hashed_leaf,
                 pos,
-                Self::validator_registry_num_of_validators(),
+                Self::current_validator_set().length,
                 proof,
             )
         }
