@@ -3,6 +3,7 @@
 String agentLabel             = 'docker-build-agent'
 String registry               = 'docker.soramitsu.co.jp'
 String dockerBuildToolsUserId = 'bot-build-tools-ro'
+String dockerRegistryRWUserId = 'bot-sora2-rw'
 String cargoAuditImage        = registry + '/build-tools/cargo_audit'
 String secretScannerExclusion = '.*Cargo.toml'
 Boolean disableSecretScanner  = false
