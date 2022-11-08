@@ -59,7 +59,7 @@ pub mod pallet {
     pub const NUMBER_OF_BLOCKS_PER_SESSION: u64 = 600;
     pub const ERROR_AND_SAFETY_BUFFER: u64 = 10;
     // pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
-    pub const MAXIMUM_BLOCK_GAP: u64 = 20;
+    pub const MAXIMUM_BLOCK_GAP: u64 = 100;
 
     pub const MMR_ROOT_ID: [u8; 2] = [0x6d, 0x68];
 
@@ -148,7 +148,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::weight(0)]
-        pub fn initialise(
+        pub fn initialize(
             origin: OriginFor<T>,
             latest_beefy_block: u32,
             validator_set: ValidatorSet,
