@@ -475,6 +475,24 @@ pub mod pallet {
             commitment_hash: [u8; 32],
         ) -> DispatchResultWithPostInfo {
             let required_num_of_signatures = required_num_of_signatures as usize;
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
+            log::debug!(
+                "POSITIONS: {:?}", proof.positions
+            );
+            log::debug!(
+                "REQUIRED NUM OF POSITIONS: {:?}", required_num_of_signatures
+            );
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
             for i in 0..required_num_of_signatures {
                 Self::verify_validator_signature(
                     random_bitfield.clone(),
@@ -496,21 +514,6 @@ pub mod pallet {
             public_key_merkle_proof: Vec<[u8; 32]>,
             commitment_hash: [u8; 32],
         ) -> DispatchResultWithPostInfo {
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "POSITION: {:?}", position
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
             ensure!(
                 random_bitfield.is_set(position as usize),
                 Error::<T>::ValidatorNotOnceInbitfield
