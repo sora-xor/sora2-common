@@ -54,22 +54,29 @@ impl BitField {
 
     pub fn create_random_bitfield(prior: &BitField, n: u128, length: u128, seed: u128) -> Self {
         let mut bitfield = BitField::with_zeroes(prior.len());
-        for found in 0..n {
+        let mut found = 0;
+        let mut i = 0;
+        while found < n {
+            // for found in 0..n {
             let randomness = sp_io::hashing::blake2_128(&encode_packed(&[Token::Bytes(
-                (seed + found).to_be_bytes().to_vec(),
+                (seed + i).to_be_bytes().to_vec(),
             )]));
 
             let index = u128::from_be_bytes(randomness) % length;
 
             if !prior.is_set(index as usize) {
+                i += 1;
                 continue;
             }
 
             if bitfield.is_set(index as usize) {
+                i += 1;
                 continue;
             }
 
             bitfield.set(index as usize);
+            found += 1;
+            i += 1;
         }
         bitfield
     }
