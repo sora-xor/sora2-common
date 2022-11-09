@@ -528,9 +528,26 @@ pub mod pallet {
                 Err(_) => fail!(Error::<T>::InvalidSignature),
                 Ok(p) => p,
             };
-            let recovered_public =
-                libsecp256k1::recover(&mes, &sig, &libsecp256k1::RecoveryId::parse(0).unwrap())
-                    .unwrap();
+            let recovery_id = match libsecp256k1::RecoveryId::parse(0) {
+                Err(e) => {
+                    log::debug!(
+                        "Wrong Recovery Id: {:?}",
+                        e
+                    );
+                    fail!(Error::<T>::InvalidSignature)
+                },
+                Ok(a) => a
+            };
+            let recovered_public = match libsecp256k1::recover(&mes, &sig, &recovery_id){
+                Err(e) => {
+                    log::debug!(
+                        "ERROR RECOVERING PUBLIC KEY: {:?}",
+                        e
+                    );
+                    fail!(Error::<T>::InvalidSignature)
+                },
+                Ok(a) => a,
+            };
             let addr = public_key_to_eth_address(&recovered_public);
             // let recovered_public = match libsecp256k1::recover(&commitment_hash) {
             // 	Err(_) => fail!(Error::<T>::InvalidSignature),
