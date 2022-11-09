@@ -155,6 +155,15 @@ pub mod pallet {
             next_validator_set: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
+            log::debug!(
+                "==============================================================================================="
+            );
+            log::debug!(
+                "beefy: ==============================================================================================="
+            );
             LatestBeefyBlock::<T>::set(latest_beefy_block);
             CurrentValidatorSet::<T>::set(validator_set);
             NextValidatorSet::<T>::set(next_validator_set);
