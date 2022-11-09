@@ -5,7 +5,6 @@ authors = ["Snowfork <contact@snowfork.com>"]
 edition = "2021"
 
 [dependencies]
-common = { path = "../../../common", default-features = false }
 enum-iterator = "0.6.0"
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
   "derive",
@@ -67,7 +66,6 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "beefy-primitives/std",
-  "common/std",
   "xcm/std",
 ]
 

@@ -6,7 +6,6 @@ use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
     GenericAccount, GenericNetworkId,
 };
-use common::Balance;
 use ethereum_types::H256;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_system::{Config, RawOrigin};
@@ -74,7 +73,7 @@ pub trait BridgeApp<NetworkId, AccountId, Recipient, AssetId, Balance> {
     fn list_apps(network_id: NetworkId) -> Vec<BridgeAppInfo>;
 }
 
-pub trait MessageStatusNotifier<AssetId, AccountId> {
+pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
     fn update_status(
         network_id: GenericNetworkId,
         id: H256,
@@ -102,7 +101,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId> {
     );
 }
 
-impl<AssetId, AccountId> MessageStatusNotifier<AssetId, AccountId> for () {
+impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Balance> for () {
     fn update_status(
         _network_id: GenericNetworkId,
         _id: H256,
