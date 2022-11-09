@@ -496,6 +496,21 @@ pub mod pallet {
             public_key_merkle_proof: Vec<[u8; 32]>,
             commitment_hash: [u8; 32],
         ) -> DispatchResultWithPostInfo {
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
+            log::debug!(
+                "POSITION: {:?}", position
+            );
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
+            log::debug!(
+                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+            );
             ensure!(
                 random_bitfield.is_set(position as usize),
                 Error::<T>::ValidatorNotOnceInbitfield
