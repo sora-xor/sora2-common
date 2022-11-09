@@ -417,12 +417,22 @@ pub mod pallet {
                 number_of_validators,
             )?;
             log::debug!(
-                "tokio-runtime-worker: BeefyLightClient verify_commitment validator_claims_bitfield: {:?}",
+                "BeefyLightClient verify_commitment proof: {:?}",
+                proof
+            );
+            log::debug!(
+                "BeefyLightClient verify_commitment validator_claims_bitfield: {:?}",
                 proof.validator_claims_bitfield.clone()
             );
             log::debug!(
-                "tokio-runtime-worker: BeefyLightClient verify_commitment random_bitfield: {:?}",
+                "BeefyLightClient verify_commitment random_bitfield: {:?}",
                 random_bitfield.clone()
+            );
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
+            );
+            log::debug!(
+                "tokio-runtime-worker: ==============================================================================================="
             );
             Self::verify_validator_proof_lengths(required_num_of_signatures, proof.clone())?;
             let commitment_hash = Self::create_commitment_hash(commitment.clone());
