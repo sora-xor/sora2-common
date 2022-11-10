@@ -1,6 +1,7 @@
 use ethabi::{encode_packed, Token};
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
+use frame_support::log;
 
 pub fn verify_merkle_leaf_at_position(
     root: [u8; 32],
@@ -10,8 +11,14 @@ pub fn verify_merkle_leaf_at_position(
     proof: Vec<[u8; 32]>,
 ) -> Result<(), MerkleProofError> {
     let computed_hash = compute_root_from_proof_at_position(leaf, pos, width, proof)?;
+    log::debug!(
+        "verify_merkle_leaf_at_position: root: {:?}", root
+    );
+    log::debug!(
+        "verify_merkle_leaf_at_position: computed_hash: {:?}", computed_hash
+    );
     if root != computed_hash {
-        return Err(MerkleProofError::RootComputedHasgNotEqual)
+        return Err(MerkleProofError::RootComputedHashNotEqual)
     }
     Ok(())
 }
@@ -77,5 +84,5 @@ pub enum MerkleProofError {
     MerklePositionTooHigh,
     MerkleProofTooShort,
     MerkleProofTooHigh,
-    RootComputedHasgNotEqual,
+    RootComputedHashNotEqual,
 }

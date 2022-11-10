@@ -632,7 +632,7 @@ pub mod pallet {
                 MerklePositionTooHigh => Error::<T>::MerklePositionTooHigh,
                 MerkleProofTooShort => Error::<T>::MerkleProofTooShort,
                 MerkleProofTooHigh => Error::<T>::MerkleProofTooHigh,
-                RootComputedHasgNotEqual => Error::<T>::ValidatorSetIncorrectPosition,
+                RootComputedHashNotEqual => Error::<T>::ValidatorSetIncorrectPosition,
             }
         }
     }
