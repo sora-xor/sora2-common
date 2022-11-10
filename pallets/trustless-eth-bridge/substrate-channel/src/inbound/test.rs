@@ -1,9 +1,13 @@
 use super::*;
+use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 
 use frame_support::dispatch::DispatchError;
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_ok, parameter_types};
+use frame_support::{
+    assert_noop, assert_ok, parameter_types, Deserialize, RuntimeDebug, Serialize,
+};
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
@@ -15,9 +19,7 @@ use sp_std::marker::PhantomData;
 use bridge_types::traits::MessageDispatch;
 use bridge_types::types::ParachainMessage;
 use bridge_types::U256;
-
-use common::mock::ExistentialDeposits;
-use common::{balance, Amount, AssetId32, AssetName, AssetSymbol, DEXId, FromGenericPair, XOR};
+use traits::parameter_type_with_key;
 
 use crate::inbound::Error;
 
@@ -37,18 +39,38 @@ frame_support::construct_runtime!(
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
-        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
         BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Storage, Event<T>},
     }
 );
 
 pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
+
+#[derive(
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    Clone,
+    Copy,
+    MaxEncodedLen,
+    TypeInfo,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+)]
+pub enum AssetId {
+    XOR,
+    ETH,
+    DAI,
+}
+
 pub type Balance = u128;
+pub type Amount = i128;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -87,6 +109,12 @@ parameter_types! {
     pub const MaxReserves: u32 = 50;
 }
 
+parameter_type_with_key! {
+    pub ExistentialDeposits: |_currency_id: AssetId| -> Balance {
+        0
+    };
+}
+
 impl pallet_balances::Config for Test {
     /// The ubiquitous event type.
     type Event = Event;
@@ -101,20 +129,11 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
 }
 
-impl common::Config for Test {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-}
-
-impl permissions::Config for Test {
-    type Event = Event;
-}
-
 impl tokens::Config for Test {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Test as assets::Config>::AssetId;
+    type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
@@ -129,27 +148,14 @@ impl tokens::Config for Test {
 impl currencies::Config for Test {
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
-    type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
+    type GetNativeCurrencyId = GetBaseAssetId;
     type WeightInfo = ();
 }
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetBaseAssetId: AssetId = AssetId::XOR;
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
-}
-
-type AssetId = AssetId32<common::PredefinedAssetId>;
-
-impl assets::Config for Test {
-    type Event = Event;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Pallet<Test>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
-    type WeightInfo = ();
-    type GetTotalBalance = ();
+    pub GetFeesAccountId: AccountId = AccountId32::from([1; 32]);
+    pub GetTreasuryAccountId: AccountId = AccountId32::from([2; 32]);
 }
 
 // Mock verifier
@@ -184,35 +190,6 @@ impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch 
 
 parameter_types! {
     pub SourceAccount: AccountId = Keyring::Eve.into();
-    pub TreasuryAccount: AccountId = Keyring::Dave.into();
-    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTrustlessBridgeFeesAccountId: AccountId = {
-        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
-    pub GetTreasuryTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_TREASURY_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTreasuryAccountId: AccountId = {
-        let tech_account_id = GetTreasuryTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
 }
 
 pub struct FeeConverter<T: Config>(PhantomData<T>);
@@ -235,22 +212,11 @@ impl bridge_inbound_channel::Config for Test {
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
-    type FeeAssetId = ();
-    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
-    type TreasuryTechAccountId = GetTreasuryTechAccountId;
+    type FeeAssetId = GetBaseAssetId;
+    type FeeAccountId = GetFeesAccountId;
+    type TreasuryAccountId = GetTreasuryAccountId;
+    type Currency = Currencies;
     type WeightInfo = ();
-}
-
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-
-impl technical::Config for Test {
-    type Event = Event;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -266,39 +232,11 @@ pub fn new_tester_with_config(
         .build_storage::<Test>()
         .unwrap();
 
-    technical::GenesisConfig::<Test> {
-        register_tech_accounts: vec![
-            (
-                GetTrustlessBridgeFeesAccountId::get(),
-                GetTrustlessBridgeFeesTechAccountId::get(),
-            ),
-            (GetTreasuryAccountId::get(), GetTreasuryTechAccountId::get()),
-        ],
-    }
-    .assimilate_storage(&mut storage)
-    .unwrap();
-
     GenesisBuild::<Test>::assimilate_storage(&config, &mut storage).unwrap();
 
     let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bob.clone(), balance!(1))],
-    }
-    .assimilate_storage(&mut storage)
-    .unwrap();
-
-    assets::GenesisConfig::<Test> {
-        endowed_assets: vec![(
-            XOR.into(),
-            bob,
-            AssetSymbol(b"XOR".to_vec()),
-            AssetName(b"SORA".to_vec()),
-            18,
-            0,
-            true,
-            None,
-            None,
-        )],
+        balances: vec![(bob.clone(), 1_000_000_000_000_000_000)],
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -368,7 +306,7 @@ fn test_submit_with_invalid_nonce() {
         assert_eq!(nonce, 1);
 
         // Submit the same again
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
             Error::<Test>::InvalidNonce
         );
@@ -381,22 +319,16 @@ fn test_handle_fee() {
     new_tester().execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
         let fee_asset_id = <Test as Config>::FeeAssetId::get();
-        let treasury_acc = <Test as Config>::TreasuryTechAccountId::get();
-        let fees_acc = <Test as Config>::FeeTechAccountId::get();
+        let treasury_acc = <Test as Config>::TreasuryAccountId::get();
+        let fees_acc = <Test as Config>::FeeAccountId::get();
 
-        technical::Pallet::<Test>::mint(&fee_asset_id, &fees_acc, balance!(10)).unwrap();
+        Currencies::deposit(fee_asset_id, &fees_acc, 10_000).unwrap();
 
-        let fee = balance!(1); // 1 DOT
+        let fee = 1000; // 1 DOT
 
         BridgeInboundChannel::handle_fee(fee, &relayer);
-        assert_eq!(
-            technical::Pallet::<Test>::total_balance(&fee_asset_id, &treasury_acc,).unwrap(),
-            balance!(0.2)
-        );
-        assert_eq!(
-            assets::Pallet::<Test>::total_balance(&fee_asset_id, &relayer).unwrap(),
-            balance!(0.8)
-        );
+        assert_eq!(Currencies::total_balance(fee_asset_id, &treasury_acc), 200);
+        assert_eq!(Currencies::total_balance(fee_asset_id, &relayer), 800);
     });
 }
 
@@ -404,7 +336,7 @@ fn test_handle_fee() {
 fn test_set_reward_fraction_not_authorized() {
     new_tester().execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::set_reward_fraction(
                 Origin::signed(bob),
                 Perbill::from_percent(60)
@@ -427,7 +359,7 @@ fn test_submit_with_invalid_network_id() {
             fee: 0,
             payload: Default::default(),
         };
-        common::assert_noop_transactional!(
+        assert_noop!(
             BridgeInboundChannel::submit(origin.clone(), SubNetworkId::Kusama, message.clone()),
             Error::<Test>::InvalidNetwork
         );

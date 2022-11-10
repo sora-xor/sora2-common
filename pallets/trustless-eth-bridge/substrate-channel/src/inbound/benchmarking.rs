@@ -36,10 +36,11 @@ benchmarks! {
     // * `unlock` call successfully unlocks DOT
     submit {
         let caller: T::AccountId = whitelisted_caller();
+        let fee = BalanceOf::<T>::zero();
         let message = ParachainMessage {
             nonce: 1,
             timestamp: 0,
-            fee: 0,
+            fee,
             payload: Default::default(),
         };
     }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)

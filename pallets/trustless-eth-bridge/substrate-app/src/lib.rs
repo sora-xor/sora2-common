@@ -30,7 +30,6 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use assets::AssetIdOf;
 use bridge_types::substrate::SubstrateAppMessage;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -65,22 +64,39 @@ pub mod pallet {
 
     use super::*;
 
-    use assets::AssetIdOf;
     use bridge_types::substrate::{
         ParachainAccountId, ParachainAssetId, SubstrateBridgeMessageEncode, XCMAppMessage,
     };
-    use bridge_types::traits::{MessageStatusNotifier, OutboundChannel};
+    use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::{AssetKind, CallOriginOutput};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
-    use common::{AssetName, AssetSymbol, Balance};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
+    use sp_runtime::traits::Zero;
     use traits::currency::MultiCurrency;
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+
+    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
+        <T as frame_system::Config>::AccountId,
+    >>::CurrencyId;
+
     pub type BalanceOf<T> =
-        <<T as assets::Config>::Currency as MultiCurrency<AccountIdOf<T>>>::Balance;
+        <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
+
+    pub type AssetNameOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
+        AccountIdOf<T>,
+        AssetIdOf<T>,
+    >>::AssetName;
+    pub type AssetSymbolOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
+        AccountIdOf<T>,
+        AssetIdOf<T>,
+    >>::AssetSymbol;
+    pub type DecimalsOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
+        AccountIdOf<T>,
+        AssetIdOf<T>,
+    >>::Decimals;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -88,9 +104,7 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + permissions::Config + technical::Config
-    {
+    pub trait Config: frame_system::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         type OutboundChannel: OutboundChannel<SubNetworkId, Self::AccountId, ()>;
@@ -100,9 +114,17 @@ pub mod pallet {
             Success = CallOriginOutput<SubNetworkId, H256, ()>,
         >;
 
-        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
+        type MessageStatusNotifier: MessageStatusNotifier<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            BalanceOf<Self>,
+        >;
 
-        type BridgeTechAccountId: Get<Self::TechAccountId>;
+        type AssetRegistry: BridgeAssetRegistry<Self::AccountId, AssetIdOf<Self>>;
+
+        type BridgeAccountId: Get<Self::AccountId>;
+
+        type Currency: MultiCurrency<Self::AccountId>;
 
         type WeightInfo: WeightInfo;
     }
@@ -177,18 +199,18 @@ pub mod pallet {
 
             let bridge_account = Self::bridge_account()?;
 
-            ensure!(amount > 0, Error::<T>::WrongAmount);
+            ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
             match asset_kind {
                 AssetKind::Thischain => {
-                    assets::Pallet::<T>::transfer_from(
-                        &asset_id,
+                    <T as Config>::Currency::transfer(
+                        asset_id,
                         &bridge_account,
                         &recipient,
                         amount,
                     )?;
                 }
                 AssetKind::Sidechain => {
-                    assets::Pallet::<T>::mint_to(&asset_id, &bridge_account, &recipient, amount)?;
+                    <T as Config>::Currency::deposit(asset_id, &recipient, amount)?;
                 }
             }
             T::MessageStatusNotifier::inbound_request(
@@ -255,24 +277,16 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: SubNetworkId,
             sidechain_asset: ParachainAssetId,
-            symbol: AssetSymbol,
-            name: AssetName,
-            decimals: u8,
+            symbol: AssetSymbolOf<T>,
+            name: AssetNameOf<T>,
+            decimals: DecimalsOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
             let bridge_account = Self::bridge_account()?;
 
-            let asset_id = assets::Pallet::<T>::register_from(
-                &bridge_account,
-                symbol,
-                name,
-                decimals,
-                Balance::from(0u32),
-                true,
-                None,
-                None,
-            )?;
+            let asset_id =
+                T::AssetRegistry::register_asset(bridge_account.clone(), name, symbol, decimals)?;
 
             Self::register_asset_inner(
                 network_id,
@@ -291,7 +305,6 @@ pub mod pallet {
             sidechain_asset: ParachainAssetId,
             asset_kind: AssetKind,
         ) -> DispatchResult {
-            let bridge_account = Self::bridge_account()?;
             AssetKinds::<T>::insert(&network_id, &asset_id, &asset_kind);
 
             T::OutboundChannel::submit(
@@ -304,23 +317,11 @@ pub mod pallet {
                 .prepare_message(),
                 (),
             )?;
-
-            // Err when permission already exists
-            for permission_id in [permissions::BURN, permissions::MINT] {
-                let _ = permissions::Pallet::<T>::assign_permission(
-                    bridge_account.clone(),
-                    &bridge_account,
-                    permission_id,
-                    permissions::Scope::Limited(common::hash(&asset_id)),
-                );
-            }
             Ok(())
         }
 
         fn bridge_account() -> Result<T::AccountId, DispatchError> {
-            Ok(technical::Pallet::<T>::tech_account_id_to_account_id(
-                &T::BridgeTechAccountId::get(),
-            )?)
+            Ok(T::BridgeAccountId::get())
         }
 
         pub fn burn_inner(
@@ -330,17 +331,17 @@ pub mod pallet {
             recipient: ParachainAccountId,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
-            ensure!(amount > 0, Error::<T>::WrongAmount);
+            ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let bridge_account = Self::bridge_account()?;
 
             match asset_kind {
                 AssetKind::Sidechain => {
-                    assets::Pallet::<T>::burn_from(&asset_id, &bridge_account, &who, amount)?;
+                    T::Currency::withdraw(asset_id, &who, amount)?;
                 }
                 AssetKind::Thischain => {
-                    assets::Pallet::<T>::transfer_from(&asset_id, &who, &bridge_account, amount)?;
+                    T::Currency::transfer(asset_id, &who, &bridge_account, amount)?;
                 }
             }
 
@@ -372,7 +373,7 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub assets: Vec<(SubNetworkId, T::AssetId, AssetKind)>,
+        pub assets: Vec<(SubNetworkId, AssetIdOf<T>, AssetKind)>,
     }
 
     #[cfg(feature = "std")]

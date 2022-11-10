@@ -20,10 +20,6 @@ pub use weights::WeightInfo;
 #[cfg(test)]
 mod test;
 
-type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
-    <T as frame_system::Config>::AccountId,
->>::Balance;
-
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -34,12 +30,18 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::CheckedSub;
     use sp_std::prelude::*;
 
+    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
+        <T as frame_system::Config>::AccountId,
+    >>::CurrencyId;
+
+    pub type BalanceOf<T> =
+        <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
+
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + pallet_timestamp::Config
-    {
+    pub trait Config: frame_system::Config + pallet_timestamp::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Verifier module for message verification.
@@ -55,11 +57,13 @@ pub mod pallet {
         type FeeConverter: Convert<U256, BalanceOf<Self>>;
 
         /// The base asset as the core asset in all trading pairs
-        type FeeAssetId: Get<Self::AssetId>;
+        type FeeAssetId: Get<AssetIdOf<Self>>;
 
-        type FeeTechAccountId: Get<Self::TechAccountId>;
+        type Currency: MultiCurrency<Self::AccountId>;
 
-        type TreasuryTechAccountId: Get<Self::TechAccountId>;
+        type FeeAccountId: Get<Self::AccountId>;
+
+        type TreasuryAccountId: Get<Self::AccountId>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -180,9 +184,9 @@ pub mod pallet {
             let reward_fraction: Perbill = RewardFraction::<T>::get();
             let reward_amount = reward_fraction.mul_ceil(amount);
 
-            if let Err(err) = technical::Pallet::<T>::transfer_out(
-                &T::FeeAssetId::get(),
-                &T::FeeTechAccountId::get(),
+            if let Err(err) = <T as Config>::Currency::transfer(
+                T::FeeAssetId::get(),
+                &T::FeeAccountId::get(),
                 relayer,
                 reward_amount,
             ) {
@@ -190,11 +194,11 @@ pub mod pallet {
                 return;
             }
 
-            if let Some(treasure_amount) = amount.checked_sub(reward_amount) {
-                if let Err(err) = technical::Pallet::<T>::transfer(
-                    &T::FeeAssetId::get(),
-                    &T::FeeTechAccountId::get(),
-                    &T::TreasuryTechAccountId::get(),
+            if let Some(treasure_amount) = amount.checked_sub(&reward_amount) {
+                if let Err(err) = <T as Config>::Currency::transfer(
+                    T::FeeAssetId::get(),
+                    &T::FeeAccountId::get(),
+                    &T::TreasuryAccountId::get(),
                     treasure_amount,
                 ) {
                     warn!("Unable to transfer to treasury: {:?}", err);

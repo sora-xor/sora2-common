@@ -7,7 +7,10 @@ use crate::{
     GenericAccount, GenericNetworkId,
 };
 use ethereum_types::H256;
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::{
+    dispatch::{DispatchError, DispatchResult},
+    Parameter,
+};
 use frame_system::{Config, RawOrigin};
 use sp_std::prelude::*;
 
@@ -137,4 +140,17 @@ pub trait OriginOutput<NetworkId, Additional> {
     /// Construct new origin
     fn new(network_id: NetworkId, message_id: H256, timestamp: u64, additional: Additional)
         -> Self;
+}
+
+pub trait BridgeAssetRegistry<AccountId, AssetId> {
+    type AssetName: Parameter;
+    type AssetSymbol: Parameter;
+    type Decimals: Parameter;
+
+    fn register_asset(
+        owner: AccountId,
+        name: Self::AssetName,
+        symbol: Self::AssetSymbol,
+        decimals: Self::Decimals,
+    ) -> Result<AssetId, DispatchError>;
 }

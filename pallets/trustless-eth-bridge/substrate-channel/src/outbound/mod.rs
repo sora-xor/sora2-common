@@ -31,10 +31,6 @@ pub struct Commitment<Balance> {
     pub messages: Vec<ParachainMessage<Balance>>,
 }
 
-type BalanceOf<T> = <<T as assets::Config>::Currency as MultiCurrency<
-    <T as frame_system::Config>::AccountId,
->>::Balance;
-
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -53,10 +49,14 @@ pub mod pallet {
     use frame_system::RawOrigin;
     use sp_runtime::traits::Zero;
 
+    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
+        <T as frame_system::Config>::AccountId,
+    >>::CurrencyId;
+
+    pub type BalanceOf<T> =
+        <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
     #[pallet::config]
-    pub trait Config:
-        frame_system::Config + assets::Config + technical::Config + pallet_timestamp::Config
-    {
+    pub trait Config: frame_system::Config + pallet_timestamp::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
         /// Prefix for offchain storage keys.
@@ -70,11 +70,17 @@ pub mod pallet {
         /// Max number of messages that can be queued and committed in one go for a given channel.
         type MaxMessagesPerCommit: Get<u64>;
 
-        type FeeCurrency: Get<Self::AssetId>;
+        type FeeCurrency: Get<AssetIdOf<Self>>;
 
-        type FeeTechAccountId: Get<Self::TechAccountId>;
+        type FeeAccountId: Get<Self::AccountId>;
 
-        type MessageStatusNotifier: MessageStatusNotifier<Self::AssetId, Self::AccountId>;
+        type MessageStatusNotifier: MessageStatusNotifier<
+            AssetIdOf<Self>,
+            Self::AccountId,
+            BalanceOf<Self>,
+        >;
+
+        type Currency: MultiCurrency<Self::AccountId>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -123,7 +129,7 @@ pub mod pallet {
     #[pallet::type_value]
     pub fn DefaultFee<T: Config>() -> BalanceOf<T> {
         // TODO: Select fee value
-        10000
+        10000u32.into()
     }
 
     /// The current storage version.
@@ -293,15 +299,15 @@ pub mod pallet {
                 let fee = match who {
                     RawOrigin::Signed(who) => {
                         let fee = Self::fee();
-                        technical::Pallet::<T>::transfer_in(
-                            &T::FeeCurrency::get(),
+                        <T as Config>::Currency::transfer(
+                            T::FeeCurrency::get(),
                             who,
-                            &T::FeeTechAccountId::get(),
+                            &T::FeeAccountId::get(),
                             fee,
                         )?;
                         fee
                     }
-                    _ => 0u128.into(),
+                    _ => 0u32.into(),
                 };
 
                 let timestamp = pallet_timestamp::Pallet::<T>::now();

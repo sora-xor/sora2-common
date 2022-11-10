@@ -67,7 +67,7 @@ benchmarks! {
     // Benchmark `set_fee` under worst case conditions:
     // * The origin is authorized, i.e. equals SetFeeOrigin
     set_fee {
-        let new_fee: BalanceOf<T> = 32000000u128.into();
+        let new_fee: BalanceOf<T> = 32000000u32.into();
         assert!(<Fee<T>>::get() != new_fee);
 
     }: _(RawOrigin::Root, new_fee)

@@ -1,61 +1,55 @@
+use bridge_types::traits::BridgeAssetRegistry;
+use codec::Decode;
+use codec::Encode;
+use codec::MaxEncodedLen;
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
 use bridge_types::types::AssetKind;
 use bridge_types::SubNetworkId;
-use bridge_types::U256;
-use common::mock::ExistentialDeposits;
-use common::{
-    balance, Amount, AssetId32, AssetName, AssetSymbol, Balance, DEXId, FromGenericPair,
-    PredefinedAssetId, DAI, ETH, XOR,
-};
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::Deserialize;
+use frame_support::RuntimeDebug;
+use frame_support::Serialize;
 use frame_system as system;
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{
-    BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Keccak256, Verify,
-};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
 use sp_runtime::{AccountId32, MultiSignature};
+use traits::parameter_type_with_key;
 
 use crate as substrate_app;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
-type AssetId = AssetId32<common::PredefinedAssetId>;
 
-parameter_types! {
-    pub GetTrustlessBridgeTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_MAIN.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTrustlessBridgeAccountId: AccountId = {
-        let tech_account_id = GetTrustlessBridgeTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
-    pub GetTrustlessBridgeFeesTechAccountId: TechAccountId = {
-        let tech_account_id = TechAccountId::from_generic_pair(
-            bridge_types::types::TECH_ACCOUNT_PREFIX.to_vec(),
-            bridge_types::types::TECH_ACCOUNT_FEES.to_vec(),
-        );
-        tech_account_id
-    };
-    pub GetTrustlessBridgeFeesAccountId: AccountId = {
-        let tech_account_id = GetTrustlessBridgeFeesTechAccountId::get();
-        let account_id =
-            technical::Pallet::<Test>::tech_account_id_to_account_id(&tech_account_id)
-                .expect("Failed to get ordinary account id for technical account id.");
-        account_id
-    };
+#[derive(
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    Clone,
+    Copy,
+    MaxEncodedLen,
+    TypeInfo,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+)]
+pub enum AssetId {
+    XOR,
+    ETH,
+    DAI,
+    Custom,
 }
+
+pub type Balance = u128;
+pub type Amount = i128;
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -65,12 +59,9 @@ frame_support::construct_runtime!(
     {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-        Assets: assets::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        Permissions: permissions::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Technical: technical::{Pallet, Call, Config<T>, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
         BridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
         SubstrateApp: substrate_app::{Pallet, Call, Config<T>, Storage, Event<T>},
@@ -114,15 +105,6 @@ impl system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
 }
 
-impl common::Config for Test {
-    type DEXId = common::DEXId;
-    type LstId = common::LiquiditySourceType;
-}
-
-impl permissions::Config for Test {
-    type Event = Event;
-}
-
 parameter_types! {
     pub const ExistentialDeposit: u128 = 0;
 }
@@ -139,11 +121,17 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
 }
 
+parameter_type_with_key! {
+    pub ExistentialDeposits: |_currency_id: AssetId| -> Balance {
+        0
+    };
+}
+
 impl tokens::Config for Test {
     type Event = Event;
     type Balance = Balance;
     type Amount = Amount;
-    type CurrencyId = <Test as assets::Config>::AssetId;
+    type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
     type OnDust = ();
@@ -158,25 +146,15 @@ impl tokens::Config for Test {
 impl currencies::Config for Test {
     type MultiCurrency = Tokens;
     type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
-    type GetNativeCurrencyId = <Test as assets::Config>::GetBaseAssetId;
+    type GetNativeCurrencyId = GetBaseAssetId;
     type WeightInfo = ();
 }
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = XOR;
+    pub const GetBaseAssetId: AssetId = AssetId::XOR;
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
-}
-
-impl assets::Config for Test {
-    type Event = Event;
-    type ExtraAccountId = [u8; 32];
-    type ExtraAssetRecordArg =
-        common::AssetIdExtraAssetRecordArg<DEXId, common::LiquiditySourceType, [u8; 32]>;
-    type AssetId = AssetId;
-    type GetBaseAssetId = GetBaseAssetId;
-    type Currency = currencies::Pallet<Test>;
-    type GetTeamReservesAccountId = GetTeamReservesAccountId;
-    type WeightInfo = ();
-    type GetTotalBalance = ();
+    pub GetFeesAccountId: AccountId = AccountId32::from([1; 32]);
+    pub GetTreasuryAccountId: AccountId = AccountId32::from([2; 32]);
+    pub GetBridgeAccountId: AccountId = AccountId32::from([3; 32]);
 }
 
 impl dispatch::Config for Test {
@@ -200,16 +178,8 @@ parameter_types! {
     pub const Decimals: u32 = 12;
 }
 
-pub struct FeeConverter;
-impl Convert<U256, Balance> for FeeConverter {
-    fn convert(amount: U256) -> Balance {
-        common::eth::unwrap_balance(amount, Decimals::get())
-            .expect("Should not panic unless runtime is misconfigured")
-    }
-}
-
 parameter_types! {
-    pub const FeeCurrency: AssetId32<PredefinedAssetId> = XOR;
+    pub const FeeCurrency: AssetId = AssetId::XOR;
 }
 
 impl substrate_bridge_channel::outbound::Config for Test {
@@ -218,22 +188,11 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type FeeTechAccountId = GetTrustlessBridgeFeesTechAccountId;
+    type FeeAccountId = GetFeesAccountId;
     type FeeCurrency = FeeCurrency;
+    type Currency = Currencies;
     type MessageStatusNotifier = ();
     type WeightInfo = ();
-}
-
-pub type TechAccountId = common::TechAccountId<AccountId, TechAssetId, DEXId>;
-pub type TechAssetId = common::TechAssetId<common::PredefinedAssetId>;
-
-impl technical::Config for Test {
-    type Event = Event;
-    type TechAssetId = TechAssetId;
-    type TechAccountId = TechAccountId;
-    type Trigger = ();
-    type Condition = ();
-    type SwapAction = ();
 }
 
 impl pallet_timestamp::Config for Test {
@@ -243,9 +202,26 @@ impl pallet_timestamp::Config for Test {
     type WeightInfo = ();
 }
 
+pub struct AssetRegistryImpl;
+
+impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
+    type AssetName = String;
+    type AssetSymbol = String;
+    type Decimals = u8;
+
+    fn register_asset(
+        _owner: AccountId,
+        _name: Self::AssetName,
+        _symbol: Self::AssetSymbol,
+        _decimals: Self::Decimals,
+    ) -> Result<AssetId, sp_runtime::DispatchError> {
+        Ok(AssetId::Custom)
+    }
+}
+
 impl substrate_app::Config for Test {
     type Event = Event;
-    type BridgeTechAccountId = GetTrustlessBridgeTechAccountId;
+    type BridgeAccountId = GetBridgeAccountId;
     type MessageStatusNotifier = ();
     type CallOrigin = dispatch::EnsureAccount<
         SubNetworkId,
@@ -253,6 +229,8 @@ impl substrate_app::Config for Test {
         bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
     >;
     type OutboundChannel = BridgeOutboundChannel;
+    type AssetRegistry = AssetRegistryImpl;
+    type Currency = Currencies;
     type WeightInfo = ();
 }
 
@@ -261,64 +239,9 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
-    technical::GenesisConfig::<Test> {
-        register_tech_accounts: vec![
-            (
-                GetTrustlessBridgeAccountId::get(),
-                GetTrustlessBridgeTechAccountId::get(),
-            ),
-            (
-                GetTrustlessBridgeFeesAccountId::get(),
-                GetTrustlessBridgeFeesTechAccountId::get(),
-            ),
-        ],
-    }
-    .assimilate_storage(&mut storage)
-    .unwrap();
-
     let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bob.clone(), balance!(1))],
-    }
-    .assimilate_storage(&mut storage)
-    .unwrap();
-
-    assets::GenesisConfig::<Test> {
-        endowed_assets: vec![
-            (
-                XOR.into(),
-                bob.clone(),
-                AssetSymbol(b"XOR".to_vec()),
-                AssetName(b"SORA".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                DAI.into(),
-                bob.clone(),
-                AssetSymbol(b"DAI".to_vec()),
-                AssetName(b"DAI".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-            (
-                ETH.into(),
-                bob,
-                AssetSymbol(b"ETH".to_vec()),
-                AssetName(b"ETH".to_vec()),
-                18,
-                0,
-                true,
-                None,
-                None,
-            ),
-        ],
+        balances: vec![(bob.clone(), 1_000_000_000_000_000_000)],
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -335,8 +258,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
     GenesisBuild::<Test>::assimilate_storage(
         &substrate_app::GenesisConfig {
             assets: vec![
-                (BASE_NETWORK_ID, XOR, AssetKind::Thischain),
-                (BASE_NETWORK_ID, DAI, AssetKind::Sidechain),
+                (BASE_NETWORK_ID, AssetId::XOR, AssetKind::Thischain),
+                (BASE_NETWORK_ID, AssetId::DAI, AssetKind::Sidechain),
             ],
         },
         &mut storage,
