@@ -94,9 +94,9 @@ pub mod pallet {
     pub type LatestRandomSeed<T> = StorageValue<_, [u8; 32], ValueQuery>;
 
     // Validator registry storage:
-    #[pallet::storage]
-    #[pallet::getter(fn validator_registry_root)]
-    pub type ValidatorRegistryRoot<T> = StorageValue<_, [u8; 32], ValueQuery>;
+    // #[pallet::storage]
+    // #[pallet::getter(fn validator_registry_root)]
+    // pub type ValidatorRegistryRoot<T> = StorageValue<_, [u8; 32], ValueQuery>;
 
     // #[pallet::storage]
     // #[pallet::getter(fn validator_registry_num_of_validators)]
@@ -596,8 +596,9 @@ pub mod pallet {
 
         pub fn check_validator_in_set(addr: EthAddress, pos: u128, proof: Vec<[u8; 32]>) -> bool {
             let hashed_leaf = keccak_256(&addr.encode());
+            let vset = Self::current_validator_set();
             merkle_proof::verify_merkle_leaf_at_position(
-                Self::validator_registry_root(),
+                vset.root,
                 hashed_leaf,
                 pos,
                 Self::current_validator_set().length,
