@@ -8,12 +8,12 @@ pub fn verify_merkle_leaf_at_position(
     pos: u128,
     width: u128,
     proof: Vec<[u8; 32]>,
-) -> bool {
-    let computed_hash = match compute_root_from_proof_at_position(leaf, pos, width, proof) {
-        Err(_) => return false,
-        Ok(h) => h,
-    };
-    root == computed_hash
+) -> Result<(), MerkleProofError> {
+    let computed_hash = compute_root_from_proof_at_position(leaf, pos, width, proof)?;
+    if root != computed_hash {
+        return Err(MerkleProofError::RootComputedHasgNotEqual)
+    }
+    Ok(())
 }
 
 pub fn compute_root_from_proof_at_position(
@@ -77,4 +77,5 @@ pub enum MerkleProofError {
     MerklePositionTooHigh,
     MerkleProofTooShort,
     MerkleProofTooHigh,
+    RootComputedHasgNotEqual,
 }

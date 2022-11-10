@@ -137,6 +137,9 @@ pub mod pallet {
         ValidatorNotOnceInbitfield,
         ValidatorSetIncorrectPosition,
         InvalidSignature,
+        MerklePositionTooHigh,
+        MerkleProofTooShort,
+        MerkleProofTooHigh,
     }
 
     #[pallet::hooks]
@@ -519,10 +522,11 @@ pub mod pallet {
                 Error::<T>::ValidatorNotOnceInbitfield
             );
             random_bitfield.clear(position as usize);
-            ensure!(
-                Self::check_validator_in_set(public_key, position, public_key_merkle_proof),
-                Error::<T>::ValidatorSetIncorrectPosition
-            );
+            // ensure!(
+            //     Self::check_validator_in_set(public_key, position, public_key_merkle_proof),
+            //     Error::<T>::ValidatorSetIncorrectPosition
+            // );
+            Self::check_validator_in_set(public_key, position, public_key_merkle_proof)?;
             let mes = prepare_message(&commitment_hash);
             let sig = match Signature::parse_standard_slice(&signature) {
                 Err(_) => fail!(Error::<T>::InvalidSignature),
@@ -594,7 +598,7 @@ pub mod pallet {
         //     ));
         // }
 
-        pub fn check_validator_in_set(addr: EthAddress, pos: u128, proof: Vec<[u8; 32]>) -> bool {
+        pub fn check_validator_in_set(addr: EthAddress, pos: u128, proof: Vec<[u8; 32]>) -> DispatchResultWithPostInfo {
             let hashed_leaf = keccak_256(&addr.encode());
             let vset = Self::current_validator_set();
             merkle_proof::verify_merkle_leaf_at_position(
@@ -603,7 +607,8 @@ pub mod pallet {
                 pos,
                 Self::current_validator_set().length,
                 proof,
-            )
+            ).map_err(Self::map_merkle_proof_error)?;
+            Ok(().into())
         }
 
         pub fn random_n_bits_with_prior_check(
@@ -619,6 +624,16 @@ pub mod pallet {
                 length,
                 u128::from_be_bytes(seed),
             ))
+        }
+
+        fn map_merkle_proof_error(error: merkle_proof::MerkleProofError) -> Error<T> {
+            use merkle_proof::MerkleProofError::*;
+            match error {
+                MerklePositionTooHigh => Error::<T>::MerklePositionTooHigh,
+                MerkleProofTooShort => Error::<T>::MerkleProofTooShort,
+                MerkleProofTooHigh => Error::<T>::MerkleProofTooHigh,
+                RootComputedHasgNotEqual => Error::<T>::ValidatorSetIncorrectPosition,
+            }
         }
     }
 }
