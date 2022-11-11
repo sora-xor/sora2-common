@@ -12,6 +12,9 @@ pub fn verify_merkle_leaf_at_position(
 ) -> Result<(), MerkleProofError> {
     let computed_hash = compute_root_from_proof_at_position(leaf, pos, width, proof)?;
     log::debug!(
+        "verify_merkle_leaf_at_position: leaf: {:?}", leaf
+    );
+    log::debug!(
         "verify_merkle_leaf_at_position: root: {:?}", root
     );
     log::debug!(
@@ -38,7 +41,7 @@ pub fn compute_root_from_proof_at_position(
     let mut proof_element: [u8; 32];
 
     let mut i: u128 = 0;
-    while width <= 1 {
+    while width > 1 {
         computed_hash_left = pos % 2 == 0;
 
         // check if at rightmost branch and whether the computedHash is left
