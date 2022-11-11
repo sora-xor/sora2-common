@@ -63,6 +63,7 @@ impl<NetworkId, Source> AppRegistry<NetworkId, Source> for () {
 pub trait BridgeApp<NetworkId, AccountId, Recipient, AssetId, Balance> {
     fn is_asset_supported(network_id: NetworkId, asset_id: AssetId) -> bool;
 
+    // Initiates transfer to Sidechain by burning the asset on substrate side
     fn transfer(
         network_id: NetworkId,
         asset_id: AssetId,
@@ -70,6 +71,14 @@ pub trait BridgeApp<NetworkId, AccountId, Recipient, AssetId, Balance> {
         recipient: Recipient,
         amount: Balance,
     ) -> Result<H256, DispatchError>;
+
+    fn refund(
+        network_id: NetworkId,
+        message_id: H256,
+        recipient: AccountId,
+        asset_id: AssetId,
+        amount: Balance,
+    ) -> DispatchResult;
 
     fn list_supported_assets(network_id: NetworkId) -> Vec<BridgeAssetInfo<AssetId>>;
 
@@ -79,7 +88,7 @@ pub trait BridgeApp<NetworkId, AccountId, Recipient, AssetId, Balance> {
 pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
     fn update_status(
         network_id: GenericNetworkId,
-        id: H256,
+        message_id: H256,
         status: MessageStatus,
         end_timestamp: Option<u64>,
     );
@@ -107,7 +116,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
 impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Balance> for () {
     fn update_status(
         _network_id: GenericNetworkId,
-        _id: H256,
+        _message_id: H256,
         _status: MessageStatus,
         _end_timestamp: Option<u64>,
     ) {
