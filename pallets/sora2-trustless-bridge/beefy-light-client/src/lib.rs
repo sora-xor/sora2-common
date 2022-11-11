@@ -47,6 +47,7 @@ impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<
 pub mod pallet {
     use super::*;
     use bridge_common::{merkle_proof, simplified_mmr_proof::*};
+    use ethabi::{encode_packed, Token};
     use frame_support::fail;
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
@@ -359,16 +360,16 @@ pub mod pallet {
             next_authority_set_root: [u8; 32],
         ) -> DispatchResultWithPostInfo {
             let next_validator_set = Self::next_validator_set();
-            if next_authority_set_id > next_validator_set.id {    
+            if next_authority_set_id > next_validator_set.id {
                 ensure!(
                     next_authority_set_id as u128 > next_validator_set.id,
                     Error::<T>::CannotSwitchOldValidatorSet
                 );
                 CurrentValidatorSet::<T>::set(next_validator_set);
-                NextValidatorSet::<T>::set(ValidatorSet{
+                NextValidatorSet::<T>::set(ValidatorSet {
                     id: next_authority_set_id,
                     length: next_authority_set_len,
-                    root: next_authority_set_root
+                    root: next_authority_set_root,
                 });
                 // Self::validator_registry_update(
                 //     next_authority_set_root,
@@ -390,7 +391,7 @@ pub mod pallet {
 
         /**
         	* @dev https://github.com/sora-xor/substrate/blob/7d914ce3ed34a27d7bb213caed374d64cde8cfa8/client/beefy/src/round.rs#L62
-        */
+         */
         // ON RELAYER???????
         pub fn check_commitment_signatures_threshold(
             num_of_validators: u128,
@@ -419,10 +420,7 @@ pub mod pallet {
                 required_num_of_signatures,
                 number_of_validators,
             )?;
-            log::debug!(
-                "BeefyLightClient verify_commitment proof: {:?}",
-                proof
-            );
+            log::debug!("BeefyLightClient verify_commitment proof: {:?}", proof);
             log::debug!(
                 "BeefyLightClient verify_commitment validator_claims_bitfield: {:?}",
                 proof.validator_claims_bitfield.clone()
@@ -484,11 +482,10 @@ pub mod pallet {
             log::debug!(
                 "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
             );
+            log::debug!("POSITIONS: {:?}", proof.positions);
             log::debug!(
-                "POSITIONS: {:?}", proof.positions
-            );
-            log::debug!(
-                "REQUIRED NUM OF POSITIONS: {:?}", required_num_of_signatures
+                "REQUIRED NUM OF POSITIONS: {:?}",
+                required_num_of_signatures
             );
             log::debug!(
                 "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
@@ -534,22 +531,16 @@ pub mod pallet {
             };
             let recovery_id = match libsecp256k1::RecoveryId::parse(0) {
                 Err(e) => {
-                    log::debug!(
-                        "Wrong Recovery Id: {:?}",
-                        e
-                    );
+                    log::debug!("Wrong Recovery Id: {:?}", e);
                     fail!(Error::<T>::InvalidSignature)
-                },
-                Ok(a) => a
+                }
+                Ok(a) => a,
             };
-            let recovered_public = match libsecp256k1::recover(&mes, &sig, &recovery_id){
+            let recovered_public = match libsecp256k1::recover(&mes, &sig, &recovery_id) {
                 Err(e) => {
-                    log::debug!(
-                        "ERROR RECOVERING PUBLIC KEY: {:?}",
-                        e
-                    );
+                    log::debug!("ERROR RECOVERING PUBLIC KEY: {:?}", e);
                     fail!(Error::<T>::InvalidSignature)
-                },
+                }
                 Ok(a) => a,
             };
             let addr = public_key_to_eth_address(&recovered_public);
@@ -598,8 +589,13 @@ pub mod pallet {
         //     ));
         // }
 
-        pub fn check_validator_in_set(addr: EthAddress, pos: u128, proof: Vec<[u8; 32]>) -> DispatchResultWithPostInfo {
-            let hashed_leaf = keccak_256(&addr.encode());
+        pub fn check_validator_in_set(
+            addr: EthAddress,
+            pos: u128,
+            proof: Vec<[u8; 32]>,
+        ) -> DispatchResultWithPostInfo {
+            // let hashed_leaf = keccak_256(&addr.encode());
+            let hashed_leaf = keccak_256(&encode_packed(&[Token::Bytes(addr.as_bytes().into())]));
             let vset = Self::current_validator_set();
             merkle_proof::verify_merkle_leaf_at_position(
                 vset.root,
@@ -607,7 +603,8 @@ pub mod pallet {
                 pos,
                 Self::current_validator_set().length,
                 proof,
-            ).map_err(Self::map_merkle_proof_error)?;
+            )
+            .map_err(Self::map_merkle_proof_error)?;
             Ok(().into())
         }
 

@@ -122,7 +122,7 @@ impl DerefMut for BitField {
     }
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 mod test {
     #[test]
     pub fn create_bitfield_success() {
