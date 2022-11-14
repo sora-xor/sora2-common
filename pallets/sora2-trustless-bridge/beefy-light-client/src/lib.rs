@@ -470,7 +470,7 @@ pub mod pallet {
         }
 
         pub fn verify_validator_proof_signatures(
-            random_bitfield: BitField,
+            mut random_bitfield: BitField,
             proof: ValidatorProof,
             required_num_of_signatures: u128,
             commitment_hash: [u8; 32],
@@ -495,7 +495,7 @@ pub mod pallet {
             );
             for i in 0..required_num_of_signatures {
                 Self::verify_validator_signature(
-                    random_bitfield.clone(),
+                    &mut random_bitfield,
                     proof.signatures[i].clone(),
                     proof.positions[i],
                     proof.public_keys[i].clone(),
@@ -507,7 +507,7 @@ pub mod pallet {
         }
 
         pub fn verify_validator_signature(
-            mut random_bitfield: BitField,
+            random_bitfield: &mut BitField,
             signature: Vec<u8>,
             position: u128,
             public_key: EthAddress,
