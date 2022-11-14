@@ -2,7 +2,6 @@
 
 use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
 use frame_support::traits::{Contains, EnsureOrigin};
-use frame_support::weights::GetDispatchInfo;
 
 use sp_core::RuntimeDebug;
 
@@ -119,7 +118,6 @@ pub mod pallet {
 
         /// The overarching dispatch call type.
         type Call: Parameter
-            + GetDispatchInfo
             + Dispatchable<
                 Origin = <Self as Config<I>>::Origin,
                 PostInfo = frame_support::dispatch::PostDispatchInfo,
