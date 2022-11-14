@@ -17,6 +17,11 @@ pub fn verify_merkle_leaf_at_position(
         "verify_merkle_leaf_at_position: computed_hash: {:?}",
         computed_hash
     );
+    log::debug!(
+        "POS: {:?}, WIDTH: {:?}",
+        pos,
+        width
+    );
     if root != computed_hash {
         return Err(MerkleProofError::RootComputedHashNotEqual);
     }
@@ -74,15 +79,33 @@ pub fn compute_root_from_proof_at_position(
     }
 
     if i >= proof.len() as u128 {
+        log::debug!("==================== {:?} >= {:?} =======================", i, proof.len());
         return Err(MerkleProofError::MerkleProofTooHigh);
     }
 
     Ok(computed_hash)
 }
 
+#[derive(Debug)]
 pub enum MerkleProofError {
     MerklePositionTooHigh,
     MerkleProofTooShort,
     MerkleProofTooHigh,
     RootComputedHashNotEqual,
+}
+
+#[cfg(test)]
+mod tests {
+    use frame_support::assert_ok;
+    use super::*;
+
+    #[test]
+    pub fn it_works_verify_merkle_leaf_at_position() {
+        let root = Default::default();
+        let leaf = Default::default();
+        let pos = 0;
+        let width = 0;
+        let proof = Vec::new();
+        assert_ok!(verify_merkle_leaf_at_position(root, leaf, pos, width, proof));
+    }
 }
