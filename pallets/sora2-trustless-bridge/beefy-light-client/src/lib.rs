@@ -538,6 +538,12 @@ pub mod pallet {
             //     Self::check_validator_in_set(public_key, position, public_key_merkle_proof),
             //     Error::<T>::ValidatorSetIncorrectPosition
             // );
+            log::debug!(
+                "PUBLIC KEY: {:?}, PUBLIC KEY MERKLE PROOF: {:?}, POSITION: {:?}",
+                public_key,
+                public_key_merkle_proof,
+                position
+            );
             Self::check_validator_in_set(public_key, position, public_key_merkle_proof)?;
             let mes = prepare_message(&commitment_hash);
             let sig = match Signature::parse_standard_slice(&signature) {
