@@ -34,6 +34,7 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polka
 # Substrate
 sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
 sp-runtime = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
+hex-literal = "0.3.1"
 
 [features]
 default = ["std"]
