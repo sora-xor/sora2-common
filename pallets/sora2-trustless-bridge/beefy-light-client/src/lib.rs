@@ -49,6 +49,7 @@ pub mod pallet {
     use bridge_common::{merkle_proof, simplified_mmr_proof::*};
     use ethabi::{encode_packed, Token};
     use frame_support::fail;
+    use frame_support::pallet_prelude::OptionQuery;
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
 
@@ -109,11 +110,11 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn current_validator_set)]
-    pub type CurrentValidatorSet<T> = StorageValue<_, ValidatorSet, ValueQuery>;
+    pub type CurrentValidatorSet<T> = StorageValue<_, ValidatorSet, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn next_validator_set)]
-    pub type NextValidatorSet<T> = StorageValue<_, ValidatorSet, ValueQuery>;
+    pub type NextValidatorSet<T> = StorageValue<_, ValidatorSet, OptionQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -141,6 +142,7 @@ pub mod pallet {
         MerklePositionTooHigh,
         MerkleProofTooShort,
         MerkleProofTooHigh,
+        PalletNotInitialized,
     }
 
     #[pallet::hooks]
@@ -169,8 +171,8 @@ pub mod pallet {
                 "beefy: ==============================================================================================="
             );
             LatestBeefyBlock::<T>::set(latest_beefy_block);
-            CurrentValidatorSet::<T>::set(validator_set);
-            NextValidatorSet::<T>::set(next_validator_set);
+            CurrentValidatorSet::<T>::set(Some(validator_set));
+            NextValidatorSet::<T>::set(Some(next_validator_set));
             Ok(().into())
         }
 
@@ -208,8 +210,14 @@ pub mod pallet {
                 "tokio-runtime-worker BeefyLightClient: submit_signature_commitment proof: {:?}",
                 proof
             );
-            let current_validator_set = Self::current_validator_set();
-            let next_validator_set = Self::next_validator_set();
+            let current_validator_set = match Self::current_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
+            let next_validator_set = match Self::next_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
             let vset = match (commitment.validator_set_id as u128) == current_validator_set.id {
                 true => current_validator_set,
                 false => match (commitment.validator_set_id as u128) == next_validator_set.id {
@@ -359,18 +367,21 @@ pub mod pallet {
             next_authority_set_len: u128,
             next_authority_set_root: [u8; 32],
         ) -> DispatchResultWithPostInfo {
-            let next_validator_set = Self::next_validator_set();
+            let next_validator_set = match Self::next_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
             if next_authority_set_id > next_validator_set.id {
                 ensure!(
                     next_authority_set_id as u128 > next_validator_set.id,
                     Error::<T>::CannotSwitchOldValidatorSet
                 );
-                CurrentValidatorSet::<T>::set(next_validator_set);
-                NextValidatorSet::<T>::set(ValidatorSet {
+                CurrentValidatorSet::<T>::set(Some(next_validator_set));
+                NextValidatorSet::<T>::set(Some(ValidatorSet {
                     id: next_authority_set_id,
                     length: next_authority_set_len,
                     root: next_authority_set_root,
-                });
+                }));
                 // Self::validator_registry_update(
                 //     next_authority_set_root,
                 //     next_authority_set_len as u128,
@@ -381,7 +392,11 @@ pub mod pallet {
         }
 
         pub fn required_number_of_signatures() -> u128 {
-            Self::get_required_number_of_signatures(Self::current_validator_set().length)
+            let len = match Self::current_validator_set(){
+                None => 0,
+                Some(x) => x.length
+            };
+            Self::get_required_number_of_signatures(len)
         }
 
         pub fn get_required_number_of_signatures(num_validators: u128) -> u128 {
@@ -596,12 +611,19 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             // let hashed_leaf = keccak_256(&addr.encode());
             let hashed_leaf = keccak_256(&encode_packed(&[Token::Bytes(addr.as_bytes().into())]));
-            let vset = Self::current_validator_set();
+            let vset = match Self::current_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
+            let current_validator_set_len = match Self::current_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x.length
+            };
             merkle_proof::verify_merkle_leaf_at_position(
                 vset.root,
                 hashed_leaf,
                 pos,
-                Self::current_validator_set().length,
+                current_validator_set_len,
                 proof,
             )
             .map_err(Self::map_merkle_proof_error)?;
