@@ -217,7 +217,7 @@ pub mod pallet {
                 GenericNetworkId::Sub(network_id),
                 message_id,
                 GenericAccount::Parachain(sender.clone()),
-                GenericAccount::Sora(recipient.clone()),
+                recipient.clone(),
                 asset_id,
                 amount,
                 timestamp,
@@ -360,7 +360,7 @@ pub mod pallet {
             T::MessageStatusNotifier::outbound_request(
                 GenericNetworkId::Sub(network_id),
                 message_id,
-                GenericAccount::Sora(who.clone()),
+                who.clone(),
                 GenericAccount::Parachain(recipient.clone()),
                 asset_id,
                 amount,
