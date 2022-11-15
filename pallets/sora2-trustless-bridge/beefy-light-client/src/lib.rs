@@ -539,7 +539,7 @@ pub mod pallet {
                 },
                 Ok(p) => p,
             };
-            let recovery_id = match libsecp256k1::RecoveryId::parse(signature[64]) {
+            let recovery_id = match libsecp256k1::RecoveryId::parse_rpc(signature[64]) {
                 Err(e) => {
                     log::debug!("WRONG RECOVERY ID: {:?}", e);
                     fail!(Error::<T>::InvalidSignature)
