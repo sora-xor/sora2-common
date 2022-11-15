@@ -21,8 +21,10 @@ pub use bitfield::BitField;
 // mod benchmarking;
 
 pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
-    let hash = keccak_256(&pub_key.serialize()[1..]);
-    EthAddress::from_slice(&hash[12..])
+    // let hash = keccak_256(&pub_key.serialize()[1..]);
+    // EthAddress::from_slice(&hash[12..])
+    let hash = keccak_256(&pub_key.serialize());
+    EthAddress::from_slice(&hash)
 }
 
 impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
@@ -531,7 +533,7 @@ pub mod pallet {
 
             let mes = Self::prepare_message(&commitment_hash)?;
             log::debug!("============= SIGNATURE LEN: {:?}", signature.len());
-            // ensure!(signature.len() == 65, Error::<T>::InvalidSignature);
+            ensure!(signature.len() == 65, Error::<T>::InvalidSignature);
             let sig = match Signature::parse_standard_slice(&signature[0..64]) {
                 Err(e) => {
                     log::debug!("WRONG SIGNATURE: {:?}", e);
