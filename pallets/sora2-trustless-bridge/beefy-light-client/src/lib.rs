@@ -529,9 +529,9 @@ pub mod pallet {
             random_bitfield.clear(position as usize);
             Self::check_validator_in_set(public_key, position, public_key_merkle_proof)?;
 
-            ensure!(signature.len() == 65, Error::<T>::InvalidSignature);
             let mes = Self::prepare_message(&commitment_hash)?;
-            log::debug!("============= SIGNATURE: {:?}", signature);
+            log::debug!("============= SIGNATURE LEN: {:?}", signature.len());
+            // ensure!(signature.len() == 65, Error::<T>::InvalidSignature);
             let sig = match Signature::parse_standard_slice(&signature[0..64]) {
                 Err(e) => {
                     log::debug!("WRONG SIGNATURE: {:?}", e);
