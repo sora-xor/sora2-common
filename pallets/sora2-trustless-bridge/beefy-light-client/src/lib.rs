@@ -169,6 +169,7 @@ pub mod pallet {
         }
 
         #[pallet::weight(0)]
+        #[frame_support::transactional]
         pub fn submit_signature_commitment(
             origin: OriginFor<T>,
             commitment: Commitment,
@@ -526,14 +527,10 @@ pub mod pallet {
                 Error::<T>::ValidatorNotOnceInbitfield
             );
             random_bitfield.clear(position as usize);
-            // ensure!(
-            //     Self::check_validator_in_set(public_key, position, public_key_merkle_proof),
-            //     Error::<T>::ValidatorSetIncorrectPosition
-            // );
-
             Self::check_validator_in_set(public_key, position, public_key_merkle_proof)?;
 
             let mes = Self::prepare_message(&commitment_hash)?;
+            log::debug!("============= SIGNATURE: {:?}", signature);
             let sig = match Signature::parse_standard_slice(&signature) {
                 Err(e) => {
                     log::debug!("WRONG SIGNATURE: {:?}", e);
