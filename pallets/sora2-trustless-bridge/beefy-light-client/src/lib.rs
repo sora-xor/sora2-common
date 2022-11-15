@@ -559,6 +559,7 @@ pub mod pallet {
             // 	Ok(p) => p,
             // };
             // // TODO: Check if it is correct!
+            log::debug!("====== ETH ADDR: {:?}, PUBLIC KEY: {:?} ===========", addr, public_key);
             ensure!(addr == public_key, Error::<T>::InvalidSignature);
             Ok(().into())
         }
