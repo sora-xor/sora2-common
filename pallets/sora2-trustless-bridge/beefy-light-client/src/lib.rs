@@ -576,6 +576,8 @@ pub mod pallet {
                 &commitment.block_number.to_be_bytes(),
                 &commitment.validator_set_id.to_be_bytes(),
             ]);
+            log::debug!("====== CONCATED BYTES: {:?} ==========", concated);
+            log::debug!("++++++++++++++ {:?} + {:?} + {:?} + {:?} ++++++++++++++", commitment.payload_prefix, commitment.payload, commitment.block_number.to_be_bytes(), commitment.validator_set_id.to_be_bytes());
             keccak_256(&concated)
         }
 
