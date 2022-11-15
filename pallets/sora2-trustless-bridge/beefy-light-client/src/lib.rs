@@ -25,14 +25,6 @@ pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
     EthAddress::from_slice(&hash[12..])
 }
 
-pub fn prepare_message(msg: &[u8]) -> Message {
-    let msg = keccak_256(msg);
-    let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
-    prefix.extend(&msg);
-    let hash = keccak_256(&prefix);
-    Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
-}
-
 impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
     fn random(_: &[u8]) -> (Output, BlockNumber) {
         todo!()
@@ -538,21 +530,20 @@ pub mod pallet {
             //     Self::check_validator_in_set(public_key, position, public_key_merkle_proof),
             //     Error::<T>::ValidatorSetIncorrectPosition
             // );
-            log::debug!(
-                "PUBLIC KEY: {:?}, PUBLIC KEY MERKLE PROOF: {:?}, POSITION: {:?}",
-                public_key,
-                public_key_merkle_proof,
-                position
-            );
+
             Self::check_validator_in_set(public_key, position, public_key_merkle_proof)?;
-            let mes = prepare_message(&commitment_hash);
+
+            let mes = Self::prepare_message(&commitment_hash)?;
             let sig = match Signature::parse_standard_slice(&signature) {
-                Err(_) => fail!(Error::<T>::InvalidSignature),
+                Err(e) => {
+                    log::debug!("WRONG SIGNATURE: {:?}", e);
+                    fail!(Error::<T>::InvalidSignature)
+                },
                 Ok(p) => p,
             };
             let recovery_id = match libsecp256k1::RecoveryId::parse(0) {
                 Err(e) => {
-                    log::debug!("Wrong Recovery Id: {:?}", e);
+                    log::debug!("WRONG RECOVERY ID: {:?}", e);
                     fail!(Error::<T>::InvalidSignature)
                 }
                 Ok(a) => a,
@@ -659,6 +650,21 @@ pub mod pallet {
                 MerkleProofTooHigh => Error::<T>::MerkleProofTooHigh,
                 RootComputedHashNotEqual => Error::<T>::ValidatorSetIncorrectPosition,
             }
+        }
+
+        fn prepare_message(msg: &[u8]) -> Result<Message, Error<T>> {
+            let hash = keccak_256(msg);
+            // let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
+            // prefix.extend(&msg);
+            // let hash = keccak_256(&prefix);
+            let message = match Message::parse_slice(&hash) {
+                Ok(v) => v,
+                Err(e) => {
+                    log::debug!("WRONG MESSAGE: {:?}", e);
+                    return Err(Error::<T>::InvalidSignature)
+                }
+            };
+            Ok(message)
         }
     }
 }
