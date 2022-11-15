@@ -653,18 +653,18 @@ pub mod pallet {
             }
         }
 
-        fn prepare_message(msg: &[u8]) -> Result<Message, Error<T>> {
+        fn prepare_message(msg: &[u8; 32]) -> Result<Message, Error<T>> {
             // let hash = keccak_256(msg);
             // // let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
             // // prefix.extend(&msg);
             // // let hash = keccak_256(&prefix);
 
-            let msg = keccak_256(msg);
-            let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
-            prefix.extend(&msg);
-            let hash = keccak_256(&prefix);
+            // let msg = keccak_256(msg);
+            // let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
+            // prefix.extend(&msg);
+            // let hash = keccak_256(&prefix);
             // Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
-            let message = match Message::parse_slice(&hash) {
+            let message = match Message::parse_slice(msg) {
                 Ok(v) => v,
                 Err(e) => {
                     log::debug!("WRONG MESSAGE: {:?}", e);
