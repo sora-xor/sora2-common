@@ -21,10 +21,10 @@ pub use bitfield::BitField;
 // mod benchmarking;
 
 pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
-    // let hash = keccak_256(&pub_key.serialize()[1..]);
-    // EthAddress::from_slice(&hash[12..])
-    let hash = keccak_256(&pub_key.serialize());
-    EthAddress::from_slice(&hash)
+    let hash = keccak_256(&pub_key.serialize()[1..]);
+    EthAddress::from_slice(&hash[12..])
+    // let hash = keccak_256(&pub_key.serialize());
+    // EthAddress::from_slice(&hash)
 }
 
 impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
@@ -654,10 +654,16 @@ pub mod pallet {
         }
 
         fn prepare_message(msg: &[u8]) -> Result<Message, Error<T>> {
-            let hash = keccak_256(msg);
-            // let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
-            // prefix.extend(&msg);
-            // let hash = keccak_256(&prefix);
+            // let hash = keccak_256(msg);
+            // // let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
+            // // prefix.extend(&msg);
+            // // let hash = keccak_256(&prefix);
+
+            let msg = keccak_256(msg);
+            let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
+            prefix.extend(&msg);
+            let hash = keccak_256(&prefix);
+            // Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
             let message = match Message::parse_slice(&hash) {
                 Ok(v) => v,
                 Err(e) => {
