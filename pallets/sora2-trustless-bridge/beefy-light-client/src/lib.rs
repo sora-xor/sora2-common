@@ -582,7 +582,19 @@ pub mod pallet {
         }
 
         pub fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
-            leaf.encode()
+            // leaf.encode()
+            encode_packed(
+                &[
+                    Token::Bytes(leaf.version.encode()),
+                    Token::Bytes(leaf.parent_number.encode()),
+                    Token::Bytes(leaf.parent_hash.into()),
+                    Token::Bytes(leaf.next_authority_set_id.encode()),
+                    Token::Bytes(leaf.next_authority_set_len.encode()),
+                    Token::Bytes(leaf.next_authority_set_root.into()),
+                    Token::Bytes(leaf.random_seed.into()),
+                    Token::Bytes(leaf.digest_hash.into()),
+                ]
+            )
         }
 
         pub fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
