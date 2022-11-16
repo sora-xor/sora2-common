@@ -1,5 +1,5 @@
 use codec::{Decode, Encode};
-use ethabi::{encode_packed, Token};
+use ethabi::{encode, Token};
 use frame_support::RuntimeDebug;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
@@ -42,12 +42,12 @@ pub fn calculate_merkle_root(
         let is_sibling_left = bit(merkle_proof_order_bit_field, current_position as u64);
         let sibling = merkle_proof_items[current_position as usize];
         current_hash = if is_sibling_left {
-            keccak_256(&encode_packed(&[
+            keccak_256(&encode(&[
                 Token::Bytes(sibling.into()),
                 Token::Bytes(current_hash.into()),
             ]))
         } else {
-            keccak_256(&encode_packed(&[
+            keccak_256(&encode(&[
                 Token::Bytes(sibling.into()),
                 Token::Bytes(current_hash.into()),
             ]))
