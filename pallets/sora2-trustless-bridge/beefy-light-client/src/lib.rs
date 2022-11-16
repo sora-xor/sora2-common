@@ -573,8 +573,8 @@ pub mod pallet {
                 &[0x80],
                 &commitment.payload,
                 &commitment.payload_suffix,
-                &commitment.block_number.to_be_bytes(),
-                &commitment.validator_set_id.to_be_bytes(),
+                &commitment.block_number.encode(),
+                &commitment.validator_set_id.encode(),
             ]);
             log::debug!("====== CONCATED BYTES: {:?} ==========", concated);
             log::debug!("++++++++++++++ {:?} + {:?} + {:?} + {:?} ++++++++++++++", commitment.payload_prefix, commitment.payload, commitment.block_number.to_be_bytes(), commitment.validator_set_id.to_be_bytes());
