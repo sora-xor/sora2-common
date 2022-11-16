@@ -23,8 +23,6 @@ pub use bitfield::BitField;
 pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
     let hash = keccak_256(&pub_key.serialize()[1..]);
     EthAddress::from_slice(&hash[12..])
-    // let hash = keccak_256(&pub_key.serialize());
-    // EthAddress::from_slice(&hash)
 }
 
 impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
@@ -54,15 +52,11 @@ pub mod pallet {
 
     pub const NUMBER_OF_BLOCKS_PER_SESSION: u64 = 600;
     pub const ERROR_AND_SAFETY_BUFFER: u64 = 10;
-    // pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
-    pub const MAXIMUM_BLOCK_GAP: u64 = 100;
-
+    pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
     pub const MMR_ROOT_ID: [u8; 2] = [0x6d, 0x68];
 
-    /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type Randomness: frame_support::traits::Randomness<Self::Hash, Self::BlockNumber>;
     }
@@ -88,19 +82,6 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn latest_random_seed)]
     pub type LatestRandomSeed<T> = StorageValue<_, [u8; 32], ValueQuery>;
-
-    // Validator registry storage:
-    // #[pallet::storage]
-    // #[pallet::getter(fn validator_registry_root)]
-    // pub type ValidatorRegistryRoot<T> = StorageValue<_, [u8; 32], ValueQuery>;
-
-    // #[pallet::storage]
-    // #[pallet::getter(fn validator_registry_num_of_validators)]
-    // pub type NumOfValidators<T> = StorageValue<_, u128, ValueQuery>;
-
-    // #[pallet::storage]
-    // #[pallet::getter(fn validator_registry_id)]
-    // pub type ValidatorRegistryId<T> = StorageValue<_, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn current_validator_set)]
@@ -377,11 +358,6 @@ pub mod pallet {
                     length: next_authority_set_len,
                     root: next_authority_set_root,
                 }));
-                // Self::validator_registry_update(
-                //     next_authority_set_root,
-                //     next_authority_set_len as u128,
-                //     next_authority_set_id,
-                // );
             }
             Ok(().into())
         }
@@ -402,7 +378,6 @@ pub mod pallet {
         /**
         	* @dev https://github.com/sora-xor/substrate/blob/7d914ce3ed34a27d7bb213caed374d64cde8cfa8/client/beefy/src/round.rs#L62
          */
-        // ON RELAYER???????
         pub fn check_commitment_signatures_threshold(
             num_of_validators: u128,
             validator_claims_bitfield: BitField,
@@ -556,11 +531,6 @@ pub mod pallet {
                 Ok(a) => a,
             };
             let addr = public_key_to_eth_address(&recovered_public);
-            // let recovered_public = match libsecp256k1::recover(&commitment_hash) {
-            // 	Err(_) => fail!(Error::<T>::InvalidSignature),
-            // 	Ok(p) => p,
-            // };
-            // // TODO: Check if it is correct!
             log::debug!("====== ETH ADDR: {:?}, PUBLIC KEY: {:?} ===========", addr, public_key);
             ensure!(addr == public_key, Error::<T>::InvalidSignature);
             Ok(().into())
@@ -600,21 +570,6 @@ pub mod pallet {
         pub fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
             keccak_256(&leaf)
         }
-
-        // pub fn validator_registry_update(
-        //     new_root: [u8; 32],
-        //     new_num_of_validators: u128,
-        //     new_id: u64,
-        // ) {
-        //     ValidatorRegistryRoot::<T>::set(new_root);
-        //     NumOfValidators::<T>::set(new_num_of_validators);
-        //     ValidatorRegistryId::<T>::set(new_id);
-        //     Self::deposit_event(Event::<T>::ValidatorRegistryUpdated(
-        //         new_root,
-        //         new_num_of_validators,
-        //         new_id,
-        //     ));
-        // }
 
         pub fn check_validator_in_set(
             addr: EthAddress,
@@ -668,16 +623,6 @@ pub mod pallet {
         }
 
         fn prepare_message(msg: &[u8; 32]) -> Result<Message, Error<T>> {
-            // let hash = keccak_256(msg);
-            // // let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
-            // // prefix.extend(&msg);
-            // // let hash = keccak_256(&prefix);
-
-            // let msg = keccak_256(msg);
-            // let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
-            // prefix.extend(&msg);
-            // let hash = keccak_256(&prefix);
-            // Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
             let message = match Message::parse_slice(msg) {
                 Ok(v) => v,
                 Err(e) => {

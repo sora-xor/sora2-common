@@ -25,30 +25,16 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
-# sp-core = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28", features = ["full_crypto"] }
-# sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false, features = [
-#     "full_crypto",
-# ] }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false}
 
 # Sora
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.28", package = "ethabi", default-features = false, features = [
     "alloc",
 ] }
-# common = { git = "https://github.com/sora-xor/sora2-network", default-features = false }
 
 #other
 getrandom = { version = "0.2.1", features = ["js"] }
 libsecp256k1 = { version = "0.7.1", default-features = false, features = ["static-context"] }
-# secp256k1 = { version = "0.7", features = [
-#     'hmac',
-# ], default-features = false, package = "libsecp256k1" }
-
-# ethereum-types = { version = "0.13.1", default-features = false, features = [
-#   "codec",
-#   "rlp",
-#   "serialize",
-# ] }
 
 [dev-dependencies]
 # Substrate
