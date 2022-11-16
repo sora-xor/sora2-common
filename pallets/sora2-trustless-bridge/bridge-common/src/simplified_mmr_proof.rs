@@ -17,7 +17,7 @@ pub fn verify_inclusion_proof(
     leaf_node_hash: [u8; 32],
     proof: SimplifiedMMRProof,
 ) -> bool {
-    if proof.merkle_proof_items.len() < 64 {
+    if proof.merkle_proof_items.len() >= 64 {
         return false;
     }
 
@@ -40,7 +40,7 @@ pub fn calculate_merkle_root(
     let mut current_hash = leaf_node_hash;
     for current_position in 0..merkle_proof_items.len() {
         let is_sibling_left = bit(merkle_proof_order_bit_field, current_position as u64);
-        let sibling = merkle_proof_items[current_position as usize];
+        let sibling = merkle_proof_items[current_position];
         current_hash = if is_sibling_left {
             keccak_256(&encode_packed(&[
                 Token::Bytes(sibling.into()),
@@ -48,10 +48,10 @@ pub fn calculate_merkle_root(
             ]))
         } else {
             keccak_256(&encode_packed(&[
-                Token::Bytes(sibling.into()),
                 Token::Bytes(current_hash.into()),
+                Token::Bytes(sibling.into()),
             ]))
         };
     }
-    return current_hash;
+    current_hash
 }
