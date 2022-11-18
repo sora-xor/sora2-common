@@ -11,11 +11,11 @@ use sp_io::hashing::keccak_256;
 
 pub use bitfield::BitField;
 
-// #[cfg(test)]
-// mod mock;
+#[cfg(test)]
+mod mock;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 // #[cfg(feature = "runtime-benchmarks")]
 // mod benchmarking;
@@ -25,12 +25,13 @@ pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
     EthAddress::from_slice(&hash[12..])
 }
 
-impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
-    fn random(_: &[u8]) -> (Output, BlockNumber) {
-        todo!()
+impl<T: Config> Randomness<sp_core::H256, T::BlockNumber> for Pallet<T> {
+    fn random(_: &[u8]) -> (sp_core::H256, T::BlockNumber) {
+        let block_number = <frame_system::Pallet<T>>::block_number();
+        (Self::get_seed().into(), block_number)
     }
 
-    fn random_seed() -> (Output, BlockNumber) {
+    fn random_seed() -> (sp_core::H256, T::BlockNumber) {
         Self::random(&[][..])
     }
 }
@@ -363,9 +364,9 @@ pub mod pallet {
         }
 
         pub fn required_number_of_signatures() -> u128 {
-            let len = match Self::current_validator_set(){
+            let len = match Self::current_validator_set() {
                 None => 0,
-                Some(x) => x.length
+                Some(x) => x.length,
             };
             Self::get_required_number_of_signatures(len)
         }
@@ -513,7 +514,7 @@ pub mod pallet {
                 Err(e) => {
                     log::debug!("WRONG SIGNATURE: {:?}", e);
                     fail!(Error::<T>::InvalidSignature)
-                },
+                }
                 Ok(p) => p,
             };
             let recovery_id = match libsecp256k1::RecoveryId::parse_rpc(signature[64]) {
@@ -531,7 +532,11 @@ pub mod pallet {
                 Ok(a) => a,
             };
             let addr = public_key_to_eth_address(&recovered_public);
-            log::debug!("====== ETH ADDR: {:?}, PUBLIC KEY: {:?} ===========", addr, public_key);
+            log::debug!(
+                "====== ETH ADDR: {:?}, PUBLIC KEY: {:?} ===========",
+                addr,
+                public_key
+            );
             ensure!(addr == public_key, Error::<T>::InvalidSignature);
             Ok(().into())
         }
@@ -547,24 +552,28 @@ pub mod pallet {
                 &commitment.validator_set_id.encode(),
             ]);
             log::debug!("====== CONCATED BYTES: {:?} ==========", concated);
-            log::debug!("++++++++++++++ {:?} + {:?} + {:?} + {:?} ++++++++++++++", commitment.payload_prefix, commitment.payload, commitment.block_number.to_be_bytes(), commitment.validator_set_id.to_be_bytes());
+            log::debug!(
+                "++++++++++++++ {:?} + {:?} + {:?} + {:?} ++++++++++++++",
+                commitment.payload_prefix,
+                commitment.payload,
+                commitment.block_number.to_be_bytes(),
+                commitment.validator_set_id.to_be_bytes()
+            );
             keccak_256(&concated)
         }
 
         pub fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
             // leaf.encode()
-            encode_packed(
-                &[
-                    Token::Bytes(leaf.version.encode()),
-                    Token::Bytes(leaf.parent_number.encode()),
-                    Token::Bytes(leaf.parent_hash.into()),
-                    Token::Bytes(leaf.next_authority_set_id.encode()),
-                    Token::Bytes(leaf.next_authority_set_len.encode()),
-                    Token::Bytes(leaf.next_authority_set_root.into()),
-                    Token::Bytes(leaf.random_seed.into()),
-                    Token::Bytes(leaf.digest_hash.into()),
-                ]
-            )
+            encode_packed(&[
+                Token::Bytes(leaf.version.encode()),
+                Token::Bytes(leaf.parent_number.encode()),
+                Token::Bytes(leaf.parent_hash.into()),
+                Token::Bytes(leaf.next_authority_set_id.encode()),
+                Token::Bytes(leaf.next_authority_set_len.encode()),
+                Token::Bytes(leaf.next_authority_set_root.into()),
+                Token::Bytes(leaf.random_seed.into()),
+                Token::Bytes(leaf.digest_hash.into()),
+            ])
         }
 
         pub fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
@@ -584,7 +593,7 @@ pub mod pallet {
             };
             let current_validator_set_len = match Self::current_validator_set() {
                 None => fail!(Error::<T>::PalletNotInitialized),
-                Some(x) => x.length
+                Some(x) => x.length,
             };
             merkle_proof::verify_merkle_leaf_at_position(
                 vset.root,
@@ -627,7 +636,7 @@ pub mod pallet {
                 Ok(v) => v,
                 Err(e) => {
                     log::debug!("WRONG MESSAGE: {:?}", e);
-                    return Err(Error::<T>::InvalidSignature)
+                    return Err(Error::<T>::InvalidSignature);
                 }
             };
             Ok(message)

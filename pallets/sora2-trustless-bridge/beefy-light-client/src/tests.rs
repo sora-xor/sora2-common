@@ -1,20 +1,28 @@
-use crate::{mock::*, Error};
-use frame_support::{assert_noop, assert_ok};
+use crate::{mock::*};
+use bridge_common::beefy_types::ValidatorSet;
+use frame_support::{assert_ok};
+use hex_literal::hex;
 
 #[test]
-fn it_works_for_default_value() {
-	new_test_ext().execute_with(|| {
-		// Dispatch a signed extrinsic.
-		assert_ok!(TemplateModule::do_something(Origin::signed(1), 42));
-		// Read pallet storage and assert an expected result.
-		assert_eq!(TemplateModule::something(), Some(42));
-	});
-}
-
-#[test]
-fn correct_error_for_none_value() {
-	new_test_ext().execute_with(|| {
-		// Ensure the expected error is thrown when no value is present.
-		assert_noop!(TemplateModule::cause_error(Origin::signed(1)), Error::<Test>::NoneValue);
-	});
+fn it_works_initialize_pallet() {
+    new_test_ext().execute_with(|| {
+        let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
+        assert_ok!(
+            BeefyLightClient::initialize(
+                Origin::root(),
+                1,
+                ValidatorSet {
+                    id: 0,
+                    length: 3,
+                    root,
+                },
+                ValidatorSet {
+                    id: 1,
+                    length: 3,
+                    root,
+                }
+            ),
+            ().into()
+        )
+    });
 }

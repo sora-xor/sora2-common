@@ -3,7 +3,6 @@ use frame_support::log;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
 
-
 pub fn verify_merkle_leaf_at_position(
     root: [u8; 32],
     leaf: [u8; 32],
@@ -18,11 +17,7 @@ pub fn verify_merkle_leaf_at_position(
         "verify_merkle_leaf_at_position: computed_hash: {:?}",
         computed_hash
     );
-    log::debug!(
-        "POS: {:?}, WIDTH: {:?}",
-        pos,
-        width
-    );
+    log::debug!("POS: {:?}, WIDTH: {:?}", pos, width);
     if root != computed_hash {
         return Err(MerkleProofError::RootComputedHashNotEqual);
     }
@@ -80,14 +75,18 @@ pub fn compute_root_from_proof_at_position(
     }
 
     if i < proof.len() as u128 {
-        log::debug!("==================== {:?} >= {:?} =======================", i, proof.len());
+        log::debug!(
+            "==================== {:?} >= {:?} =======================",
+            i,
+            proof.len()
+        );
         return Err(MerkleProofError::MerkleProofTooHigh);
     }
 
     Ok(computed_hash)
 }
 
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum MerkleProofError {
     MerklePositionTooHigh,
     MerkleProofTooShort,
@@ -97,15 +96,16 @@ pub enum MerkleProofError {
 
 #[cfg(test)]
 mod tests {
-    use frame_support::{assert_ok};
     use super::*;
-
+    use frame_support::assert_ok;
 
     #[test]
     pub fn it_works_verify_merkle_leaf_at_position() {
         let leafs = vec![b"a", b"b", b"c", b"d", b"e", b"f", b"g"];
-        let hashs: Vec<[u8; 32]> = leafs.iter()
-                                    .map(|x| keccak_256(&encode_packed(&[Token::Bytes(vec![x[0]])]))).collect();
+        let hashs: Vec<[u8; 32]> = leafs
+            .iter()
+            .map(|x| keccak_256(&encode_packed(&[Token::Bytes(vec![x[0]])])))
+            .collect();
         let hab = keccak_256(&encode_packed(&[
             Token::Bytes(hashs[0].into()),
             Token::Bytes(hashs[1].into()),
@@ -118,7 +118,7 @@ mod tests {
             Token::Bytes(hashs[4].into()),
             Token::Bytes(hashs[5].into()),
         ]));
-        let habcd =  keccak_256(&encode_packed(&[
+        let habcd = keccak_256(&encode_packed(&[
             Token::Bytes(hab.into()),
             Token::Bytes(hcd.into()),
         ]));
@@ -126,16 +126,30 @@ mod tests {
             Token::Bytes(hef.into()),
             Token::Bytes(hashs[6].into()),
         ]));
-        let root =  keccak_256(&encode_packed(&[
+        let root = keccak_256(&encode_packed(&[
             Token::Bytes(habcd.into()),
             Token::Bytes(hefg.into()),
         ]));
         let proof_a = vec![hashs[1], hcd, hefg];
         let proof_f = vec![hashs[4], hashs[6], habcd];
 
-        assert_ok!(verify_merkle_leaf_at_position(root, hashs[0], 0, 7, proof_a));
-        assert_ok!(verify_merkle_leaf_at_position(root, hashs[5], 5, 7, proof_f.clone()));
-        assert_eq!(verify_merkle_leaf_at_position(root, hashs[4], 5, 7, proof_f.clone()), Err(MerkleProofError::RootComputedHashNotEqual));
-        assert_eq!(verify_merkle_leaf_at_position(root, hashs[5], 1, 7, proof_f), Err(MerkleProofError::RootComputedHashNotEqual));
+        assert_ok!(verify_merkle_leaf_at_position(
+            root, hashs[0], 0, 7, proof_a
+        ));
+        assert_ok!(verify_merkle_leaf_at_position(
+            root,
+            hashs[5],
+            5,
+            7,
+            proof_f.clone()
+        ));
+        assert_eq!(
+            verify_merkle_leaf_at_position(root, hashs[4], 5, 7, proof_f.clone()),
+            Err(MerkleProofError::RootComputedHashNotEqual)
+        );
+        assert_eq!(
+            verify_merkle_leaf_at_position(root, hashs[5], 1, 7, proof_f),
+            Err(MerkleProofError::RootComputedHashNotEqual)
+        );
     }
 }
