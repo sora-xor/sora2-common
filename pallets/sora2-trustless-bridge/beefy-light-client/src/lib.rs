@@ -134,15 +134,6 @@ pub mod pallet {
             next_validator_set: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "==============================================================================================="
-            );
-            log::debug!(
-                "beefy: ==============================================================================================="
-            );
             LatestBeefyBlock::<T>::set(latest_beefy_block);
             CurrentValidatorSet::<T>::set(Some(validator_set));
             NextValidatorSet::<T>::set(Some(next_validator_set));
@@ -160,28 +151,19 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
             log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment: {:?}",
+                "BeefyLightClient: submit_signature_commitment: {:?}",
                 commitment
             );
             log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment validator proof: {:?}",
+                "BeefyLightClient: submit_signature_commitment validator proof: {:?}",
                 validator_proof
             );
             log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}",
+                "BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}",
                 latest_mmr_leaf
             );
             log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment proof: {:?}",
+                "BeefyLightClient: submit_signature_commitment proof: {:?}",
                 proof
             );
             let current_validator_set = match Self::current_validator_set() {
@@ -214,15 +196,6 @@ pub mod pallet {
                 latest_mmr_leaf.next_authority_set_len as u128,
                 latest_mmr_leaf.next_authority_set_root,
             )?;
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
             Ok(().into())
         }
     }
@@ -412,12 +385,6 @@ pub mod pallet {
                 "BeefyLightClient verify_commitment random_bitfield: {:?}",
                 random_bitfield.clone()
             );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
             Self::verify_validator_proof_lengths(required_num_of_signatures, proof.clone())?;
             let commitment_hash = Self::create_commitment_hash(commitment.clone());
             Self::verify_validator_proof_signatures(
@@ -459,23 +426,6 @@ pub mod pallet {
             commitment_hash: [u8; 32],
         ) -> DispatchResultWithPostInfo {
             let required_num_of_signatures = required_num_of_signatures as usize;
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!("POSITIONS: {:?}", proof.positions);
-            log::debug!(
-                "REQUIRED NUM OF POSITIONS: {:?}",
-                required_num_of_signatures
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
             for i in 0..required_num_of_signatures {
                 Self::verify_validator_signature(
                     &mut random_bitfield,
@@ -548,14 +498,6 @@ pub mod pallet {
                 &commitment.block_number.encode(),
                 &commitment.validator_set_id.encode(),
             ]);
-            log::debug!("====== CONCATED BYTES: {:?} ==========", concated);
-            log::debug!(
-                "++++++++++++++ {:?} + {:?} + {:?} + {:?} ++++++++++++++",
-                commitment.payload_prefix,
-                commitment.payload,
-                commitment.block_number.to_be_bytes(),
-                commitment.validator_set_id.to_be_bytes()
-            );
             keccak_256(&concated)
         }
 
