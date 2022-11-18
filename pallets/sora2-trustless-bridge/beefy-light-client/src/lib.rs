@@ -17,8 +17,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// #[cfg(feature = "runtime-benchmarks")]
-// mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
 pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
     let hash = keccak_256(&pub_key.serialize()[1..]);
@@ -47,10 +47,8 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
 
     pub const MMR_ROOT_HISTORY_SIZE: u32 = 30;
-
     pub const THRESHOLD_NUMERATOR: u128 = 22;
     pub const THRESHOLD_DENOMINATOR: u128 = 59;
-
     pub const NUMBER_OF_BLOCKS_PER_SESSION: u64 = 600;
     pub const ERROR_AND_SAFETY_BUFFER: u64 = 10;
     pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
@@ -78,7 +76,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn latest_beefy_block)]
-    pub type LatestBeefyBlock<T> = StorageValue<_, u32, ValueQuery>;
+    pub type LatestBeefyBlock<T> = StorageValue<_, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn latest_random_seed)]
@@ -100,7 +98,6 @@ pub mod pallet {
         ValidatorRegistryUpdated([u8; 32], u128, u64),
     }
 
-    // Errors inform users that something went wrong.
     #[pallet::error]
     pub enum Error<T> {
         InvalidValidatorSetId,
@@ -132,7 +129,7 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn initialize(
             origin: OriginFor<T>,
-            latest_beefy_block: u32,
+            latest_beefy_block: u64,
             validator_set: ValidatorSet,
             next_validator_set: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
@@ -295,7 +292,6 @@ pub mod pallet {
             BitField::create_bitfield(bits_to_set, length)
         }
 
-        /* Private Functions */
         pub fn get_seed() -> [u8; 32] {
             let concated = bridge_common::concat_u8(&[
                 &Self::latest_random_seed(),
@@ -304,7 +300,19 @@ pub mod pallet {
             keccak_256(&concated)
         }
 
-        pub fn verity_newest_mmr_leaf(
+
+        pub fn required_number_of_signatures() -> u128 {
+            let len = match Self::current_validator_set() {
+                None => 0,
+                Some(x) => x.length,
+            };
+            Self::get_required_number_of_signatures(len)
+        }
+
+
+        /* Private Functions */
+
+        fn verity_newest_mmr_leaf(
             leaf: &BeefyMMRLeaf,
             root: &[u8; 32],
             proof: &SimplifiedMMRProof,
@@ -318,14 +326,12 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // TODO
-        // u64 casting to u32!!!!!!!
-        pub fn process_payload(
+        fn process_payload(
             payload: &[u8; 32],
             block_number: u64,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                block_number > Self::latest_beefy_block() as u64,
+                block_number > Self::latest_beefy_block(),
                 Error::<T>::PayloadBlocknumberTooOld
             );
             ensure!(
@@ -333,13 +339,12 @@ pub mod pallet {
                 Error::<T>::PayloadBlocknumberTooNew
             );
             Self::add_known_mmr_root(*payload);
-            // NOT SAFE!!!!!!!!!
-            LatestBeefyBlock::<T>::set(block_number.try_into().unwrap());
+            LatestBeefyBlock::<T>::set(block_number);
             Self::deposit_event(Event::NewMMRRoot(*payload, block_number));
             Ok(().into())
         }
 
-        pub fn apply_validator_set_changes(
+        fn apply_validator_set_changes(
             next_authority_set_id: u128,
             next_authority_set_len: u128,
             next_authority_set_root: [u8; 32],
@@ -363,15 +368,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn required_number_of_signatures() -> u128 {
-            let len = match Self::current_validator_set() {
-                None => 0,
-                Some(x) => x.length,
-            };
-            Self::get_required_number_of_signatures(len)
-        }
-
-        pub fn get_required_number_of_signatures(num_validators: u128) -> u128 {
+        fn get_required_number_of_signatures(num_validators: u128) -> u128 {
             (num_validators * THRESHOLD_NUMERATOR + THRESHOLD_DENOMINATOR - 1)
                 / THRESHOLD_DENOMINATOR
         }
@@ -379,7 +376,7 @@ pub mod pallet {
         /**
         	* @dev https://github.com/sora-xor/substrate/blob/7d914ce3ed34a27d7bb213caed374d64cde8cfa8/client/beefy/src/round.rs#L62
          */
-        pub fn check_commitment_signatures_threshold(
+        fn check_commitment_signatures_threshold(
             num_of_validators: u128,
             validator_claims_bitfield: BitField,
         ) -> DispatchResultWithPostInfo {
@@ -389,7 +386,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_commitment(
+        fn verify_commitment(
             commitment: &Commitment,
             proof: &ValidatorProof,
             vset: ValidatorSet,
@@ -432,7 +429,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_validator_proof_lengths(
+        fn verify_validator_proof_lengths(
             required_num_of_signatures: u128,
             proof: ValidatorProof,
         ) -> DispatchResultWithPostInfo {
@@ -455,7 +452,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_validator_proof_signatures(
+        fn verify_validator_proof_signatures(
             mut random_bitfield: BitField,
             proof: ValidatorProof,
             required_num_of_signatures: u128,
@@ -492,7 +489,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_validator_signature(
+        fn verify_validator_signature(
             random_bitfield: &mut BitField,
             signature: Vec<u8>,
             position: u128,
@@ -541,7 +538,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn create_commitment_hash(commitment: Commitment) -> [u8; 32] {
+        fn create_commitment_hash(commitment: Commitment) -> [u8; 32] {
             let concated = bridge_common::concat_u8(&[
                 &commitment.payload_prefix,
                 &MMR_ROOT_ID,
@@ -562,7 +559,7 @@ pub mod pallet {
             keccak_256(&concated)
         }
 
-        pub fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
+        fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
             // leaf.encode()
             encode_packed(&[
                 Token::Bytes(leaf.version.encode()),
@@ -576,11 +573,11 @@ pub mod pallet {
             ])
         }
 
-        pub fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
+        fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
             keccak_256(&leaf)
         }
 
-        pub fn check_validator_in_set(
+        fn check_validator_in_set(
             addr: EthAddress,
             pos: u128,
             proof: Vec<[u8; 32]>,
@@ -606,7 +603,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn random_n_bits_with_prior_check(
+        fn random_n_bits_with_prior_check(
             prior: &BitField,
             n: u128,
             length: u128,
