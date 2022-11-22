@@ -33,7 +33,7 @@ ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0
 ] }
 
 #other
-getrandom = { version = "0.2.1", features = ["js"] }
+# getrandom = { version = "0.2.1", features = ["js"] }
 libsecp256k1 = { version = "0.7.1", default-features = false, features = ["static-context"] }
 
 [dev-dependencies]
