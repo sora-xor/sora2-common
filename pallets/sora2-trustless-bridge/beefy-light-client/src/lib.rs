@@ -38,6 +38,7 @@ use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
+use sp_core::{H256};
 
 pub use bitfield::BitField;
 
@@ -50,9 +51,19 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
-    let hash = keccak_256(&pub_key.serialize()[1..]);
-    EthAddress::from_slice(&hash[12..])
+// pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
+//     let hash = keccak_256(&pub_key.serialize()[1..]);
+//     EthAddress::from_slice(&hash[12..])
+// }
+
+fn recover_signature(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<EthAddress> {
+    use sp_io::{
+        crypto::secp256k1_ecdsa_recover,
+    };
+
+	secp256k1_ecdsa_recover(sig, msg_hash)
+		.map(|pubkey| EthAddress::from(H256::from_slice(&keccak_256(&pubkey))))
+		.ok()
 }
 
 impl<T: Config> Randomness<sp_core::H256, T::BlockNumber> for Pallet<T> {
@@ -295,6 +306,7 @@ pub mod pallet {
             BitField::create_bitfield(bits_to_set, length)
         }
 
+        #[inline]
         pub fn get_seed() -> [u8; 32] {
             let concated = bridge_common::concat_u8(&[
                 &Self::latest_random_seed(),
@@ -303,7 +315,7 @@ pub mod pallet {
             keccak_256(&concated)
         }
 
-
+        #[inline]
         pub fn required_number_of_signatures() -> u128 {
             let len = match Self::current_validator_set() {
                 None => 0,
@@ -484,36 +496,43 @@ pub mod pallet {
             random_bitfield.clear(position as usize);
             Self::check_validator_in_set(public_key, position, public_key_merkle_proof)?;
 
-            let mes = Self::prepare_message(&commitment_hash)?;
-            log::debug!("============= SIGNATURE LEN: {:?}", signature.len());
+            // let mes = Self::prepare_message(&commitment_hash)?;
+            // log::debug!("============= SIGNATURE LEN: {:?}", signature.len());
+            
+            // let sig = match Signature::parse_standard_slice(&signature[0..64]) {
+            //     Err(e) => {
+            //         log::debug!("WRONG SIGNATURE: {:?}", e);
+            //         fail!(Error::<T>::InvalidSignature)
+            //     }
+            //     Ok(p) => p,
+            // };
+            // let recovery_id = match libsecp256k1::RecoveryId::parse_rpc(signature[64]) {
+            //     Err(e) => {
+            //         log::debug!("WRONG RECOVERY ID: {:?}", e);
+            //         fail!(Error::<T>::InvalidSignature)
+            //     }
+            //     Ok(a) => a,
+            // };
+            // let recovered_public = match libsecp256k1::recover(&mes, &sig, &recovery_id) {
+            //     Err(e) => {
+            //         log::debug!("ERROR RECOVERING PUBLIC KEY: {:?}", e);
+            //         fail!(Error::<T>::InvalidSignature)
+            //     }
+            //     Ok(a) => a,
+            // };
+            // let addr = public_key_to_eth_address(&recovered_public);
+            // log::debug!(
+            //     "====== ETH ADDR: {:?}, PUBLIC KEY: {:?} ===========",
+            //     addr,
+            //     public_key
+            // );
             ensure!(signature.len() == 65, Error::<T>::InvalidSignature);
-            let sig = match Signature::parse_standard_slice(&signature[0..64]) {
-                Err(e) => {
-                    log::debug!("WRONG SIGNATURE: {:?}", e);
-                    fail!(Error::<T>::InvalidSignature)
-                }
-                Ok(p) => p,
+            let Ok(signature): Result<[u8; 65], _> = signature.try_into() else {
+                fail!(Error::<T>::InvalidSignature);
             };
-            let recovery_id = match libsecp256k1::RecoveryId::parse_rpc(signature[64]) {
-                Err(e) => {
-                    log::debug!("WRONG RECOVERY ID: {:?}", e);
-                    fail!(Error::<T>::InvalidSignature)
-                }
-                Ok(a) => a,
+            let Some(addr) = recover_signature(&signature.try_into().unwrap(), &commitment_hash) else {
+                fail!(Error::<T>::InvalidSignature);
             };
-            let recovered_public = match libsecp256k1::recover(&mes, &sig, &recovery_id) {
-                Err(e) => {
-                    log::debug!("ERROR RECOVERING PUBLIC KEY: {:?}", e);
-                    fail!(Error::<T>::InvalidSignature)
-                }
-                Ok(a) => a,
-            };
-            let addr = public_key_to_eth_address(&recovered_public);
-            log::debug!(
-                "====== ETH ADDR: {:?}, PUBLIC KEY: {:?} ===========",
-                addr,
-                public_key
-            );
             ensure!(addr == public_key, Error::<T>::InvalidSignature);
             Ok(().into())
         }
