@@ -1,12 +1,14 @@
+[profile.release]
+panic = "unwind"
+
 [workspace]
 members = [
+    "pallets/sora2-trustless-bridge/beefy-light-client",
+    "pallets/sora2-trustless-bridge/beefy-light-client/rpc",
+    "pallets/sora2-trustless-bridge/beefy-light-client/runtime-api",
+    "pallets/sora2-trustless-bridge/bridge-common",
     "pallets/trustless-eth-bridge/dispatch",
     "pallets/trustless-eth-bridge/types",
     "pallets/trustless-eth-bridge/substrate-app",
     "pallets/trustless-eth-bridge/substrate-channel",
 ]
-
-resolver = "2"
-
-[profile.release]
-panic = 'unwind'
