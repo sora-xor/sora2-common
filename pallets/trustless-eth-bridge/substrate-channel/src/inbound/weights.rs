@@ -8,12 +8,12 @@ pub trait WeightInfo {
 
 impl WeightInfo for () {
     fn submit() -> Weight {
-        0
+        Weight::zero()
     }
     fn set_reward_fraction() -> Weight {
-        0
+        Weight::zero()
     }
     fn register_channel() -> Weight {
-        0
+        Weight::zero()
     }
 }

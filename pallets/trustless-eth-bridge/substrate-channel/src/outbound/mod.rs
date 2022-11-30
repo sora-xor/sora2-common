@@ -57,7 +57,7 @@ pub mod pallet {
         <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Prefix for offchain storage keys.
         const INDEXING_PREFIX: &'static [u8];

@@ -97,7 +97,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config<I: 'static = ()>: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// The Id of the network (i.e. Ethereum network id).
         type NetworkId;
@@ -119,7 +119,7 @@ pub mod pallet {
         /// The overarching dispatch call type.
         type Call: Parameter
             + Dispatchable<
-                Origin = <Self as Config<I>>::Origin,
+                RuntimeOrigin = <Self as Config<I>>::Origin,
                 PostInfo = frame_support::dispatch::PostDispatchInfo,
             >;
 
