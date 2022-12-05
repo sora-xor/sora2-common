@@ -75,7 +75,7 @@ impl<T: Config> Randomness<sp_core::H256, T::BlockNumber> for Pallet<T> {
 pub mod pallet {
     use super::*;
     use bridge_common::{merkle_proof, simplified_mmr_proof::*};
-    use ethabi::{encode_packed, Token};
+    use ethabi::{encode, Token};
     use frame_support::fail;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
@@ -517,7 +517,7 @@ pub mod pallet {
 
         fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
             // leaf.encode()
-            encode_packed(&[
+            encode(&[
                 Token::Bytes(leaf.version.encode()),
                 Token::Bytes(leaf.parent_number.encode()),
                 Token::Bytes(leaf.parent_hash.into()),
@@ -539,7 +539,7 @@ pub mod pallet {
             proof: Vec<[u8; 32]>,
         ) -> DispatchResultWithPostInfo {
             // let hashed_leaf = keccak_256(&addr.encode());
-            let hashed_leaf = keccak_256(&encode_packed(&[Token::Bytes(addr.as_bytes().into())]));
+            let hashed_leaf = keccak_256(&encode(&[Token::Bytes(addr.as_bytes().into())]));
             let vset = match Self::current_validator_set() {
                 None => fail!(Error::<T>::PalletNotInitialized),
                 Some(x) => x,

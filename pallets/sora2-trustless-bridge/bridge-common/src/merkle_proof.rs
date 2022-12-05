@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use ethabi::{encode_packed, Token};
+use ethabi::{encode, Token};
 use frame_support::log;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
@@ -86,12 +86,12 @@ pub fn compute_root_from_proof_at_position(
 
         proof_element = proof[i as usize];
         computed_hash = if computed_hash_left {
-            keccak_256(&encode_packed(&[
+            keccak_256(&encode(&[
                 Token::Bytes(computed_hash.into()),
                 Token::Bytes(proof_element.into()),
             ]))
         } else {
-            keccak_256(&encode_packed(&[
+            keccak_256(&encode(&[
                 Token::Bytes(proof_element.into()),
                 Token::Bytes(computed_hash.into()),
             ]))
@@ -134,29 +134,29 @@ mod tests {
         let leafs = vec![b"a", b"b", b"c", b"d", b"e", b"f", b"g"];
         let hashs: Vec<[u8; 32]> = leafs
             .iter()
-            .map(|x| keccak_256(&encode_packed(&[Token::Bytes(vec![x[0]])])))
+            .map(|x| keccak_256(&encode(&[Token::Bytes(vec![x[0]])])))
             .collect();
-        let hab = keccak_256(&encode_packed(&[
+        let hab = keccak_256(&encode(&[
             Token::Bytes(hashs[0].into()),
             Token::Bytes(hashs[1].into()),
         ]));
-        let hcd = keccak_256(&encode_packed(&[
+        let hcd = keccak_256(&encode(&[
             Token::Bytes(hashs[2].into()),
             Token::Bytes(hashs[3].into()),
         ]));
-        let hef = keccak_256(&encode_packed(&[
+        let hef = keccak_256(&encode(&[
             Token::Bytes(hashs[4].into()),
             Token::Bytes(hashs[5].into()),
         ]));
-        let habcd = keccak_256(&encode_packed(&[
+        let habcd = keccak_256(&encode(&[
             Token::Bytes(hab.into()),
             Token::Bytes(hcd.into()),
         ]));
-        let hefg = keccak_256(&encode_packed(&[
+        let hefg = keccak_256(&encode(&[
             Token::Bytes(hef.into()),
             Token::Bytes(hashs[6].into()),
         ]));
-        let root = keccak_256(&encode_packed(&[
+        let root = keccak_256(&encode(&[
             Token::Bytes(habcd.into()),
             Token::Bytes(hefg.into()),
         ]));
