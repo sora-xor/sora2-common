@@ -1,44 +1,72 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use bridge_common::{beefy_types::*, bitfield};
 use codec::Encode;
 use frame_support::log;
 use frame_support::traits::Randomness;
-use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_io::hashing::keccak_256;
+use sp_core::{H256};
 
 pub use bitfield::BitField;
 
-// #[cfg(test)]
-// mod mock;
+#[cfg(test)]
+mod mock;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
-// #[cfg(feature = "runtime-benchmarks")]
-// mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 
-pub fn public_key_to_eth_address(pub_key: &PublicKey) -> EthAddress {
-    let hash = keccak_256(&pub_key.serialize()[1..]);
-    EthAddress::from_slice(&hash[12..])
+fn recover_signature(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<EthAddress> {
+    use sp_io::{
+        crypto::secp256k1_ecdsa_recover,
+    };
+
+	secp256k1_ecdsa_recover(sig, msg_hash)
+		.map(|pubkey| EthAddress::from(H256::from_slice(&keccak_256(&pubkey))))
+		.ok()
 }
 
-pub fn prepare_message(msg: &[u8]) -> Message {
-    let msg = keccak_256(msg);
-    let mut prefix = b"\x19Ethereum Signed Message:\n32".to_vec();
-    prefix.extend(&msg);
-    let hash = keccak_256(&prefix);
-    Message::parse_slice(&hash).expect("hash size == 256 bits; qed")
-}
-
-impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<T> {
-    fn random(_: &[u8]) -> (Output, BlockNumber) {
-        todo!()
+impl<T: Config> Randomness<sp_core::H256, T::BlockNumber> for Pallet<T> {
+    fn random(_: &[u8]) -> (sp_core::H256, T::BlockNumber) {
+        let block_number = <frame_system::Pallet<T>>::block_number();
+        (Self::get_seed().into(), block_number)
     }
 
-    fn random_seed() -> (Output, BlockNumber) {
+    fn random_seed() -> (sp_core::H256, T::BlockNumber) {
         Self::random(&[][..])
     }
 }
@@ -47,26 +75,22 @@ impl<T: Config, Output, BlockNumber> Randomness<Output, BlockNumber> for Pallet<
 pub mod pallet {
     use super::*;
     use bridge_common::{merkle_proof, simplified_mmr_proof::*};
+    use ethabi::{encode_packed, Token};
     use frame_support::fail;
+    use frame_support::pallet_prelude::OptionQuery;
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
 
     pub const MMR_ROOT_HISTORY_SIZE: u32 = 30;
-
     pub const THRESHOLD_NUMERATOR: u128 = 22;
     pub const THRESHOLD_DENOMINATOR: u128 = 59;
-
     pub const NUMBER_OF_BLOCKS_PER_SESSION: u64 = 600;
     pub const ERROR_AND_SAFETY_BUFFER: u64 = 10;
-    // pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
-    pub const MAXIMUM_BLOCK_GAP: u64 = 100;
-
+    pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
     pub const MMR_ROOT_ID: [u8; 2] = [0x6d, 0x68];
 
-    /// Configure the pallet by specifying the parameters and types on which it depends.
     #[pallet::config]
     pub trait Config: frame_system::Config {
-        /// Because this pallet emits events, it depends on the runtime's definition of an event.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type Randomness: frame_support::traits::Randomness<Self::Hash, Self::BlockNumber>;
     }
@@ -87,32 +111,19 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn latest_beefy_block)]
-    pub type LatestBeefyBlock<T> = StorageValue<_, u32, ValueQuery>;
+    pub type LatestBeefyBlock<T> = StorageValue<_, u64, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn latest_random_seed)]
     pub type LatestRandomSeed<T> = StorageValue<_, [u8; 32], ValueQuery>;
 
-    // Validator registry storage:
-    // #[pallet::storage]
-    // #[pallet::getter(fn validator_registry_root)]
-    // pub type ValidatorRegistryRoot<T> = StorageValue<_, [u8; 32], ValueQuery>;
-
-    // #[pallet::storage]
-    // #[pallet::getter(fn validator_registry_num_of_validators)]
-    // pub type NumOfValidators<T> = StorageValue<_, u128, ValueQuery>;
-
-    // #[pallet::storage]
-    // #[pallet::getter(fn validator_registry_id)]
-    // pub type ValidatorRegistryId<T> = StorageValue<_, u64, ValueQuery>;
-
     #[pallet::storage]
     #[pallet::getter(fn current_validator_set)]
-    pub type CurrentValidatorSet<T> = StorageValue<_, ValidatorSet, ValueQuery>;
+    pub type CurrentValidatorSet<T> = StorageValue<_, ValidatorSet, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn next_validator_set)]
-    pub type NextValidatorSet<T> = StorageValue<_, ValidatorSet, ValueQuery>;
+    pub type NextValidatorSet<T> = StorageValue<_, ValidatorSet, OptionQuery>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -122,7 +133,6 @@ pub mod pallet {
         ValidatorRegistryUpdated([u8; 32], u128, u64),
     }
 
-    // Errors inform users that something went wrong.
     #[pallet::error]
     pub enum Error<T> {
         InvalidValidatorSetId,
@@ -140,6 +150,7 @@ pub mod pallet {
         MerklePositionTooHigh,
         MerkleProofTooShort,
         MerkleProofTooHigh,
+        PalletNotInitialized,
     }
 
     #[pallet::hooks]
@@ -153,27 +164,19 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn initialize(
             origin: OriginFor<T>,
-            latest_beefy_block: u32,
+            latest_beefy_block: u64,
             validator_set: ValidatorSet,
             next_validator_set: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
             let _ = ensure_root(origin)?;
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "==============================================================================================="
-            );
-            log::debug!(
-                "beefy: ==============================================================================================="
-            );
             LatestBeefyBlock::<T>::set(latest_beefy_block);
-            CurrentValidatorSet::<T>::set(validator_set);
-            NextValidatorSet::<T>::set(next_validator_set);
+            CurrentValidatorSet::<T>::set(Some(validator_set));
+            NextValidatorSet::<T>::set(Some(next_validator_set));
             Ok(().into())
         }
 
         #[pallet::weight(0)]
+        #[frame_support::transactional]
         pub fn submit_signature_commitment(
             origin: OriginFor<T>,
             commitment: Commitment,
@@ -183,32 +186,29 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
             log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment: {:?}",
+                "BeefyLightClient: submit_signature_commitment: {:?}",
                 commitment
             );
             log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment validator proof: {:?}",
+                "BeefyLightClient: submit_signature_commitment validator proof: {:?}",
                 validator_proof
             );
             log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}",
+                "BeefyLightClient: submit_signature_commitment latest_mmr_leaf: {:?}",
                 latest_mmr_leaf
             );
             log::debug!(
-                "tokio-runtime-worker BeefyLightClient: submit_signature_commitment proof: {:?}",
+                "BeefyLightClient: submit_signature_commitment proof: {:?}",
                 proof
             );
-            let current_validator_set = Self::current_validator_set();
-            let next_validator_set = Self::next_validator_set();
+            let current_validator_set = match Self::current_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
+            let next_validator_set = match Self::next_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
             let vset = match (commitment.validator_set_id as u128) == current_validator_set.id {
                 true => current_validator_set,
                 false => match (commitment.validator_set_id as u128) == next_validator_set.id {
@@ -231,15 +231,6 @@ pub mod pallet {
                 latest_mmr_leaf.next_authority_set_len as u128,
                 latest_mmr_leaf.next_authority_set_root,
             )?;
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
             Ok(().into())
         }
     }
@@ -309,7 +300,7 @@ pub mod pallet {
             BitField::create_bitfield(bits_to_set, length)
         }
 
-        /* Private Functions */
+        #[inline]
         pub fn get_seed() -> [u8; 32] {
             let concated = bridge_common::concat_u8(&[
                 &Self::latest_random_seed(),
@@ -318,7 +309,19 @@ pub mod pallet {
             keccak_256(&concated)
         }
 
-        pub fn verity_newest_mmr_leaf(
+        #[inline]
+        pub fn required_number_of_signatures() -> u128 {
+            let len = match Self::current_validator_set() {
+                None => 0,
+                Some(x) => x.length,
+            };
+            Self::get_required_number_of_signatures(len)
+        }
+
+
+        /* Private Functions */
+
+        fn verity_newest_mmr_leaf(
             leaf: &BeefyMMRLeaf,
             root: &[u8; 32],
             proof: &SimplifiedMMRProof,
@@ -332,14 +335,12 @@ pub mod pallet {
             Ok(().into())
         }
 
-        // TODO
-        // u64 casting to u32!!!!!!!
-        pub fn process_payload(
+        fn process_payload(
             payload: &[u8; 32],
             block_number: u64,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                block_number > Self::latest_beefy_block() as u64,
+                block_number > Self::latest_beefy_block(),
                 Error::<T>::PayloadBlocknumberTooOld
             );
             ensure!(
@@ -347,52 +348,44 @@ pub mod pallet {
                 Error::<T>::PayloadBlocknumberTooNew
             );
             Self::add_known_mmr_root(*payload);
-            // NOT SAFE!!!!!!!!!
-            LatestBeefyBlock::<T>::set(block_number.try_into().unwrap());
+            LatestBeefyBlock::<T>::set(block_number);
             Self::deposit_event(Event::NewMMRRoot(*payload, block_number));
             Ok(().into())
         }
 
-        pub fn apply_validator_set_changes(
+        fn apply_validator_set_changes(
             next_authority_set_id: u128,
             next_authority_set_len: u128,
             next_authority_set_root: [u8; 32],
         ) -> DispatchResultWithPostInfo {
-            let next_validator_set = Self::next_validator_set();
-            if next_authority_set_id > next_validator_set.id {    
+            let next_validator_set = match Self::next_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
+            if next_authority_set_id > next_validator_set.id {
                 ensure!(
                     next_authority_set_id as u128 > next_validator_set.id,
                     Error::<T>::CannotSwitchOldValidatorSet
                 );
-                CurrentValidatorSet::<T>::set(next_validator_set);
-                NextValidatorSet::<T>::set(ValidatorSet{
+                CurrentValidatorSet::<T>::set(Some(next_validator_set));
+                NextValidatorSet::<T>::set(Some(ValidatorSet {
                     id: next_authority_set_id,
                     length: next_authority_set_len,
-                    root: next_authority_set_root
-                });
-                // Self::validator_registry_update(
-                //     next_authority_set_root,
-                //     next_authority_set_len as u128,
-                //     next_authority_set_id,
-                // );
+                    root: next_authority_set_root,
+                }));
             }
             Ok(().into())
         }
 
-        pub fn required_number_of_signatures() -> u128 {
-            Self::get_required_number_of_signatures(Self::current_validator_set().length)
-        }
-
-        pub fn get_required_number_of_signatures(num_validators: u128) -> u128 {
+        fn get_required_number_of_signatures(num_validators: u128) -> u128 {
             (num_validators * THRESHOLD_NUMERATOR + THRESHOLD_DENOMINATOR - 1)
                 / THRESHOLD_DENOMINATOR
         }
 
         /**
         	* @dev https://github.com/sora-xor/substrate/blob/7d914ce3ed34a27d7bb213caed374d64cde8cfa8/client/beefy/src/round.rs#L62
-        */
-        // ON RELAYER???????
-        pub fn check_commitment_signatures_threshold(
+         */
+        fn check_commitment_signatures_threshold(
             num_of_validators: u128,
             validator_claims_bitfield: BitField,
         ) -> DispatchResultWithPostInfo {
@@ -402,7 +395,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_commitment(
+        fn verify_commitment(
             commitment: &Commitment,
             proof: &ValidatorProof,
             vset: ValidatorSet,
@@ -419,10 +412,7 @@ pub mod pallet {
                 required_num_of_signatures,
                 number_of_validators,
             )?;
-            log::debug!(
-                "BeefyLightClient verify_commitment proof: {:?}",
-                proof
-            );
+            log::debug!("BeefyLightClient verify_commitment proof: {:?}", proof);
             log::debug!(
                 "BeefyLightClient verify_commitment validator_claims_bitfield: {:?}",
                 proof.validator_claims_bitfield.clone()
@@ -430,12 +420,6 @@ pub mod pallet {
             log::debug!(
                 "BeefyLightClient verify_commitment random_bitfield: {:?}",
                 random_bitfield.clone()
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
-            );
-            log::debug!(
-                "tokio-runtime-worker: ==============================================================================================="
             );
             Self::verify_validator_proof_lengths(required_num_of_signatures, proof.clone())?;
             let commitment_hash = Self::create_commitment_hash(commitment.clone());
@@ -448,7 +432,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_validator_proof_lengths(
+        fn verify_validator_proof_lengths(
             required_num_of_signatures: u128,
             proof: ValidatorProof,
         ) -> DispatchResultWithPostInfo {
@@ -471,34 +455,16 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_validator_proof_signatures(
-            random_bitfield: BitField,
+        fn verify_validator_proof_signatures(
+            mut random_bitfield: BitField,
             proof: ValidatorProof,
             required_num_of_signatures: u128,
             commitment_hash: [u8; 32],
         ) -> DispatchResultWithPostInfo {
             let required_num_of_signatures = required_num_of_signatures as usize;
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "POSITIONS: {:?}", proof.positions
-            );
-            log::debug!(
-                "REQUIRED NUM OF POSITIONS: {:?}", required_num_of_signatures
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
-            log::debug!(
-                "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-            );
             for i in 0..required_num_of_signatures {
                 Self::verify_validator_signature(
-                    random_bitfield.clone(),
+                    &mut random_bitfield,
                     proof.signatures[i].clone(),
                     proof.positions[i],
                     proof.public_keys[i].clone(),
@@ -509,8 +475,8 @@ pub mod pallet {
             Ok(().into())
         }
 
-        pub fn verify_validator_signature(
-            mut random_bitfield: BitField,
+        fn verify_validator_signature(
+            random_bitfield: &mut BitField,
             signature: Vec<u8>,
             position: u128,
             public_key: EthAddress,
@@ -522,96 +488,78 @@ pub mod pallet {
                 Error::<T>::ValidatorNotOnceInbitfield
             );
             random_bitfield.clear(position as usize);
-            // ensure!(
-            //     Self::check_validator_in_set(public_key, position, public_key_merkle_proof),
-            //     Error::<T>::ValidatorSetIncorrectPosition
-            // );
             Self::check_validator_in_set(public_key, position, public_key_merkle_proof)?;
-            let mes = prepare_message(&commitment_hash);
-            let sig = match Signature::parse_standard_slice(&signature) {
+            ensure!(signature.len() == 65, Error::<T>::InvalidSignature);
+            let signature: [u8; 65] = match signature.try_into() {
+                Ok(v) => v,
                 Err(_) => fail!(Error::<T>::InvalidSignature),
-                Ok(p) => p,
             };
-            let recovery_id = match libsecp256k1::RecoveryId::parse(0) {
-                Err(e) => {
-                    log::debug!(
-                        "Wrong Recovery Id: {:?}",
-                        e
-                    );
-                    fail!(Error::<T>::InvalidSignature)
-                },
-                Ok(a) => a
+            let addr = match recover_signature(&signature, &commitment_hash) {
+                Some(v) => v,
+                None => fail!(Error::<T>::InvalidSignature),
             };
-            let recovered_public = match libsecp256k1::recover(&mes, &sig, &recovery_id){
-                Err(e) => {
-                    log::debug!(
-                        "ERROR RECOVERING PUBLIC KEY: {:?}",
-                        e
-                    );
-                    fail!(Error::<T>::InvalidSignature)
-                },
-                Ok(a) => a,
-            };
-            let addr = public_key_to_eth_address(&recovered_public);
-            // let recovered_public = match libsecp256k1::recover(&commitment_hash) {
-            // 	Err(_) => fail!(Error::<T>::InvalidSignature),
-            // 	Ok(p) => p,
-            // };
-            // // TODO: Check if it is correct!
             ensure!(addr == public_key, Error::<T>::InvalidSignature);
             Ok(().into())
         }
 
-        pub fn create_commitment_hash(commitment: Commitment) -> [u8; 32] {
+        fn create_commitment_hash(commitment: Commitment) -> [u8; 32] {
             let concated = bridge_common::concat_u8(&[
                 &commitment.payload_prefix,
                 &MMR_ROOT_ID,
                 &[0x80],
                 &commitment.payload,
                 &commitment.payload_suffix,
-                &commitment.block_number.to_be_bytes(),
-                &commitment.validator_set_id.to_be_bytes(),
+                &commitment.block_number.encode(),
+                &commitment.validator_set_id.encode(),
             ]);
             keccak_256(&concated)
         }
 
-        pub fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
-            leaf.encode()
+        fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
+            // leaf.encode()
+            encode_packed(&[
+                Token::Bytes(leaf.version.encode()),
+                Token::Bytes(leaf.parent_number.encode()),
+                Token::Bytes(leaf.parent_hash.into()),
+                Token::Bytes(leaf.next_authority_set_id.encode()),
+                Token::Bytes(leaf.next_authority_set_len.encode()),
+                Token::Bytes(leaf.next_authority_set_root.into()),
+                Token::Bytes(leaf.random_seed.into()),
+                Token::Bytes(leaf.digest_hash.into()),
+            ])
         }
 
-        pub fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
+        fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
             keccak_256(&leaf)
         }
 
-        // pub fn validator_registry_update(
-        //     new_root: [u8; 32],
-        //     new_num_of_validators: u128,
-        //     new_id: u64,
-        // ) {
-        //     ValidatorRegistryRoot::<T>::set(new_root);
-        //     NumOfValidators::<T>::set(new_num_of_validators);
-        //     ValidatorRegistryId::<T>::set(new_id);
-        //     Self::deposit_event(Event::<T>::ValidatorRegistryUpdated(
-        //         new_root,
-        //         new_num_of_validators,
-        //         new_id,
-        //     ));
-        // }
-
-        pub fn check_validator_in_set(addr: EthAddress, pos: u128, proof: Vec<[u8; 32]>) -> DispatchResultWithPostInfo {
-            let hashed_leaf = keccak_256(&addr.encode());
-            let vset = Self::current_validator_set();
+        fn check_validator_in_set(
+            addr: EthAddress,
+            pos: u128,
+            proof: Vec<[u8; 32]>,
+        ) -> DispatchResultWithPostInfo {
+            // let hashed_leaf = keccak_256(&addr.encode());
+            let hashed_leaf = keccak_256(&encode_packed(&[Token::Bytes(addr.as_bytes().into())]));
+            let vset = match Self::current_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x,
+            };
+            let current_validator_set_len = match Self::current_validator_set() {
+                None => fail!(Error::<T>::PalletNotInitialized),
+                Some(x) => x.length,
+            };
             merkle_proof::verify_merkle_leaf_at_position(
                 vset.root,
                 hashed_leaf,
                 pos,
-                Self::current_validator_set().length,
+                current_validator_set_len,
                 proof,
-            ).map_err(Self::map_merkle_proof_error)?;
+            )
+            .map_err(Self::map_merkle_proof_error)?;
             Ok(().into())
         }
 
-        pub fn random_n_bits_with_prior_check(
+        fn random_n_bits_with_prior_check(
             prior: &BitField,
             n: u128,
             length: u128,
@@ -632,7 +580,7 @@ pub mod pallet {
                 MerklePositionTooHigh => Error::<T>::MerklePositionTooHigh,
                 MerkleProofTooShort => Error::<T>::MerkleProofTooShort,
                 MerkleProofTooHigh => Error::<T>::MerkleProofTooHigh,
-                RootComputedHasgNotEqual => Error::<T>::ValidatorSetIncorrectPosition,
+                RootComputedHashNotEqual => Error::<T>::ValidatorSetIncorrectPosition,
             }
         }
     }

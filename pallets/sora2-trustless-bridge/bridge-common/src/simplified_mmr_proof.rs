@@ -28,31 +28,61 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*};
-use bridge_common::beefy_types::ValidatorSet;
-use frame_support::{assert_ok};
-use hex_literal::hex;
+use codec::{Decode, Encode};
+use ethabi::{encode_packed, Token};
+use frame_support::log;
+use frame_support::RuntimeDebug;
+use scale_info::prelude::vec::Vec;
+use sp_io::hashing::keccak_256;
 
-#[test]
-fn it_works_initialize_pallet() {
-    new_test_ext().execute_with(|| {
-        let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
-        assert_ok!(
-            BeefyLightClient::initialize(
-                Origin::root(),
-                1,
-                ValidatorSet {
-                    id: 0,
-                    length: 3,
-                    root,
-                },
-                ValidatorSet {
-                    id: 1,
-                    length: 3,
-                    root,
-                }
-            ),
-            ().into()
-        )
-    });
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
+pub struct SimplifiedMMRProof {
+    pub merkle_proof_items: Vec<[u8; 32]>,
+    pub merkle_proof_order_bit_field: u64,
+}
+
+pub fn verify_inclusion_proof(
+    root: [u8; 32],
+    leaf_node_hash: [u8; 32],
+    proof: SimplifiedMMRProof,
+) -> bool {
+    if proof.merkle_proof_items.len() >= 64 {
+        return false;
+    }
+    log::debug!("verify_inclusion_proof: proof: {:?}", proof);
+    root == calculate_merkle_root(
+        leaf_node_hash,
+        proof.merkle_proof_items,
+        proof.merkle_proof_order_bit_field,
+    )
+}
+
+pub fn bit(self_val: u64, index: u64) -> bool {
+    ((self_val >> index) & 1) as u8 == 1
+}
+
+pub fn calculate_merkle_root(
+    leaf_node_hash: [u8; 32],
+    merkle_proof_items: Vec<[u8; 32]>,
+    merkle_proof_order_bit_field: u64,
+) -> [u8; 32] {
+    let mut current_hash = leaf_node_hash;
+    for current_position in 0..merkle_proof_items.len() {
+        let is_sibling_left = bit(merkle_proof_order_bit_field, current_position as u64);
+        let sibling = merkle_proof_items[current_position];
+        current_hash = if is_sibling_left {
+            keccak_256(&encode_packed(&[
+                Token::Bytes(sibling.into()),
+                Token::Bytes(current_hash.into()),
+            ]))
+        } else {
+            keccak_256(&encode_packed(&[
+                Token::Bytes(current_hash.into()),
+                Token::Bytes(sibling.into()),
+            ]))
+        };
+    }
+    current_hash
 }

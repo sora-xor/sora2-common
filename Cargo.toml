@@ -6,5 +6,5 @@ members = [
 	"pallets/sora2-trustless-bridge/beefy-light-client",
 	"pallets/sora2-trustless-bridge/beefy-light-client/rpc",
 	"pallets/sora2-trustless-bridge/beefy-light-client/runtime-api",
-	"pallets/sora2-trustless-bridge/common",
+	"pallets/sora2-trustless-bridge/bridge-common",
 ]

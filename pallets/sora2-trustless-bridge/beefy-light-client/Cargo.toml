@@ -14,7 +14,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
 scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
-bridge-common = { path = "../common", default-features = false }
+bridge-common = { path = "../bridge-common", default-features = false }
 serde = { version = "1.0", features = [
     "alloc",
     "derive",
@@ -25,33 +25,18 @@ frame-benchmarking = { git = "https://github.com/sora-xor/substrate.git", branch
 frame-support = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 frame-system = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-io = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-# sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, features = ["full_crypto"] }
-# sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false, features = [
-#     "full_crypto",
-# ] }
 sp-core = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false}
 
 # Sora
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
-# common = { git = "https://github.com/sora-xor/sora2-network", default-features = false }
-
-#other
-getrandom = { version = "0.2.1", features = ["js"] }
-libsecp256k1 = { version = "0.7.1", default-features = false, features = ["static-context"] }
-# secp256k1 = { version = "0.7", features = [
-#     'hmac',
-# ], default-features = false, package = "libsecp256k1" }
-
-# ethereum-types = { version = "0.13.1", default-features = false, features = [
-#   "codec",
-#   "rlp",
-#   "serialize",
-# ] }
+ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false features = [
+    "alloc",
+] }
 
 [dev-dependencies]
 # Substrate
 
 sp-runtime = { git = "https://github.com/sora-xor/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+hex-literal = "0.3.1"
 
 [features]
 default = ["std"]
