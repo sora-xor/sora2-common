@@ -39,9 +39,9 @@ impl rlp::Decodable for Log {
     }
 }
 
-impl Into<RawLog> for Log {
-    fn into(self) -> RawLog {
-        RawLog::from((self.topics, self.data))
+impl From<Log> for RawLog {
+    fn from(log: Log) -> Self {
+        RawLog::from((log.topics, log.data))
     }
 }
 

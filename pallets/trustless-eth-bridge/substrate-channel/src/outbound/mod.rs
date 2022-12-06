@@ -24,7 +24,7 @@ mod benchmarking;
 mod test;
 
 /// Wire-format for commitment
-#[derive(Encode, Decode, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct Commitment<Balance> {
     /// Messages passed through the channel in the current commit.
@@ -219,13 +219,13 @@ pub mod pallet {
             let commitment_hash = <T as Config>::Hashing::hash(&encoded_commitment);
             let digest_item = AuxiliaryDigestItem::Commitment(
                 GenericNetworkId::Sub(network_id),
-                commitment_hash.clone(),
+                commitment_hash,
             )
             .into();
             <frame_system::Pallet<T>>::deposit_log(digest_item);
 
             let key = Self::make_offchain_key(commitment_hash);
-            offchain_index::set(&*key, &encoded_commitment);
+            offchain_index::set(&key, &encoded_commitment);
 
             <T as Config>::WeightInfo::on_initialize(
                 messages_count as u32,
@@ -264,8 +264,8 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            Fee::<T>::set(self.fee.clone());
-            Interval::<T>::set(self.interval.clone());
+            Fee::<T>::set(self.fee);
+            Interval::<T>::set(self.interval);
         }
     }
 

@@ -65,7 +65,7 @@ where
     type Success = OriginOutput;
 
     fn try_origin(o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
-        o.into().and_then(|o| Ok(o.origin))
+        o.into().map(|o| o.origin)
     }
 
     #[cfg(feature = "runtime-benchmarks")]

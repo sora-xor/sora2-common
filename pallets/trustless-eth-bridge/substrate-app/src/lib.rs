@@ -41,9 +41,9 @@ pub use weights::WeightInfo;
 
 pub use pallet::*;
 
-impl<T: Config> Into<Call<T>> for SubstrateAppMessage<T::AccountId, AssetIdOf<T>, BalanceOf<T>> {
-    fn into(self) -> Call<T> {
-        match self {
+impl<T: Config> From<SubstrateAppMessage<T::AccountId, AssetIdOf<T>, BalanceOf<T>>> for Call<T> {
+    fn from(value: SubstrateAppMessage<T::AccountId, AssetIdOf<T>, BalanceOf<T>>) -> Self {
+        match value {
             SubstrateAppMessage::Transfer {
                 sender,
                 recipient,
@@ -286,7 +286,7 @@ pub mod pallet {
             let bridge_account = Self::bridge_account()?;
 
             let asset_id =
-                T::AssetRegistry::register_asset(bridge_account.clone(), name, symbol, decimals)?;
+                T::AssetRegistry::register_asset(bridge_account, name, symbol, decimals)?;
 
             Self::register_asset_inner(
                 network_id,
@@ -305,7 +305,7 @@ pub mod pallet {
             sidechain_asset: ParachainAssetId,
             asset_kind: AssetKind,
         ) -> DispatchResult {
-            AssetKinds::<T>::insert(&network_id, &asset_id, &asset_kind);
+            AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
 
             T::OutboundChannel::submit(
                 network_id,
@@ -332,7 +332,7 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
-            let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
+            let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let bridge_account = Self::bridge_account()?;
 

@@ -99,6 +99,7 @@ impl From<SubNetworkId> for GenericNetworkId {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum GenericAccount<AccountId> {
     EVM(H160),
@@ -106,7 +107,7 @@ pub enum GenericAccount<AccountId> {
     Parachain(xcm::VersionedMultiLocation),
 }
 
-pub const CHANNEL_INDEXING_PREFIX: &'static [u8] = b"commitment";
+pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"commitment";
 
 pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
 where

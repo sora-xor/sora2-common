@@ -23,4 +23,3 @@ anyhow = "1.0"
 
 substrate-bridge-channel = { path = "../" }
 bridge-types = { path = "../../types" }
-common = { path = "../../../../common" }

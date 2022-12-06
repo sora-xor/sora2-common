@@ -19,7 +19,7 @@ const DIFFICULTY_BOUND_DIVISOR: u32 = 11;
 const EXP_DIFFICULTY_PERIOD: u64 = 100000;
 const MINIMUM_DIFFICULTY: u32 = 131072;
 
-#[derive(PartialEq, RuntimeDebug)]
+#[derive(PartialEq, Eq, RuntimeDebug)]
 pub enum BombDelay {
     // See https://eips.ethereum.org/EIPS/eip-649
     Byzantium = 3000000,
@@ -37,7 +37,7 @@ pub enum BombDelay {
 
 /// Describes when hard forks occurred in Ethereum Mainnet based networks
 /// that affect difficulty calculations. These values are network-specific.
-#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ForkConfig {
     // Block number on which Byzantium (EIP-649) rules activated
@@ -123,7 +123,7 @@ impl ForkConfig {
 
 /// Describes when hard forks occurred in Ethereum Classic based networks
 /// that affect difficulty calculations. These values are network-specific.
-#[derive(Copy, Clone, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassicForkConfig {
     // https://ecips.ethereumclassic.org/ECIPs/ecip-1041
@@ -183,7 +183,7 @@ pub fn calc_difficulty(
     let mut difficulty_without_exp = parent.difficulty;
     if sigma2 < 0 {
         difficulty_without_exp -=
-            (parent.difficulty >> DIFFICULTY_BOUND_DIVISOR) * sigma2.abs() as u64;
+            (parent.difficulty >> DIFFICULTY_BOUND_DIVISOR) * sigma2.unsigned_abs();
     } else {
         difficulty_without_exp += (parent.difficulty >> DIFFICULTY_BOUND_DIVISOR) * sigma2 as u64;
     }
@@ -238,8 +238,8 @@ mod tests {
         match StringOrInt::<T>::deserialize(deserializer)? {
             StringOrInt::String(s) => {
                 let maybe_uint = {
-                    if (&s).starts_with("0x") {
-                        u128::from_str_radix(&s.trim_start_matches("0x"), 16)
+                    if s.starts_with("0x") {
+                        u128::from_str_radix(s.trim_start_matches("0x"), 16)
                     } else {
                         u128::from_str_radix(&s, 10)
                     }
@@ -254,7 +254,7 @@ mod tests {
     }
 
     /// Test case in `fixtures/tests/BasicTests/difficulty*.json` with explicit parent uncles hash.
-    #[derive(Debug, PartialEq, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct BasicTestCase {
         /// Parent timestamp.
@@ -291,7 +291,7 @@ mod tests {
     }
 
     /// Test case in `fixtures/tests/DifficultyTests/*.json` with parent uncles hash set as flag.
-    #[derive(Debug, PartialEq, Deserialize)]
+    #[derive(Debug, PartialEq, Eq, Deserialize)]
     #[serde(rename_all = "camelCase")]
     pub struct DifficultyTestCase {
         /// Parent timestamp.

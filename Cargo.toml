@@ -11,4 +11,5 @@ members = [
     "pallets/trustless-eth-bridge/types",
     "pallets/trustless-eth-bridge/substrate-app",
     "pallets/trustless-eth-bridge/substrate-channel",
+    "pallets/trustless-eth-bridge/substrate-channel/rpc",
 ]

@@ -169,7 +169,7 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-const INDEXING_PREFIX: &'static [u8] = b"commitment";
+const INDEXING_PREFIX: &[u8] = b"commitment";
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u64 = 2048;
@@ -241,7 +241,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
 
     let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bob.clone(), 1_000_000_000_000_000_000)],
+        balances: vec![(bob, 1_000_000_000_000_000_000)],
     }
     .assimilate_storage(&mut storage)
     .unwrap();

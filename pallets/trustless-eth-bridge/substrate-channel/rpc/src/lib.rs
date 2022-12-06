@@ -31,7 +31,6 @@
 use bridge_types::CHANNEL_INDEXING_PREFIX;
 use codec::{Decode, Encode};
 
-use common::Balance;
 use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
 use sp_api::offchain::OffchainStorage;
 
@@ -39,7 +38,7 @@ use sp_core::H256;
 pub use substrate_bridge_channel::outbound::Commitment;
 
 #[rpc(server, client)]
-pub trait BridgeChannelAPI {
+pub trait BridgeChannelAPI<Balance> {
     #[method(name = "intentivizedChannel_commitment")]
     fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment<Balance>>>;
 }
@@ -55,9 +54,10 @@ impl<S> BridgeChannelClient<S> {
     }
 }
 
-impl<S> BridgeChannelAPIServer for BridgeChannelClient<S>
+impl<S, Balance> BridgeChannelAPIServer<Balance> for BridgeChannelClient<S>
 where
     S: OffchainStorage + 'static,
+    Balance: Decode,
 {
     fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment<Balance>>> {
         let key = (CHANNEL_INDEXING_PREFIX, commitment_hash).encode();
@@ -66,6 +66,6 @@ where
             .get(sp_offchain::STORAGE_PREFIX, &key)
             .map(|value| Decode::decode(&mut &*value))
             .transpose()
-            .map_err(|err| anyhow::Error::from(err))?)
+            .map_err(anyhow::Error::from)?)
     }
 }

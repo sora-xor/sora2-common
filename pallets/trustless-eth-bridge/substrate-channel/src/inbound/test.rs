@@ -236,7 +236,7 @@ pub fn new_tester_with_config(
 
     let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bob.clone(), 1_000_000_000_000_000_000)],
+        balances: vec![(bob, 1_000_000_000_000_000_000)],
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -275,7 +275,7 @@ fn test_submit() {
             payload: Default::default(),
         };
         assert_ok!(BridgeInboundChannel::submit(
-            origin.clone(),
+            origin,
             BASE_NETWORK_ID,
             message_2
         ));
@@ -307,7 +307,7 @@ fn test_submit_with_invalid_nonce() {
 
         // Submit the same again
         assert_noop!(
-            BridgeInboundChannel::submit(origin.clone(), BASE_NETWORK_ID, message.clone()),
+            BridgeInboundChannel::submit(origin, BASE_NETWORK_ID, message),
             Error::<Test>::InvalidNonce
         );
     });
@@ -360,7 +360,7 @@ fn test_submit_with_invalid_network_id() {
             payload: Default::default(),
         };
         assert_noop!(
-            BridgeInboundChannel::submit(origin.clone(), SubNetworkId::Kusama, message.clone()),
+            BridgeInboundChannel::submit(origin, SubNetworkId::Kusama, message),
             Error::<Test>::InvalidNetwork
         );
     });

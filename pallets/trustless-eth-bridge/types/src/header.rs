@@ -16,7 +16,9 @@ use ethereum_types::{Address, H256, H64, U256};
 use crate::{mpt, receipt};
 
 /// Complete block header id.
-#[derive(Clone, Copy, Default, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Clone, Copy, Default, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo,
+)]
 pub struct HeaderId {
     /// Header number.
     pub number: u64,
@@ -28,7 +30,7 @@ pub const EMPTY_OMMERS_HASH: [u8; 32] =
     hex!("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347");
 
 /// An Ethereum block header.
-#[derive(Clone, Default, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Default, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct Header {
     /// Parent block hash.
@@ -90,7 +92,7 @@ impl Header {
     }
 
     pub fn apply_merkle_proof(&self, proof: &[Vec<u8>]) -> Option<(H256, Vec<u8>)> {
-        let mut iter = proof.into_iter().rev();
+        let mut iter = proof.iter().rev();
         let first_bytes = match iter.next() {
             Some(b) => b,
             None => return None,
@@ -143,7 +145,7 @@ impl Header {
     }
 
     /// Returns header RLP with or without seals.
-    ///	For EIP-1559 baseFee addition refer to:
+    /// For EIP-1559 baseFee addition refer to:
     /// https://github.com/openethereum/openethereum/blob/193b25a22d5ff07759c6431129e95235510516f9/crates/ethcore/types/src/header.rs#L341
     fn rlp(&self, with_seal: bool) -> Bytes {
         let mut s = RlpStream::new();

@@ -4,7 +4,7 @@ use ethbloom::Bloom;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
-#[derive(Clone, Default, Encode, Decode, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Clone, Default, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct Receipt {
     pub post_state_or_status: Vec<u8>,
     pub cumulative_gas_used: u64,
@@ -14,7 +14,7 @@ pub struct Receipt {
 
 impl Receipt {
     pub fn contains_log(&self, log: &Log) -> bool {
-        self.logs.iter().find(|&l| l == log).is_some()
+        self.logs.iter().any(|l| l == log)
     }
 
     fn decode_list(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {

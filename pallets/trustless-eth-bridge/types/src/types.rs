@@ -49,7 +49,7 @@ impl MessageId {
 pub type MessageNonce = u64;
 
 /// A message relayed from Ethereum.
-#[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct Message {
     /// The raw message data.
     pub data: Vec<u8>,
@@ -58,7 +58,7 @@ pub struct Message {
 }
 
 /// A message relayed from Parachain.
-#[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct ParachainMessage<Balance> {
     pub payload: Vec<u8>,
@@ -71,7 +71,7 @@ pub struct ParachainMessage<Balance> {
 ///
 /// This data type allows us to support multiple verification schemes. In the near future,
 /// A light-client scheme will be added too.
-#[derive(PartialEq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
 pub struct Proof {
     // The block hash of the block in which the receipt was included.
     pub block_hash: H256,
@@ -82,7 +82,7 @@ pub struct Proof {
     pub data: Vec<Vec<u8>>,
 }
 
-#[derive(Encode, Decode, Clone, Default, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct AuxiliaryDigest {
     pub logs: Vec<AuxiliaryDigestItem>,
@@ -101,16 +101,16 @@ impl From<Digest> for AuxiliaryDigest {
 }
 
 /// Auxiliary [`DigestItem`] to include in header digest.
-#[derive(Encode, Decode, Copy, Clone, PartialEq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
     Commitment(GenericNetworkId, H256),
 }
 
-impl Into<DigestItem> for AuxiliaryDigestItem {
-    fn into(self) -> DigestItem {
-        DigestItem::Other(self.encode())
+impl From<AuxiliaryDigestItem> for DigestItem {
+    fn from(item: AuxiliaryDigestItem) -> DigestItem {
+        DigestItem::Other(item.encode())
     }
 }
 

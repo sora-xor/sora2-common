@@ -146,7 +146,7 @@ pub mod pallet {
                 let message_id = MessageId::inbound(message.nonce);
                 T::MessageDispatch::dispatch(
                     network_id,
-                    message_id.into(),
+                    message_id,
                     message.timestamp,
                     &message.payload,
                     (),
@@ -212,6 +212,7 @@ pub mod pallet {
         pub reward_fraction: Perbill,
     }
 
+    #[allow(clippy::derivable_impls)]
     #[cfg(feature = "std")]
     impl Default for GenesisConfig {
         fn default() -> Self {

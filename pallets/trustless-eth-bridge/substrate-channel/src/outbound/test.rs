@@ -186,7 +186,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let bob: AccountId = Keyring::Bob.into();
 
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bob.clone(), 1u32.into())],
+        balances: vec![(bob, 1u32.into())],
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -208,7 +208,7 @@ fn test_submit() {
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
             &RawOrigin::Signed(who.clone()),
-            &vec![0, 1, 2],
+            &[0, 1, 2],
             ()
         ));
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
@@ -216,7 +216,7 @@ fn test_submit() {
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
             &RawOrigin::Signed(who),
-            &vec![0, 1, 2],
+            &[0, 1, 2],
             ()
         ));
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
@@ -236,7 +236,7 @@ fn test_submit_fees_burned() {
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
             &RawOrigin::Signed(who.clone()),
-            &vec![0, 1, 2],
+            &[0, 1, 2],
             ()
         ));
         assert_eq!(
@@ -258,7 +258,7 @@ fn test_submit_not_enough_funds() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who),
-                &vec![0, 1, 2],
+                &[0, 1, 2],
                 ()
             ),
             pallet_balances::Error::<Test>::InsufficientBalance
@@ -279,7 +279,7 @@ fn test_submit_exceeds_queue_limit() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who.clone()),
-                &vec![0, 1, 2],
+                &[0, 1, 2],
                 (),
             )
             .unwrap();
@@ -289,7 +289,7 @@ fn test_submit_exceeds_queue_limit() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who),
-                &vec![0, 1, 2],
+                &[0, 1, 2],
                 ()
             ),
             Error::<Test>::QueueSizeLimitReached,
@@ -338,7 +338,7 @@ fn test_submit_fails_on_nonce_overflow() {
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID,
                 &RawOrigin::Signed(who),
-                &vec![0, 1, 2],
+                &[0, 1, 2],
                 ()
             ),
             Error::<Test>::Overflow,
