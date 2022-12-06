@@ -1,7 +1,7 @@
 #![allow(deprecated)]
 
+use crate::H160;
 use ethabi::{Function, Param, ParamType, StateMutability, Token};
-use ethereum_types::H160;
 use frame_support::RuntimeDebug;
 use sp_std::prelude::*;
 

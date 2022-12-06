@@ -1,9 +1,9 @@
 //! Types for representing messages
 
 use crate::H256;
+use crate::{H160, U256};
 use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
-use ethereum_types::{H160, U256};
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
