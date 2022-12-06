@@ -177,7 +177,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "hex-literal",
- "libsecp256k1",
  "parity-scale-codec",
  "scale-info",
  "serde",
