@@ -171,6 +171,7 @@ name = "beefy-light-client"
 version = "0.1.0"
 dependencies = [
  "bridge-common",
+ "bridge-types",
  "ethabi 13.0.0",
  "frame-benchmarking",
  "frame-support",

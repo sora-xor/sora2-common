@@ -85,6 +85,7 @@ impl system::Config for Test {
 }
 
 impl beefy_light_client::Config for Test {
+    type Message = ();
     type Event = Event;
     type Randomness = BeefyLightClient;
 }

@@ -30,15 +30,16 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bridge_common::{beefy_types::*, bitfield};
+use bridge_common::{beefy_types::*, bitfield, simplified_mmr_proof::SimplifiedMMRProof};
+use bridge_types::types::AuxiliaryDigest;
 use codec::Encode;
 use frame_support::log;
 use frame_support::traits::Randomness;
 use libsecp256k1::{Message, PublicKey, Signature};
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
+use sp_core::H256;
 use sp_io::hashing::keccak_256;
-use sp_core::{H256};
 
 pub use bitfield::BitField;
 
@@ -56,14 +57,19 @@ mod benchmarking;
 //     EthAddress::from_slice(&hash[12..])
 // }
 
-fn recover_signature(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<EthAddress> {
-    use sp_io::{
-        crypto::secp256k1_ecdsa_recover,
-    };
+pub struct ProvedSubstrateBridgeMessage<Message> {
+    message: Message,
+    proof: SimplifiedMMRProof,
+    leaf: BeefyMMRLeaf,
+    digest: AuxiliaryDigest,
+}
 
-	secp256k1_ecdsa_recover(sig, msg_hash)
-		.map(|pubkey| EthAddress::from(H256::from_slice(&keccak_256(&pubkey))))
-		.ok()
+fn recover_signature(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<EthAddress> {
+    use sp_io::crypto::secp256k1_ecdsa_recover;
+
+    secp256k1_ecdsa_recover(sig, msg_hash)
+        .map(|pubkey| EthAddress::from(H256::from_slice(&keccak_256(&pubkey))))
+        .ok()
 }
 
 impl<T: Config> Randomness<sp_core::H256, T::BlockNumber> for Pallet<T> {
@@ -81,6 +87,8 @@ impl<T: Config> Randomness<sp_core::H256, T::BlockNumber> for Pallet<T> {
 pub mod pallet {
     use super::*;
     use bridge_common::{merkle_proof, simplified_mmr_proof::*};
+    use bridge_types::types::AuxiliaryDigestItem;
+    use bridge_types::{GenericNetworkId, SubNetworkId};
     use ethabi::{encode_packed, Token};
     use frame_support::fail;
     use frame_support::pallet_prelude::OptionQuery;
@@ -99,6 +107,7 @@ pub mod pallet {
     pub trait Config: frame_system::Config {
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type Randomness: frame_support::traits::Randomness<Self::Hash, Self::BlockNumber>;
+        type Message: Parameter;
     }
 
     #[pallet::pallet]
@@ -157,6 +166,8 @@ pub mod pallet {
         MerkleProofTooShort,
         MerkleProofTooHigh,
         PalletNotInitialized,
+        InvalidDigestHash,
+        CommitmentNotFoundInDigest,
     }
 
     #[pallet::hooks]
@@ -238,6 +249,41 @@ pub mod pallet {
                 latest_mmr_leaf.next_authority_set_root,
             )?;
             Ok(().into())
+        }
+    }
+
+    impl<T: Config>
+        bridge_types::traits::Verifier<SubNetworkId, ProvedSubstrateBridgeMessage<T::Message>>
+        for Pallet<T>
+    {
+        type Result = T::Message;
+        fn verify(
+            network_id: SubNetworkId,
+            message: &ProvedSubstrateBridgeMessage<T::Message>,
+        ) -> Result<Self::Result, DispatchError> {
+            Self::verify_mmr_leaf(&message.leaf, &message.proof)?;
+            let digest_hash = message.digest.using_encoded(keccak_256);
+            ensure!(
+                digest_hash == message.leaf.digest_hash,
+                Error::<T>::InvalidMMRProof
+            );
+            let commitment_hash = message.message.using_encoded(keccak_256);
+            let count = message
+                .digest
+                .logs
+                .iter()
+                .filter(|x| {
+                    let AuxiliaryDigestItem::Commitment(log_network_id, log_commitment_hash) = x;
+                    if let GenericNetworkId::Sub(log_network_id) = log_network_id {
+                        return *log_network_id == network_id
+                            && commitment_hash == log_commitment_hash.0;
+                    }
+                    false
+                })
+                .count();
+            ensure!(count == 1, Error::<T>::CommitmentNotFoundInDigest);
+
+            Ok(message.message.clone())
         }
     }
 
@@ -324,7 +370,6 @@ pub mod pallet {
             Self::get_required_number_of_signatures(len)
         }
 
-
         /* Private Functions */
 
         fn verity_newest_mmr_leaf(
@@ -341,10 +386,20 @@ pub mod pallet {
             Ok(().into())
         }
 
-        fn process_payload(
-            payload: &[u8; 32],
-            block_number: u64,
-        ) -> DispatchResultWithPostInfo {
+        fn verify_mmr_leaf(leaf: &BeefyMMRLeaf, proof: &SimplifiedMMRProof) -> DispatchResult {
+            let encoded_leaf = Self::encode_mmr_leaf(leaf.clone());
+            let hash_leaf = Self::hash_mmr_leaf(encoded_leaf);
+            let proof = proof.clone();
+            let root = calculate_merkle_root(
+                hash_leaf,
+                proof.merkle_proof_items,
+                proof.merkle_proof_order_bit_field,
+            );
+            ensure!(Self::is_known_root(root), Error::<T>::InvalidMMRProof);
+            Ok(().into())
+        }
+
+        fn process_payload(payload: &[u8; 32], block_number: u64) -> DispatchResultWithPostInfo {
             ensure!(
                 block_number > Self::latest_beefy_block(),
                 Error::<T>::PayloadBlocknumberTooOld
@@ -498,7 +553,7 @@ pub mod pallet {
 
             // let mes = Self::prepare_message(&commitment_hash)?;
             // log::debug!("============= SIGNATURE LEN: {:?}", signature.len());
-            
+
             // let sig = match Signature::parse_standard_slice(&signature[0..64]) {
             //     Err(e) => {
             //         log::debug!("WRONG SIGNATURE: {:?}", e);

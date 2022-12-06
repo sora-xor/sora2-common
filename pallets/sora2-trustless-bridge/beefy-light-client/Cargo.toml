@@ -12,12 +12,17 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive"], default-features = false }
-scale-info = { version = "2.0.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.0.0", features = [
+	"derive",
+], default-features = false }
+scale-info = { version = "2.0.0", default-features = false, features = [
+	"derive",
+] }
 bridge-common = { path = "../bridge-common", default-features = false }
+bridge-types = { path = "../../trustless-eth-bridge/types", default-features = false }
 serde = { version = "1.0", features = [
-    "alloc",
-    "derive",
+	"alloc",
+	"derive",
 ], default-features = false }
 
 # Substrate
@@ -25,16 +30,18 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate", default-
 frame-support = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
 frame-system = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
 sp-io = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "polkadot-v0.9.28" }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false}
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.28", default-features = false }
 
 # Sora
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "polkadot-v0.9.28", package = "ethabi", default-features = false, features = [
-    "alloc",
+	"alloc",
 ] }
 
 #other
 # getrandom = { version = "0.2.1", features = ["js"] }
-libsecp256k1 = { version = "0.7.1", default-features = false, features = ["static-context"] }
+libsecp256k1 = { version = "0.7.1", default-features = false, features = [
+	"static-context",
+] }
 
 [dev-dependencies]
 # Substrate
@@ -56,4 +63,4 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 ]
-try-runtime = [ "frame-support/try-runtime" ]
+try-runtime = ["frame-support/try-runtime"]
