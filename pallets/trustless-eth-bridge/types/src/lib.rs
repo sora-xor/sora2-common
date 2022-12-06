@@ -17,7 +17,7 @@ pub mod types;
 pub mod test_utils;
 
 use codec::{Decode, Encode};
-pub use ethereum_types::{Address, H160, H256, H64, U256};
+pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
 use frame_support::RuntimeDebug;
 use sp_std::vec;
 use sp_std::vec::Vec;

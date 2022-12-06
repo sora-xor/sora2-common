@@ -2,11 +2,11 @@
 //!
 //! Common traits and types
 
+use crate::H256;
 use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
     GenericAccount, GenericNetworkId,
 };
-use ethereum_types::H256;
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
     Parameter,

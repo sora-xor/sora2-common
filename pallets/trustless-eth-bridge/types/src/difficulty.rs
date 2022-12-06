@@ -1,5 +1,5 @@
 use crate::header::Header;
-use ethereum_types::U256;
+use crate::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::convert::TryFrom;
 

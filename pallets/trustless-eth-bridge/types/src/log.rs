@@ -1,6 +1,6 @@
+use crate::{H160, H256};
 use codec::{Decode, Encode};
 use ethabi::RawLog;
-use ethereum_types::{H160, H256};
 use sp_std::prelude::*;
 
 #[derive(Clone, Debug, Encode, Decode, PartialEq, Eq, Default, scale_info::TypeInfo)]

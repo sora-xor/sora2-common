@@ -1,6 +1,6 @@
 //! Helper types to work with Ethereum's Merkle Patricia Trie nodes
 
-use ethereum_types::H256;
+use crate::H256;
 use sp_std::convert::TryFrom;
 use sp_std::prelude::*;
 
