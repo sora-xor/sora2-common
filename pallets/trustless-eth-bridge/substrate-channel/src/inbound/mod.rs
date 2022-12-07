@@ -27,8 +27,8 @@ pub mod pallet {
     use super::*;
     use bridge_types::types::ParachainMessage;
     use frame_support::log::{debug, warn};
-    use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
+    use frame_support::{pallet_prelude::*, Parameter};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::CheckedSub;
     use sp_std::prelude::*;
@@ -47,9 +47,12 @@ pub mod pallet {
         /// Verifier module for message verification.
         type Verifier: Verifier<
             SubNetworkId,
-            ParachainMessage<BalanceOf<Self>>,
+            Self::ProvedMessage,
             Result = Vec<ParachainMessage<BalanceOf<Self>>>,
         >;
+
+        /// Message with proof
+        type ProvedMessage: Parameter;
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
@@ -123,7 +126,7 @@ pub mod pallet {
         pub fn submit(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
-            message: ParachainMessage<BalanceOf<T>>,
+            message: T::ProvedMessage,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);
