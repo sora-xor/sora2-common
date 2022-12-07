@@ -32,11 +32,13 @@
 
 use bridge_common::{beefy_types::*, bitfield, simplified_mmr_proof::SimplifiedMMRProof};
 use bridge_types::types::AuxiliaryDigest;
+use codec::Decode;
 use codec::Encode;
 use frame_support::log;
 use frame_support::traits::Randomness;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
+use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
 
@@ -51,6 +53,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ProvedSubstrateBridgeMessage<Message> {
     message: Message,
     proof: SimplifiedMMRProof,
