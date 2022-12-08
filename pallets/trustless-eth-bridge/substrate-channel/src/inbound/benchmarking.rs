@@ -31,6 +31,7 @@ fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::Event
 // We rely on configuration via chain spec of the app pallets because
 // we don't have access to their storage here.
 benchmarks! {
+    where_clause { where T::ProvedMessage: From<ParachainMessage<BalanceOf<T>>> }
     // Benchmark `submit` extrinsic under worst case conditions:
     // * `submit` dispatches the DotApp::unlock call
     // * `unlock` call successfully unlocks DOT
@@ -43,7 +44,7 @@ benchmarks! {
             fee,
             payload: Default::default(),
         };
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message)
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message.into())
     verify {
         assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
