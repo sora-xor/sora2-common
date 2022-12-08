@@ -36,6 +36,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::traits::AuxiliaryDigestHandler;
     use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::traits::OutboundChannel;
     use bridge_types::types::AuxiliaryDigestItem;
@@ -79,6 +80,8 @@ pub mod pallet {
             Self::AccountId,
             BalanceOf<Self>,
         >;
+
+        type AuxiliaryDigestHandler: AuxiliaryDigestHandler;
 
         type Currency: MultiCurrency<Self::AccountId>;
 
@@ -217,12 +220,9 @@ pub mod pallet {
             let messages_count = commitment.messages.len();
             let encoded_commitment = commitment.encode();
             let commitment_hash = <T as Config>::Hashing::hash(&encoded_commitment);
-            let digest_item = AuxiliaryDigestItem::Commitment(
-                GenericNetworkId::Sub(network_id),
-                commitment_hash,
-            )
-            .into();
-            <frame_system::Pallet<T>>::deposit_log(digest_item);
+            let digest_item =
+                AuxiliaryDigestItem::Commitment(GenericNetworkId::Sub(network_id), commitment_hash);
+            T::AuxiliaryDigestHandler::add_item(digest_item);
 
             let key = Self::make_offchain_key(commitment_hash);
             offchain_index::set(&key, &encoded_commitment);

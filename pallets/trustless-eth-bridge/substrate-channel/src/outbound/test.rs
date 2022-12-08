@@ -160,6 +160,7 @@ impl bridge_outbound_channel::Config for Test {
     type FeeCurrency = GetBaseAssetId;
     type FeeAccountId = GetFeeAccountId;
     type MessageStatusNotifier = ();
+    type AuxiliaryDigestHandler = ();
     type WeightInfo = ();
     type Currency = Currencies;
 }
@@ -255,12 +256,7 @@ fn test_submit_not_enough_funds() {
         Currencies::deposit(AssetId::XOR, &who, 50u32.into()).unwrap();
 
         assert_noop!(
-            BridgeOutboundChannel::submit(
-                BASE_NETWORK_ID,
-                &RawOrigin::Signed(who),
-                &[0, 1, 2],
-                ()
-            ),
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Signed(who), &[0, 1, 2], ()),
             pallet_balances::Error::<Test>::InsufficientBalance
         );
     })
@@ -286,12 +282,7 @@ fn test_submit_exceeds_queue_limit() {
         });
 
         assert_noop!(
-            BridgeOutboundChannel::submit(
-                BASE_NETWORK_ID,
-                &RawOrigin::Signed(who),
-                &[0, 1, 2],
-                ()
-            ),
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Signed(who), &[0, 1, 2], ()),
             Error::<Test>::QueueSizeLimitReached,
         );
     })
@@ -335,12 +326,7 @@ fn test_submit_fails_on_nonce_overflow() {
 
         <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
         assert_noop!(
-            BridgeOutboundChannel::submit(
-                BASE_NETWORK_ID,
-                &RawOrigin::Signed(who),
-                &[0, 1, 2],
-                ()
-            ),
+            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Signed(who), &[0, 1, 2], ()),
             Error::<Test>::Overflow,
         );
     });

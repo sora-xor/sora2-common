@@ -210,6 +210,7 @@ impl pallet_timestamp::Config for Test {
 impl bridge_inbound_channel::Config for Test {
     type Event = Event;
     type Verifier = MockVerifier;
+    type ProvedMessage = ParachainMessage<Balance>;
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = GetBaseAssetId;

@@ -12,4 +12,7 @@ members = [
     "pallets/trustless-eth-bridge/substrate-app",
     "pallets/trustless-eth-bridge/substrate-channel",
     "pallets/trustless-eth-bridge/substrate-channel/rpc",
+    "pallets/trustless-eth-bridge/leaf-provider",
+    "pallets/trustless-eth-bridge/leaf-provider/rpc",
+    "pallets/trustless-eth-bridge/leaf-provider/runtime-api",
 ]

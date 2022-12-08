@@ -2,6 +2,7 @@
 //!
 //! Common traits and types
 
+use crate::types::AuxiliaryDigestItem;
 use crate::H256;
 use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
@@ -162,4 +163,12 @@ pub trait BridgeAssetRegistry<AccountId, AssetId> {
         symbol: Self::AssetSymbol,
         decimals: Self::Decimals,
     ) -> Result<AssetId, DispatchError>;
+}
+
+pub trait AuxiliaryDigestHandler {
+    fn add_item(item: AuxiliaryDigestItem);
+}
+
+impl AuxiliaryDigestHandler for () {
+    fn add_item(_item: AuxiliaryDigestItem) {}
 }

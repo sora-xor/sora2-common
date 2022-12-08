@@ -192,6 +192,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type FeeCurrency = FeeCurrency;
     type Currency = Currencies;
     type MessageStatusNotifier = ();
+    type AuxiliaryDigestHandler = ();
     type WeightInfo = ();
 }
 
