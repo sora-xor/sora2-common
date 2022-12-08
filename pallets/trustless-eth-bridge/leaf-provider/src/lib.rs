@@ -50,6 +50,7 @@ pub mod pallet {
     use frame_support::traits::Randomness;
     use sp_runtime::traits;
     use sp_runtime::traits::Hash;
+    use sp_std::prelude::*;
 
     use crate::RANDOMNESS_SUBJECT;
 
