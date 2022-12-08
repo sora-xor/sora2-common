@@ -55,10 +55,10 @@ mod benchmarking;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ProvedSubstrateBridgeMessage<Message> {
-    message: Message,
-    proof: SimplifiedMMRProof,
-    leaf: BeefyMMRLeaf,
-    digest: AuxiliaryDigest,
+    pub message: Message,
+    pub proof: SimplifiedMMRProof,
+    pub leaf: BeefyMMRLeaf,
+    pub digest: AuxiliaryDigest,
 }
 
 fn recover_signature(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<EthAddress> {
