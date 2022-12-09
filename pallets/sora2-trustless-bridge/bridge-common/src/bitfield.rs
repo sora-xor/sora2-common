@@ -35,7 +35,7 @@ use core::{
 
 use bitvec::{prelude::*, ptr::BitSpanError};
 use codec::{Decode, Encode};
-use ethabi::{encode_packed, Token};
+use ethabi::{encode, Token};
 use frame_support::RuntimeDebug;
 use scale_info::prelude::vec::Vec;
 
@@ -88,7 +88,7 @@ impl BitField {
         let mut i = 0;
         while found < n {
             // for found in 0..n {
-            let randomness = sp_io::hashing::blake2_128(&encode_packed(&[Token::Bytes(
+            let randomness = sp_io::hashing::blake2_128(&encode(&[Token::Bytes(
                 (seed + i).to_be_bytes().to_vec(),
             )]));
 

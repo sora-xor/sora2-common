@@ -39,7 +39,7 @@ fn it_works_initialize_pallet() {
         let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
         assert_ok!(
             BeefyLightClient::initialize(
-                Origin::root(),
+                RuntimeOrigin::root(),
                 1,
                 ValidatorSet {
                     id: 0,
