@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
@@ -97,7 +127,8 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config<I: 'static = ()>: frame_system::Config {
         /// The overarching event type.
-        type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self, I>>
+            + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// The Id of the network (i.e. Ethereum network id).
         type NetworkId;
@@ -119,7 +150,7 @@ pub mod pallet {
         /// The overarching dispatch call type.
         type Call: Parameter
             + Dispatchable<
-                Origin = <Self as Config<I>>::Origin,
+                RuntimeOrigin = <Self as Config<I>>::Origin,
                 PostInfo = frame_support::dispatch::PostDispatchInfo,
             >;
 
@@ -194,8 +225,8 @@ pub mod pallet {
         #[cfg(feature = "runtime-benchmarks")]
         fn successful_dispatch_event(
             id: T::MessageId,
-        ) -> Option<<T as frame_system::Config>::Event> {
-            let event: <T as Config<I>>::Event =
+        ) -> Option<<T as frame_system::Config>::RuntimeEvent> {
+            let event: <T as Config<I>>::RuntimeEvent =
                 Event::<T, I>::MessageDispatched(id, Ok(())).into();
             Some(event.into())
         }
@@ -239,16 +270,16 @@ mod tests {
     }
 
     impl frame_system::Config for Test {
-        type Origin = Origin;
+        type RuntimeOrigin = RuntimeOrigin;
         type Index = u64;
-        type Call = Call;
+        type RuntimeCall = RuntimeCall;
         type BlockNumber = u64;
         type Hash = H256;
         type Hashing = BlakeTwo256;
         type AccountId = AccountId;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type BlockHashCount = BlockHashCount;
         type Version = ();
         type PalletInfo = PalletInfo;
@@ -266,24 +297,24 @@ mod tests {
     }
 
     pub struct CallFilter;
-    impl frame_support::traits::Contains<Call> for CallFilter {
-        fn contains(call: &Call) -> bool {
+    impl frame_support::traits::Contains<RuntimeCall> for CallFilter {
+        fn contains(call: &RuntimeCall) -> bool {
             match call {
-                Call::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
                 _ => false,
             }
         }
     }
 
     impl dispatch::Config for Test {
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type NetworkId = EVMChainId;
         type Additional = AdditionalEVMInboundData;
         type OriginOutput = types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
-        type Origin = Origin;
+        type Origin = RuntimeOrigin;
         type MessageId = types::MessageId;
         type Hashing = Keccak256;
-        type Call = Call;
+        type Call = RuntimeCall;
         type CallFilter = CallFilter;
     }
 
@@ -301,7 +332,7 @@ mod tests {
             let source = H160::repeat_byte(7);
 
             let message =
-                Call::System(frame_system::pallet::Call::<Test>::remark { remark: vec![] })
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { remark: vec![] })
                     .encode();
 
             System::set_block_number(1);
@@ -317,7 +348,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageDispatched(
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDispatched(
                         id,
                         Err(DispatchError::BadOrigin)
                     )),
@@ -348,7 +379,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageDecodeFailed(id)),
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDecodeFailed(id)),
                     topics: vec![],
                 }],
             );
@@ -362,7 +393,7 @@ mod tests {
             let source = H160::repeat_byte(7);
 
             let message =
-                Call::System(frame_system::pallet::Call::<Test>::set_code { code: vec![] })
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::set_code { code: vec![] })
                     .encode();
 
             System::set_block_number(1);
@@ -378,7 +409,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageRejected(id)),
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageRejected(id)),
                     topics: vec![],
                 }],
             );

@@ -1,3 +1,33 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 use bridge_types::traits::BridgeAssetRegistry;
 use codec::Decode;
 use codec::Encode;
@@ -82,8 +112,8 @@ impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -91,7 +121,7 @@ impl system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -111,7 +141,7 @@ parameter_types! {
 
 impl pallet_balances::Config for Test {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -128,7 +158,7 @@ parameter_type_with_key! {
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -140,6 +170,9 @@ impl tokens::Config for Test {
     type ReserveIdentifier = ();
     type OnNewTokenAccount = ();
     type OnKilledTokenAccount = ();
+    type OnDeposit = ();
+    type OnSlash = ();
+    type OnTransfer = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -158,14 +191,14 @@ parameter_types! {
 }
 
 impl dispatch::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type NetworkId = SubNetworkId;
     type Additional = ();
     type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
-    type Origin = Origin;
+    type Origin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
-    type Call = Call;
+    type Call = RuntimeCall;
     type CallFilter = Everything;
 }
 
@@ -184,7 +217,7 @@ parameter_types! {
 
 impl substrate_bridge_channel::outbound::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
@@ -221,7 +254,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 }
 
 impl substrate_app::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BridgeAccountId = GetBridgeAccountId;
     type MessageStatusNotifier = ();
     type CallOrigin = dispatch::EnsureAccount<
