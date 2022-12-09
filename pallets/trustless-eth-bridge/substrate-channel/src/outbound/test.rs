@@ -102,8 +102,8 @@ impl frame_system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -111,7 +111,7 @@ impl frame_system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -137,7 +137,7 @@ parameter_type_with_key! {
 
 impl pallet_balances::Config for Test {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -148,7 +148,7 @@ impl pallet_balances::Config for Test {
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -160,6 +160,9 @@ impl tokens::Config for Test {
     type ReserveIdentifier = ();
     type OnNewTokenAccount = ();
     type OnKilledTokenAccount = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -183,7 +186,7 @@ parameter_types! {
 
 impl bridge_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = b"commitment";
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
@@ -332,7 +335,7 @@ fn test_set_fee_not_authorized() {
     new_tester().execute_with(|| {
         let bob: AccountId = Keyring::Bob.into();
         assert_noop!(
-            BridgeOutboundChannel::set_fee(Origin::signed(bob), 1000u32.into()),
+            BridgeOutboundChannel::set_fee(RuntimeOrigin::signed(bob), 1000u32.into()),
             DispatchError::BadOrigin
         );
     });

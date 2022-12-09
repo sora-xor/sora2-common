@@ -72,7 +72,7 @@ pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
         additional: Additional,
     );
     #[cfg(feature = "runtime-benchmarks")]
-    fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::Event>;
+    fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::RuntimeEvent>;
 }
 
 pub trait AppRegistry<NetworkId, Source> {

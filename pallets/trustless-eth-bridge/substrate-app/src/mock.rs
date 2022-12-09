@@ -112,8 +112,8 @@ impl system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -121,7 +121,7 @@ impl system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -141,7 +141,7 @@ parameter_types! {
 
 impl pallet_balances::Config for Test {
     type Balance = Balance;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ExistentialDeposit;
     type AccountStore = System;
@@ -158,7 +158,7 @@ parameter_type_with_key! {
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -170,6 +170,9 @@ impl tokens::Config for Test {
     type ReserveIdentifier = ();
     type OnNewTokenAccount = ();
     type OnKilledTokenAccount = ();
+    type OnDeposit = ();
+    type OnSlash = ();
+    type OnTransfer = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -188,14 +191,14 @@ parameter_types! {
 }
 
 impl dispatch::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type NetworkId = SubNetworkId;
     type Additional = ();
     type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
-    type Origin = Origin;
+    type Origin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
-    type Call = Call;
+    type Call = RuntimeCall;
     type CallFilter = Everything;
 }
 
@@ -214,7 +217,7 @@ parameter_types! {
 
 impl substrate_bridge_channel::outbound::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
@@ -250,7 +253,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 }
 
 impl substrate_app::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BridgeAccountId = GetBridgeAccountId;
     type MessageStatusNotifier = ();
     type CallOrigin = dispatch::EnsureAccount<

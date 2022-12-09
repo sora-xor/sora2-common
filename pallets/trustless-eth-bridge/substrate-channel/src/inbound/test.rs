@@ -110,8 +110,8 @@ impl frame_system::Config for Test {
     type BaseCallFilter = Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -119,7 +119,7 @@ impl frame_system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
     type Version = ();
@@ -147,7 +147,7 @@ parameter_type_with_key! {
 
 impl pallet_balances::Config for Test {
     /// The ubiquitous event type.
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type MaxLocks = MaxLocks;
     /// The type for recording an account's balance.
     type Balance = Balance;
@@ -160,7 +160,7 @@ impl pallet_balances::Config for Test {
 }
 
 impl tokens::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = Balance;
     type Amount = Amount;
     type CurrencyId = AssetId;
@@ -172,6 +172,9 @@ impl tokens::Config for Test {
     type ReserveIdentifier = ();
     type OnNewTokenAccount = ();
     type OnKilledTokenAccount = ();
+    type OnSlash = ();
+    type OnDeposit = ();
+    type OnTransfer = ();
     type DustRemovalWhitelist = Everything;
 }
 
@@ -213,7 +216,9 @@ impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch 
     fn dispatch(_: SubNetworkId, _: MessageId, _: u64, _: &[u8], _: ()) {}
 
     #[cfg(feature = "runtime-benchmarks")]
-    fn successful_dispatch_event(_: MessageId) -> Option<<Test as frame_system::Config>::Event> {
+    fn successful_dispatch_event(
+        _: MessageId,
+    ) -> Option<<Test as frame_system::Config>::RuntimeEvent> {
         None
     }
 }
@@ -238,7 +243,7 @@ impl pallet_timestamp::Config for Test {
 }
 
 impl bridge_inbound_channel::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
@@ -280,7 +285,7 @@ pub fn new_tester_with_config(
 fn test_submit() {
     new_tester().execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message 1
         let message_1 = ParachainMessage {
@@ -318,7 +323,7 @@ fn test_submit() {
 fn test_submit_with_invalid_nonce() {
     new_tester().execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
         let message = ParachainMessage {
@@ -368,7 +373,7 @@ fn test_set_reward_fraction_not_authorized() {
         let bob: AccountId = Keyring::Bob.into();
         assert_noop!(
             BridgeInboundChannel::set_reward_fraction(
-                Origin::signed(bob),
+                RuntimeOrigin::signed(bob),
                 Perbill::from_percent(60)
             ),
             DispatchError::BadOrigin
@@ -380,7 +385,7 @@ fn test_set_reward_fraction_not_authorized() {
 fn test_submit_with_invalid_network_id() {
     new_tester().execute_with(|| {
         let relayer: AccountId = Keyring::Bob.into();
-        let origin = Origin::signed(relayer);
+        let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
         let message = ParachainMessage {

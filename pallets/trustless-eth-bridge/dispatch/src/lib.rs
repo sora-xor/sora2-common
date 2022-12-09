@@ -225,8 +225,8 @@ pub mod pallet {
         #[cfg(feature = "runtime-benchmarks")]
         fn successful_dispatch_event(
             id: T::MessageId,
-        ) -> Option<<T as frame_system::Config>::Event> {
-            let event: <T as Config<I>>::Event =
+        ) -> Option<<T as frame_system::Config>::RuntimeEvent> {
+            let event: <T as Config<I>>::RuntimeEvent =
                 Event::<T, I>::MessageDispatched(id, Ok(())).into();
             Some(event.into())
         }
@@ -270,16 +270,16 @@ mod tests {
     }
 
     impl frame_system::Config for Test {
-        type Origin = Origin;
+        type RuntimeOrigin = RuntimeOrigin;
         type Index = u64;
-        type Call = Call;
+        type RuntimeCall = RuntimeCall;
         type BlockNumber = u64;
         type Hash = H256;
         type Hashing = BlakeTwo256;
         type AccountId = AccountId;
         type Lookup = IdentityLookup<Self::AccountId>;
         type Header = Header;
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type BlockHashCount = BlockHashCount;
         type Version = ();
         type PalletInfo = PalletInfo;
@@ -297,24 +297,24 @@ mod tests {
     }
 
     pub struct CallFilter;
-    impl frame_support::traits::Contains<Call> for CallFilter {
-        fn contains(call: &Call) -> bool {
+    impl frame_support::traits::Contains<RuntimeCall> for CallFilter {
+        fn contains(call: &RuntimeCall) -> bool {
             match call {
-                Call::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
                 _ => false,
             }
         }
     }
 
     impl dispatch::Config for Test {
-        type Event = Event;
+        type RuntimeEvent = RuntimeEvent;
         type NetworkId = EVMChainId;
         type Additional = AdditionalEVMInboundData;
         type OriginOutput = types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
-        type Origin = Origin;
+        type Origin = RuntimeOrigin;
         type MessageId = types::MessageId;
         type Hashing = Keccak256;
-        type Call = Call;
+        type Call = RuntimeCall;
         type CallFilter = CallFilter;
     }
 
@@ -332,7 +332,7 @@ mod tests {
             let source = H160::repeat_byte(7);
 
             let message =
-                Call::System(frame_system::pallet::Call::<Test>::remark { remark: vec![] })
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { remark: vec![] })
                     .encode();
 
             System::set_block_number(1);
@@ -348,7 +348,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageDispatched(
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDispatched(
                         id,
                         Err(DispatchError::BadOrigin)
                     )),
@@ -379,7 +379,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageDecodeFailed(id)),
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDecodeFailed(id)),
                     topics: vec![],
                 }],
             );
@@ -393,7 +393,7 @@ mod tests {
             let source = H160::repeat_byte(7);
 
             let message =
-                Call::System(frame_system::pallet::Call::<Test>::set_code { code: vec![] })
+                RuntimeCall::System(frame_system::pallet::Call::<Test>::set_code { code: vec![] })
                     .encode();
 
             System::set_block_number(1);
@@ -409,7 +409,7 @@ mod tests {
                 System::events(),
                 vec![EventRecord {
                     phase: Phase::Initialization,
-                    event: Event::Dispatch(crate::Event::<Test>::MessageRejected(id)),
+                    event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageRejected(id)),
                     topics: vec![],
                 }],
             );
