@@ -125,7 +125,8 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::event]
-    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    // #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    // This pallet don't have events
     pub enum Event<T: Config> {}
 
     #[pallet::error]
