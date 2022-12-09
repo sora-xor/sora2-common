@@ -198,10 +198,7 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        /*
-        Internal calls to be used from Ethereum side.
-        DON'T CHANGE ORDER
-         */
+        // Internal calls to be used from Parachain side.
 
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -252,9 +249,7 @@ pub mod pallet {
             Ok(())
         }
 
-        /*
-        Common exstrinsics
-         */
+        // Common exstrinsics
 
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
