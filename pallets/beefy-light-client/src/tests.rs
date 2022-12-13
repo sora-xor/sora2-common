@@ -28,9 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*};
+use crate::mock::*;
 use bridge_common::beefy_types::ValidatorSet;
-use frame_support::{assert_ok};
+use frame_support::assert_ok;
 use hex_literal::hex;
 
 #[test]
