@@ -12,12 +12,21 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", features = ["derive", "bit-vec"], default-features = false }
-scale-info = { version = "2.0.0", default-features = false, features = ["derive", "bit-vec"] }
-bitvec = {version = "1", default-features = false, features = ["alloc", "serde"]}
+codec = { package = "parity-scale-codec", version = "3.0.0", features = [
+	"derive",
+	"bit-vec",
+], default-features = false }
+scale-info = { version = "2.0.0", default-features = false, features = [
+	"derive",
+	"bit-vec",
+] }
+bitvec = { version = "1", default-features = false, features = [
+	"alloc",
+	"serde",
+] }
 serde = { version = "1.0", features = [
-    "alloc",
-    "derive",
+	"alloc",
+	"derive",
 ], default-features = false }
 
 # Substrate
@@ -25,8 +34,9 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", bran
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false}
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+bridge-types = { path = "../../trustless-eth-bridge/types", default-features = false }
 
 [dev-dependencies]
 # Substrate
@@ -44,5 +54,7 @@ std = [
 	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
+	"beefy-primitives/std",
+	"bridge-types/std",
 ]
-try-runtime = [ "frame-support/try-runtime" ]
+try-runtime = ["frame-support/try-runtime"]

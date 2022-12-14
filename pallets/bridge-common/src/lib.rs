@@ -32,7 +32,6 @@
 
 pub mod beefy_types;
 pub mod bitfield;
-pub mod merkle_proof;
 pub mod simplified_mmr_proof;
 
 use scale_info::prelude::vec::Vec;

@@ -39,7 +39,7 @@ pub use substrate_bridge_channel::outbound::Commitment;
 
 #[rpc(server, client)]
 pub trait BridgeChannelAPI<Balance> {
-    #[method(name = "intentivizedChannel_commitment")]
+    #[method(name = "substrateBridgeChannel_commitment")]
     fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment<Balance>>>;
 }
 
