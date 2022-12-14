@@ -41,6 +41,10 @@ use scale_info::prelude::vec::Vec;
 use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_io::hashing::keccak_256;
+use sp_runtime::traits::Hash;
+use sp_runtime::traits::Keccak256;
+
+pub const RANDOMNESS_SUBJECT: &[u8] = b"beefy-light-client";
 
 pub use bitfield::BitField;
 
@@ -61,32 +65,34 @@ pub struct ProvedSubstrateBridgeMessage<Message> {
     pub digest: AuxiliaryDigest,
 }
 
-fn recover_signature(sig: &[u8; 65], msg_hash: &[u8; 32]) -> Option<EthAddress> {
+fn recover_signature(sig: &[u8; 65], msg_hash: &H256) -> Option<EthAddress> {
     use sp_io::crypto::secp256k1_ecdsa_recover;
 
-    secp256k1_ecdsa_recover(sig, msg_hash)
+    secp256k1_ecdsa_recover(sig, &msg_hash.0)
         .map(|pubkey| EthAddress::from(H256::from_slice(&keccak_256(&pubkey))))
         .ok()
 }
 
 impl<T: Config> Randomness<sp_core::H256, T::BlockNumber> for Pallet<T> {
-    fn random(_: &[u8]) -> (sp_core::H256, T::BlockNumber) {
-        let block_number = <frame_system::Pallet<T>>::block_number();
-        (Self::get_seed().into(), block_number)
+    fn random(subject: &[u8]) -> (sp_core::H256, T::BlockNumber) {
+        let (seed, block) = Self::latest_random_seed();
+        (
+            sp_runtime::traits::Keccak256::hash_of(&(subject, seed)),
+            block,
+        )
     }
 
     fn random_seed() -> (sp_core::H256, T::BlockNumber) {
-        Self::random(&[][..])
+        Self::latest_random_seed()
     }
 }
 
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_common::{merkle_proof, simplified_mmr_proof::*};
+    use bridge_common::simplified_mmr_proof::*;
     use bridge_types::types::AuxiliaryDigestItem;
     use bridge_types::{GenericNetworkId, SubNetworkId};
-    use ethabi::{encode, Token};
     use frame_support::fail;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
@@ -127,7 +133,8 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn latest_random_seed)]
-    pub type LatestRandomSeed<T> = StorageValue<_, [u8; 32], ValueQuery>;
+    pub type LatestRandomSeed<T> =
+        StorageValue<_, (H256, <T as frame_system::Config>::BlockNumber), ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn current_validator_set)]
@@ -165,6 +172,7 @@ pub mod pallet {
         PalletNotInitialized,
         InvalidDigestHash,
         CommitmentNotFoundInDigest,
+        MMRPayloadNotFound,
     }
 
     #[pallet::hooks]
@@ -231,19 +239,24 @@ pub mod pallet {
                 },
             };
             Self::verify_commitment(&commitment, &validator_proof, vset)?;
-            Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &commitment.payload, &proof)?;
-            Self::process_payload(&commitment.payload, commitment.block_number.into())?;
+            let payload = commitment
+                .payload
+                .get_decoded::<H256>(&beefy_primitives::known_payloads::MMR_ROOT_ID)
+                .ok_or(Error::<T>::MMRPayloadNotFound)?;
+            Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &payload.0, &proof)?;
+            Self::process_payload(&payload.0, commitment.block_number.into())?;
 
-            LatestRandomSeed::<T>::set(latest_mmr_leaf.random_seed);
+            let block_number = <frame_system::Pallet<T>>::block_number();
+            LatestRandomSeed::<T>::set((latest_mmr_leaf.leaf_extra.random_seed, block_number));
 
             Self::deposit_event(Event::VerificationSuccessful(
                 signer,
                 commitment.block_number,
             ));
             Self::apply_validator_set_changes(
-                latest_mmr_leaf.next_authority_set_id as u128,
-                latest_mmr_leaf.next_authority_set_len as u128,
-                latest_mmr_leaf.next_authority_set_root,
+                latest_mmr_leaf.beefy_next_authority_set.id as u128,
+                latest_mmr_leaf.beefy_next_authority_set.len as u128,
+                latest_mmr_leaf.beefy_next_authority_set.root,
             )?;
             Ok(().into())
         }
@@ -261,7 +274,7 @@ pub mod pallet {
             Self::verify_mmr_leaf(&message.leaf, &message.proof)?;
             let digest_hash = message.digest.using_encoded(keccak_256);
             ensure!(
-                digest_hash == message.leaf.digest_hash,
+                digest_hash == message.leaf.leaf_extra.digest_hash.0,
                 Error::<T>::InvalidMMRProof
             );
             let commitment_hash = message.message.using_encoded(keccak_256);
@@ -350,15 +363,6 @@ pub mod pallet {
         }
 
         #[inline]
-        pub fn get_seed() -> [u8; 32] {
-            let concated = bridge_common::concat_u8(&[
-                &Self::latest_random_seed(),
-                &Self::latest_beefy_block().to_be_bytes(),
-            ]);
-            keccak_256(&concated)
-        }
-
-        #[inline]
         pub fn required_number_of_signatures() -> u128 {
             let len = match Self::current_validator_set() {
                 None => 0,
@@ -374,26 +378,24 @@ pub mod pallet {
             root: &[u8; 32],
             proof: &SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
-            let encoded_leaf = Self::encode_mmr_leaf(leaf.clone());
-            let hash_leaf = Self::hash_mmr_leaf(encoded_leaf);
+            let hash_leaf = Keccak256::hash_of(&leaf);
             ensure!(
-                verify_inclusion_proof(*root, hash_leaf, proof.clone()),
+                verify_inclusion_proof(*root, hash_leaf.0, proof.clone()),
                 Error::<T>::InvalidMMRProof
             );
             Ok(().into())
         }
 
         fn verify_mmr_leaf(leaf: &BeefyMMRLeaf, proof: &SimplifiedMMRProof) -> DispatchResult {
-            let encoded_leaf = Self::encode_mmr_leaf(leaf.clone());
-            let hash_leaf = Self::hash_mmr_leaf(encoded_leaf);
+            let hash_leaf = Keccak256::hash_of(&leaf);
             let proof = proof.clone();
             let root = calculate_merkle_root(
-                hash_leaf,
+                hash_leaf.0,
                 proof.merkle_proof_items,
                 proof.merkle_proof_order_bit_field,
             );
             ensure!(Self::is_known_root(root), Error::<T>::InvalidMMRProof);
-            Ok(().into())
+            Ok(())
         }
 
         fn process_payload(payload: &[u8; 32], block_number: u64) -> DispatchResultWithPostInfo {
@@ -414,7 +416,7 @@ pub mod pallet {
         fn apply_validator_set_changes(
             next_authority_set_id: u128,
             next_authority_set_len: u128,
-            next_authority_set_root: [u8; 32],
+            next_authority_set_root: H256,
         ) -> DispatchResultWithPostInfo {
             let next_validator_set = match Self::next_validator_set() {
                 None => fail!(Error::<T>::PalletNotInitialized),
@@ -480,7 +482,7 @@ pub mod pallet {
                 random_bitfield.clone()
             );
             Self::verify_validator_proof_lengths(required_num_of_signatures, proof.clone())?;
-            let commitment_hash = Self::create_commitment_hash(commitment.clone());
+            let commitment_hash = Keccak256::hash_of(&commitment);
             Self::verify_validator_proof_signatures(
                 random_bitfield,
                 proof.clone(),
@@ -517,7 +519,7 @@ pub mod pallet {
             mut random_bitfield: BitField,
             proof: ValidatorProof,
             required_num_of_signatures: u128,
-            commitment_hash: [u8; 32],
+            commitment_hash: H256,
         ) -> DispatchResultWithPostInfo {
             let required_num_of_signatures = required_num_of_signatures as usize;
             for i in 0..required_num_of_signatures {
@@ -538,8 +540,8 @@ pub mod pallet {
             signature: Vec<u8>,
             position: u128,
             public_key: EthAddress,
-            public_key_merkle_proof: Vec<[u8; 32]>,
-            commitment_hash: [u8; 32],
+            public_key_merkle_proof: Vec<H256>,
+            commitment_hash: H256,
         ) -> DispatchResultWithPostInfo {
             ensure!(
                 random_bitfield.is_set(position as usize),
@@ -560,44 +562,11 @@ pub mod pallet {
             Ok(().into())
         }
 
-        fn create_commitment_hash(commitment: Commitment) -> [u8; 32] {
-            let concated = bridge_common::concat_u8(&[
-                &commitment.payload_prefix,
-                &MMR_ROOT_ID,
-                &[0x80],
-                &commitment.payload,
-                &commitment.payload_suffix,
-                &commitment.block_number.encode(),
-                &commitment.validator_set_id.encode(),
-            ]);
-            keccak_256(&concated)
-        }
-
-        fn encode_mmr_leaf(leaf: BeefyMMRLeaf) -> Vec<u8> {
-            // leaf.encode()
-            encode(&[
-                Token::Bytes(leaf.version.encode()),
-                Token::Bytes(leaf.parent_number.encode()),
-                Token::Bytes(leaf.parent_hash.into()),
-                Token::Bytes(leaf.next_authority_set_id.encode()),
-                Token::Bytes(leaf.next_authority_set_len.encode()),
-                Token::Bytes(leaf.next_authority_set_root.into()),
-                Token::Bytes(leaf.random_seed.into()),
-                Token::Bytes(leaf.digest_hash.into()),
-            ])
-        }
-
-        fn hash_mmr_leaf(leaf: Vec<u8>) -> [u8; 32] {
-            keccak_256(&leaf)
-        }
-
         fn check_validator_in_set(
             addr: EthAddress,
             pos: u128,
-            proof: Vec<[u8; 32]>,
+            proof: Vec<H256>,
         ) -> DispatchResultWithPostInfo {
-            // let hashed_leaf = keccak_256(&addr.encode());
-            let hashed_leaf = keccak_256(&encode(&[Token::Bytes(addr.as_bytes().into())]));
             let vset = match Self::current_validator_set() {
                 None => fail!(Error::<T>::PalletNotInitialized),
                 Some(x) => x,
@@ -606,40 +575,36 @@ pub mod pallet {
                 None => fail!(Error::<T>::PalletNotInitialized),
                 Some(x) => x.length,
             };
-            merkle_proof::verify_merkle_leaf_at_position(
-                vset.root,
-                hashed_leaf,
-                pos,
-                current_validator_set_len,
-                proof,
-            )
-            .map_err(Self::map_merkle_proof_error)?;
+            ensure!(
+                beefy_merkle_tree::verify_proof::<sp_runtime::traits::Keccak256, _, _>(
+                    &H256::from(vset.root),
+                    proof,
+                    current_validator_set_len as usize,
+                    pos as usize,
+                    &addr
+                ),
+                Error::<T>::ValidatorSetIncorrectPosition
+            );
             Ok(().into())
         }
 
-        fn random_n_bits_with_prior_check(
+        pub fn random_n_bits_with_prior_check(
             prior: &BitField,
             n: u128,
             length: u128,
         ) -> Result<BitField, Error<T>> {
-            let raw_seed = T::Randomness::random_seed();
-            let seed = codec::Encode::using_encoded(&raw_seed, sp_io::hashing::blake2_128);
+            let (raw_seed, _block) = T::Randomness::random(RANDOMNESS_SUBJECT);
+            let latest_beefy_block = Self::latest_beefy_block();
+            let seed = codec::Encode::using_encoded(
+                &(raw_seed, latest_beefy_block),
+                sp_io::hashing::blake2_128,
+            );
             Ok(BitField::create_random_bitfield(
                 prior,
                 n,
                 length,
                 u128::from_be_bytes(seed),
             ))
-        }
-
-        fn map_merkle_proof_error(error: merkle_proof::MerkleProofError) -> Error<T> {
-            use merkle_proof::MerkleProofError::*;
-            match error {
-                MerklePositionTooHigh => Error::<T>::MerklePositionTooHigh,
-                MerkleProofTooShort => Error::<T>::MerkleProofTooShort,
-                MerkleProofTooHigh => Error::<T>::MerkleProofTooHigh,
-                RootComputedHashNotEqual => Error::<T>::ValidatorSetIncorrectPosition,
-            }
         }
     }
 }

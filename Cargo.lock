@@ -173,9 +173,10 @@ dependencies = [
 name = "beefy-light-client"
 version = "0.1.0"
 dependencies = [
+ "beefy-merkle-tree",
+ "beefy-primitives",
  "bridge-common",
  "bridge-types",
- "ethabi",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -183,6 +184,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
+ "serde_json",
  "sp-core",
  "sp-io",
  "sp-runtime",
@@ -314,8 +316,9 @@ dependencies = [
 name = "bridge-common"
 version = "0.1.0"
 dependencies = [
+ "beefy-primitives",
  "bitvec",
- "ethabi",
+ "bridge-types",
  "frame-benchmarking",
  "frame-support",
  "frame-system",

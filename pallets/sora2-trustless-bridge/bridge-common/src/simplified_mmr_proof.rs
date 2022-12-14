@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::{Decode, Encode};
-use ethabi::{encode, Token};
 use frame_support::log;
 use frame_support::RuntimeDebug;
 use scale_info::prelude::vec::Vec;
@@ -73,15 +72,9 @@ pub fn calculate_merkle_root(
         let is_sibling_left = bit(merkle_proof_order_bit_field, current_position as u64);
         let sibling = merkle_proof_items[current_position];
         current_hash = if is_sibling_left {
-            keccak_256(&encode(&[
-                Token::Bytes(sibling.into()),
-                Token::Bytes(current_hash.into()),
-            ]))
+            keccak_256((sibling, current_hash).encode().as_slice())
         } else {
-            keccak_256(&encode(&[
-                Token::Bytes(current_hash.into()),
-                Token::Bytes(sibling.into()),
-            ]))
+            keccak_256((current_hash, sibling).encode().as_slice())
         };
     }
     current_hash
