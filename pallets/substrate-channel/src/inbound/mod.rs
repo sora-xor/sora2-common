@@ -128,9 +128,12 @@ pub mod pallet {
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
 
     #[pallet::event]
-    // #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
     // This pallet don't have events
-    pub enum Event<T: Config> {}
+    pub enum Event<T: Config> {
+        Received,
+        Dispatch,
+    }
 
     #[pallet::error]
     pub enum Error<T> {
@@ -162,8 +165,11 @@ pub mod pallet {
             debug!("Received message from {:?}", relayer);
             // submit message to verifier for verification
             let messages = T::Verifier::verify(network_id, &message)?;
+            
 
             for message in messages {
+                Self::deposit_event(Event::Received);
+                debug!("Received message {:?}", message);
                 // Verify message nonce
                 <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
                     if message.nonce != *nonce + 1 {
@@ -177,6 +183,7 @@ pub mod pallet {
                 Self::handle_fee(message.fee, &relayer);
 
                 let message_id = MessageId::inbound(message.nonce);
+                
                 T::MessageDispatch::dispatch(
                     network_id,
                     message_id,
@@ -184,6 +191,7 @@ pub mod pallet {
                     &message.payload,
                     (),
                 );
+                Self::deposit_event(Event::Dispatch);
             }
             Ok(().into())
         }
