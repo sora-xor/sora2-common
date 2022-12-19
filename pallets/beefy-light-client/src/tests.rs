@@ -40,6 +40,7 @@ use codec::Decode;
 use frame_support::assert_ok;
 use hex_literal::hex;
 use serde::Deserialize;
+use test_case::test_case;
 
 fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
@@ -54,7 +55,7 @@ struct MMRProof {
 impl From<MMRProof> for SimplifiedMMRProof {
     fn from(proof: MMRProof) -> Self {
         SimplifiedMMRProof {
-            merkle_proof_items: proof.items.into_iter().map(|x| x.0).collect(),
+            merkle_proof_items: proof.items,
             merkle_proof_order_bit_field: proof.order,
         }
     }
@@ -70,8 +71,8 @@ struct FixtureValidatorSet {
 impl From<FixtureValidatorSet> for ValidatorSet {
     fn from(f: FixtureValidatorSet) -> Self {
         ValidatorSet {
-            id: f.id as u128,
-            length: f.len as u128,
+            id: f.id,
+            len: f.len,
             root: f.root,
         }
     }
@@ -103,16 +104,18 @@ fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
 fn validator_proof(
     fixture: &Fixture,
     signatures: Vec<Option<beefy_primitives::crypto::Signature>>,
+    count: usize,
 ) -> ValidatorProof {
     let bits_to_set = signatures
         .iter()
         .enumerate()
-        .filter_map(|(i, x)| x.clone().map(|_| i as u128))
-        .collect();
-    let initial_bitfield = BitField::create_bitfield(bits_to_set, signatures.len() as u128);
+        .filter_map(|(i, x)| x.clone().map(|_| i as u32))
+        .take(count)
+        .collect::<Vec<_>>();
+    let initial_bitfield = BitField::create_bitfield(&bits_to_set, signatures.len());
     let random_bitfield = BeefyLightClient::create_random_bit_field(
         initial_bitfield.clone(),
-        signatures.len() as u128,
+        signatures.len() as u32,
     )
     .unwrap();
     let mut positions = vec![];
@@ -140,11 +143,16 @@ fn validator_proof(
     validator_proof
 }
 
-#[test]
-#[ignore]
-fn submit_fixture_success() {
+#[test_case(3, 5; "3 validators, 5 leaves")]
+#[test_case(3, 5000; "3 validators, 5000 leaves")]
+#[test_case(3, 5000000; "3 validators, 5000000 leaves")]
+#[test_case(37, 5; "37 validators, 5 leaves")]
+#[test_case(37, 5000; "37 validators, 5000 leaves")]
+#[test_case(69, 5000; "69 validators, 5000 leaves")]
+#[test_case(200, 5000; "200 validators, 5000 leaves")]
+fn submit_fixture_success(validators: usize, tree_size: usize) {
     new_test_ext().execute_with(|| {
-        let fixture = load_fixture(3, 5);
+        let fixture = load_fixture(validators, tree_size);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
         assert_ok!(BeefyLightClient::initialize(
@@ -159,7 +167,7 @@ fn submit_fixture_success() {
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let validator_proof = validator_proof(&fixture, signed_commitment.signatures);
+        let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
 
         assert_ok!(BeefyLightClient::submit_signature_commitment(
@@ -169,7 +177,6 @@ fn submit_fixture_success() {
             leaf,
             fixture.leaf_proof.into(),
         ));
-        panic!("stop");
     });
 }
 
@@ -183,12 +190,12 @@ fn it_works_initialize_pallet() {
                 1,
                 ValidatorSet {
                     id: 0,
-                    length: 3,
+                    len: 3,
                     root: root.into(),
                 },
                 ValidatorSet {
                     id: 1,
-                    length: 3,
+                    len: 3,
                     root: root.into(),
                 }
             ),

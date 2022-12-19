@@ -37,6 +37,6 @@ use codec::Codec;
 sp_api::decl_runtime_apis! {
     pub trait BeefyLightClientAPI<Bitfield> where Bitfield: Codec
     {
-        fn get_random_bitfield(prior: Bitfield, num_of_validators: u128) -> Bitfield;
+        fn get_random_bitfield(prior: Bitfield, num_of_validators: u32) -> Bitfield;
     }
 }

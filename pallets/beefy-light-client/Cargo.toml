@@ -30,6 +30,7 @@ frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", bran
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
@@ -41,6 +42,7 @@ beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branc
 serde_json = "1.0.73"
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 hex-literal = "0.3.1"
+test-case = "2.2.2"
 
 [features]
 default = ["std"]
@@ -54,6 +56,7 @@ std = [
 	"beefy-merkle-tree/std",
 	"sp-core/std",
 	"sp-io/std",
+	"sp-std/std",
 	"scale-info/std",
 	"frame-benchmarking/std",
 	"frame-support/std",

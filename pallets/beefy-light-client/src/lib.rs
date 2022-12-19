@@ -43,6 +43,7 @@ use sp_core::H256;
 use sp_io::hashing::keccak_256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
+use sp_std::collections::vec_deque::VecDeque;
 
 pub const RANDOMNESS_SUBJECT: &[u8] = b"beefy-light-client";
 
@@ -98,13 +99,9 @@ pub mod pallet {
     use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
 
-    pub const MMR_ROOT_HISTORY_SIZE: u32 = 30;
-    pub const THRESHOLD_NUMERATOR: u128 = 22;
-    pub const THRESHOLD_DENOMINATOR: u128 = 59;
-    pub const NUMBER_OF_BLOCKS_PER_SESSION: u64 = 600;
-    pub const ERROR_AND_SAFETY_BUFFER: u64 = 10;
-    pub const MAXIMUM_BLOCK_GAP: u64 = NUMBER_OF_BLOCKS_PER_SESSION - ERROR_AND_SAFETY_BUFFER;
-    pub const MMR_ROOT_ID: [u8; 2] = [0x6d, 0x68];
+    pub const MMR_ROOT_HISTORY_SIZE: usize = 30;
+    pub const THRESHOLD_NUMERATOR: u32 = 22;
+    pub const THRESHOLD_DENOMINATOR: u32 = 59;
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -121,11 +118,7 @@ pub mod pallet {
     // The pallet's runtime storage items.
     #[pallet::storage]
     #[pallet::getter(fn latest_mmr_roots)]
-    pub type LatestMMRRoots<T> = StorageMap<_, Blake2_256, u128, [u8; 32], ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn latest_mmr_root_index)]
-    pub type LatestMMRRootIndex<T> = StorageValue<_, u32, ValueQuery>;
+    pub type LatestMMRRoots<T> = StorageValue<_, VecDeque<H256>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn latest_beefy_block)]
@@ -148,8 +141,8 @@ pub mod pallet {
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         VerificationSuccessful(T::AccountId, u32),
-        NewMMRRoot([u8; 32], u64),
-        ValidatorRegistryUpdated([u8; 32], u128, u64),
+        NewMMRRoot(H256, u64),
+        ValidatorRegistryUpdated(H256, u32, u64),
     }
 
     #[pallet::error]
@@ -190,7 +183,7 @@ pub mod pallet {
             validator_set: ValidatorSet,
             next_validator_set: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
-            let _ = ensure_root(origin)?;
+            ensure_root(origin)?;
             LatestBeefyBlock::<T>::set(latest_beefy_block);
             CurrentValidatorSet::<T>::set(Some(validator_set));
             NextValidatorSet::<T>::set(Some(next_validator_set));
@@ -231,9 +224,9 @@ pub mod pallet {
                 None => fail!(Error::<T>::PalletNotInitialized),
                 Some(x) => x,
             };
-            let vset = match (commitment.validator_set_id as u128) == current_validator_set.id {
+            let vset = match (commitment.validator_set_id) == current_validator_set.id {
                 true => current_validator_set,
-                false => match (commitment.validator_set_id as u128) == next_validator_set.id {
+                false => match (commitment.validator_set_id) == next_validator_set.id {
                     true => next_validator_set,
                     false => fail!(Error::<T>::InvalidValidatorSetId),
                 },
@@ -243,8 +236,8 @@ pub mod pallet {
                 .payload
                 .get_decoded::<H256>(&beefy_primitives::known_payloads::MMR_ROOT_ID)
                 .ok_or(Error::<T>::MMRPayloadNotFound)?;
-            Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &payload.0, &proof)?;
-            Self::process_payload(&payload.0, commitment.block_number.into())?;
+            Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &payload, &proof)?;
+            Self::process_payload(payload, commitment.block_number.into())?;
 
             let block_number = <frame_system::Pallet<T>>::block_number();
             LatestRandomSeed::<T>::set((latest_mmr_leaf.leaf_extra.random_seed, block_number));
@@ -253,11 +246,7 @@ pub mod pallet {
                 signer,
                 commitment.block_number,
             ));
-            Self::apply_validator_set_changes(
-                latest_mmr_leaf.beefy_next_authority_set.id as u128,
-                latest_mmr_leaf.beefy_next_authority_set.len as u128,
-                latest_mmr_leaf.beefy_next_authority_set.root,
-            )?;
+            Self::apply_validator_set_changes(latest_mmr_leaf.beefy_next_authority_set)?;
             Ok(().into())
         }
     }
@@ -298,48 +287,29 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn add_known_mmr_root(root: [u8; 32]) -> u32 {
-            let latest_mmr_root_index = LatestMMRRootIndex::<T>::get();
-            let new_root_index = (latest_mmr_root_index + 1) % MMR_ROOT_HISTORY_SIZE;
-            LatestMMRRoots::<T>::insert(new_root_index as u128, root);
-            LatestMMRRootIndex::<T>::set(new_root_index);
-            latest_mmr_root_index
+        pub fn add_known_mmr_root(root: H256) {
+            let mut mmr_roots = LatestMMRRoots::<T>::get();
+            mmr_roots.push_back(root);
+            if mmr_roots.len() > MMR_ROOT_HISTORY_SIZE {
+                mmr_roots.pop_front();
+            }
         }
 
-        pub fn is_known_root(root: [u8; 32]) -> bool {
-            if root == <[u8; 32] as Default>::default() {
-                return false;
-            }
-            let latest_mmr_root_index = LatestMMRRootIndex::<T>::get();
-            let mut i = latest_mmr_root_index;
-            loop {
-                if root == LatestMMRRoots::<T>::get(i as u128) {
-                    return true;
-                }
-                if i == 0 {
-                    i = MMR_ROOT_HISTORY_SIZE
-                }
-                i = i - 1;
-                if i != latest_mmr_root_index {
-                    break;
-                }
-            }
-            false
+        pub fn is_known_root(root: H256) -> bool {
+            let mmr_roots = LatestMMRRoots::<T>::get();
+            mmr_roots.contains(&root)
         }
 
         #[inline]
-        pub fn get_latest_mmr_root() -> [u8; 32] {
-            LatestMMRRoots::<T>::get(LatestMMRRootIndex::<T>::get() as u128)
+        pub fn get_latest_mmr_root() -> Option<H256> {
+            LatestMMRRoots::<T>::get().back().cloned()
         }
 
         #[inline]
-        pub fn verity_beefy_merkle_leaf(
-            beefy_mmr_leaf: [u8; 32],
-            proof: SimplifiedMMRProof,
-        ) -> bool {
+        pub fn verify_beefy_merkle_leaf(beefy_mmr_leaf: H256, proof: &SimplifiedMMRProof) -> bool {
             let proof_root = calculate_merkle_root(
                 beefy_mmr_leaf,
-                proof.merkle_proof_items,
+                &proof.merkle_proof_items,
                 proof.merkle_proof_order_bit_field,
             );
             Self::is_known_root(proof_root)
@@ -348,7 +318,7 @@ pub mod pallet {
         #[inline]
         pub fn create_random_bit_field(
             validator_claims_bitfield: BitField,
-            number_of_validators: u128,
+            number_of_validators: u32,
         ) -> Result<BitField, Error<T>> {
             Self::random_n_bits_with_prior_check(
                 &validator_claims_bitfield,
@@ -358,15 +328,15 @@ pub mod pallet {
         }
 
         #[inline]
-        pub fn create_initial_bitfield(bits_to_set: Vec<u128>, length: u128) -> BitField {
+        pub fn create_initial_bitfield(bits_to_set: &[u32], length: usize) -> BitField {
             BitField::create_bitfield(bits_to_set, length)
         }
 
         #[inline]
-        pub fn required_number_of_signatures() -> u128 {
+        pub fn required_number_of_signatures() -> u32 {
             let len = match Self::current_validator_set() {
                 None => 0,
-                Some(x) => x.length,
+                Some(x) => x.len,
             };
             Self::get_required_number_of_signatures(len)
         }
@@ -375,12 +345,12 @@ pub mod pallet {
 
         fn verity_newest_mmr_leaf(
             leaf: &BeefyMMRLeaf,
-            root: &[u8; 32],
+            root: &H256,
             proof: &SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
             let hash_leaf = Keccak256::hash_of(&leaf);
             ensure!(
-                verify_inclusion_proof(*root, hash_leaf.0, proof.clone()),
+                verify_inclusion_proof(*root, hash_leaf, proof),
                 Error::<T>::InvalidMMRProof
             );
             Ok(().into())
@@ -388,56 +358,39 @@ pub mod pallet {
 
         fn verify_mmr_leaf(leaf: &BeefyMMRLeaf, proof: &SimplifiedMMRProof) -> DispatchResult {
             let hash_leaf = Keccak256::hash_of(&leaf);
-            let proof = proof.clone();
             let root = calculate_merkle_root(
-                hash_leaf.0,
-                proof.merkle_proof_items,
+                hash_leaf,
+                &proof.merkle_proof_items,
                 proof.merkle_proof_order_bit_field,
             );
             ensure!(Self::is_known_root(root), Error::<T>::InvalidMMRProof);
             Ok(())
         }
 
-        fn process_payload(payload: &[u8; 32], block_number: u64) -> DispatchResultWithPostInfo {
+        fn process_payload(payload: H256, block_number: u64) -> DispatchResultWithPostInfo {
             ensure!(
                 block_number > Self::latest_beefy_block(),
                 Error::<T>::PayloadBlocknumberTooOld
             );
-            ensure!(
-                block_number < Self::latest_beefy_block() as u64 + MAXIMUM_BLOCK_GAP,
-                Error::<T>::PayloadBlocknumberTooNew
-            );
-            Self::add_known_mmr_root(*payload);
+            Self::add_known_mmr_root(payload);
             LatestBeefyBlock::<T>::set(block_number);
-            Self::deposit_event(Event::NewMMRRoot(*payload, block_number));
+            Self::deposit_event(Event::NewMMRRoot(payload, block_number));
             Ok(().into())
         }
 
-        fn apply_validator_set_changes(
-            next_authority_set_id: u128,
-            next_authority_set_len: u128,
-            next_authority_set_root: H256,
-        ) -> DispatchResultWithPostInfo {
+        fn apply_validator_set_changes(new_vset: ValidatorSet) -> DispatchResultWithPostInfo {
             let next_validator_set = match Self::next_validator_set() {
                 None => fail!(Error::<T>::PalletNotInitialized),
                 Some(x) => x,
             };
-            if next_authority_set_id > next_validator_set.id {
-                ensure!(
-                    next_authority_set_id as u128 > next_validator_set.id,
-                    Error::<T>::CannotSwitchOldValidatorSet
-                );
+            if new_vset.id > next_validator_set.id {
                 CurrentValidatorSet::<T>::set(Some(next_validator_set));
-                NextValidatorSet::<T>::set(Some(ValidatorSet {
-                    id: next_authority_set_id,
-                    length: next_authority_set_len,
-                    root: next_authority_set_root,
-                }));
+                NextValidatorSet::<T>::set(Some(new_vset));
             }
             Ok(().into())
         }
 
-        fn get_required_number_of_signatures(num_validators: u128) -> u128 {
+        fn get_required_number_of_signatures(num_validators: u32) -> u32 {
             (num_validators * THRESHOLD_NUMERATOR + THRESHOLD_DENOMINATOR - 1)
                 / THRESHOLD_DENOMINATOR
         }
@@ -446,11 +399,11 @@ pub mod pallet {
         	* @dev https://github.com/sora-xor/substrate/blob/7d914ce3ed34a27d7bb213caed374d64cde8cfa8/client/beefy/src/round.rs#L62
          */
         fn check_commitment_signatures_threshold(
-            num_of_validators: u128,
-            validator_claims_bitfield: BitField,
+            num_of_validators: u32,
+            validator_claims_bitfield: &BitField,
         ) -> DispatchResultWithPostInfo {
             let threshold = num_of_validators - (num_of_validators - 1) / 3;
-            let count = validator_claims_bitfield.count_set_bits();
+            let count = validator_claims_bitfield.count_set_bits() as u32;
             ensure!(count >= threshold, Error::<T>::NotEnoughValidatorSignatures);
             Ok(().into())
         }
@@ -460,12 +413,12 @@ pub mod pallet {
             proof: &ValidatorProof,
             vset: ValidatorSet,
         ) -> DispatchResultWithPostInfo {
-            let number_of_validators = vset.length;
+            let number_of_validators = vset.len;
             let required_num_of_signatures =
                 Self::get_required_number_of_signatures(number_of_validators);
             Self::check_commitment_signatures_threshold(
                 number_of_validators,
-                proof.validator_claims_bitfield.clone(),
+                &proof.validator_claims_bitfield,
             )?;
             let random_bitfield = Self::random_n_bits_with_prior_check(
                 &proof.validator_claims_bitfield,
@@ -475,17 +428,17 @@ pub mod pallet {
             log::debug!("BeefyLightClient verify_commitment proof: {:?}", proof);
             log::debug!(
                 "BeefyLightClient verify_commitment validator_claims_bitfield: {:?}",
-                proof.validator_claims_bitfield.clone()
+                proof.validator_claims_bitfield
             );
             log::debug!(
                 "BeefyLightClient verify_commitment random_bitfield: {:?}",
-                random_bitfield.clone()
+                random_bitfield
             );
-            Self::verify_validator_proof_lengths(required_num_of_signatures, proof.clone())?;
+            Self::verify_validator_proof_lengths(required_num_of_signatures, proof)?;
             let commitment_hash = Keccak256::hash_of(&commitment);
             Self::verify_validator_proof_signatures(
                 random_bitfield,
-                proof.clone(),
+                proof,
                 required_num_of_signatures,
                 commitment_hash,
             )?;
@@ -493,23 +446,23 @@ pub mod pallet {
         }
 
         fn verify_validator_proof_lengths(
-            required_num_of_signatures: u128,
-            proof: ValidatorProof,
+            required_num_of_signatures: u32,
+            proof: &ValidatorProof,
         ) -> DispatchResultWithPostInfo {
             ensure!(
-                proof.signatures.len() as u128 == required_num_of_signatures,
+                proof.signatures.len() as u32 == required_num_of_signatures,
                 Error::<T>::InvalidNumberOfSignatures
             );
             ensure!(
-                proof.positions.len() as u128 == required_num_of_signatures,
+                proof.positions.len() as u32 == required_num_of_signatures,
                 Error::<T>::InvalidNumberOfPositions
             );
             ensure!(
-                proof.public_keys.len() as u128 == required_num_of_signatures,
+                proof.public_keys.len() as u32 == required_num_of_signatures,
                 Error::<T>::InvalidNumberOfPublicKeys
             );
             ensure!(
-                proof.public_key_merkle_proofs.len() as u128 == required_num_of_signatures,
+                proof.public_key_merkle_proofs.len() as u32 == required_num_of_signatures,
                 Error::<T>::InvalidNumberOfPublicKeys
             );
             Ok(().into())
@@ -517,8 +470,8 @@ pub mod pallet {
 
         fn verify_validator_proof_signatures(
             mut random_bitfield: BitField,
-            proof: ValidatorProof,
-            required_num_of_signatures: u128,
+            proof: &ValidatorProof,
+            required_num_of_signatures: u32,
             commitment_hash: H256,
         ) -> DispatchResultWithPostInfo {
             let required_num_of_signatures = required_num_of_signatures as usize;
@@ -527,8 +480,8 @@ pub mod pallet {
                     &mut random_bitfield,
                     proof.signatures[i].clone(),
                     proof.positions[i],
-                    proof.public_keys[i].clone(),
-                    proof.public_key_merkle_proofs[i].clone(),
+                    proof.public_keys[i],
+                    &proof.public_key_merkle_proofs[i],
                     commitment_hash,
                 )?;
             }
@@ -540,7 +493,7 @@ pub mod pallet {
             signature: Vec<u8>,
             position: u128,
             public_key: EthAddress,
-            public_key_merkle_proof: Vec<H256>,
+            public_key_merkle_proof: &[H256],
             commitment_hash: H256,
         ) -> DispatchResultWithPostInfo {
             ensure!(
@@ -565,7 +518,7 @@ pub mod pallet {
         fn check_validator_in_set(
             addr: EthAddress,
             pos: u128,
-            proof: Vec<H256>,
+            proof: &[H256],
         ) -> DispatchResultWithPostInfo {
             let vset = match Self::current_validator_set() {
                 None => fail!(Error::<T>::PalletNotInitialized),
@@ -573,12 +526,12 @@ pub mod pallet {
             };
             let current_validator_set_len = match Self::current_validator_set() {
                 None => fail!(Error::<T>::PalletNotInitialized),
-                Some(x) => x.length,
+                Some(x) => x.len,
             };
             ensure!(
                 beefy_merkle_tree::verify_proof::<sp_runtime::traits::Keccak256, _, _>(
-                    &H256::from(vset.root),
-                    proof,
+                    &vset.root,
+                    proof.iter().cloned(),
                     current_validator_set_len as usize,
                     pos as usize,
                     &addr
@@ -590,8 +543,8 @@ pub mod pallet {
 
         pub fn random_n_bits_with_prior_check(
             prior: &BitField,
-            n: u128,
-            length: u128,
+            n: u32,
+            length: u32,
         ) -> Result<BitField, Error<T>> {
             let (raw_seed, _block) = T::Randomness::random(RANDOMNESS_SUBJECT);
             let latest_beefy_block = Self::latest_beefy_block();

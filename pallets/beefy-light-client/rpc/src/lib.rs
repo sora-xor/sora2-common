@@ -48,7 +48,7 @@ pub trait BeefyLightClientAPI<BHash, Bitfield> {
     fn get_random_bitfield(
         &self,
         prior: Bitfield,
-        num_of_validators: u128,
+        num_of_validators: u32,
         at: Option<BHash>,
     ) -> Result<Bitfield>;
 }
@@ -80,7 +80,7 @@ where
     fn get_random_bitfield(
         &self,
         prior: Bitfield,
-        num_of_validators: u128,
+        num_of_validators: u32,
         at: Option<<B as BlockT>::Hash>,
     ) -> Result<Bitfield> {
         let api = self.client.runtime_api();

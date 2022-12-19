@@ -73,23 +73,23 @@ impl BitField {
         Ok(Self(BitVec::try_from_slice(slice)?))
     }
 
-    pub fn create_bitfield(bits_to_set: Vec<u128>, length: u128) -> Self {
-        let mut bitfield = Self::with_zeroes(length as usize);
-        for i in 0..bits_to_set.len() {
-            bitfield.set(bits_to_set[i] as usize)
+    pub fn create_bitfield(bits_to_set: &[u32], length: usize) -> Self {
+        let mut bitfield = Self::with_zeroes(length);
+        for i in bits_to_set {
+            bitfield.set(*i as usize);
         }
         bitfield
     }
 
-    pub fn create_random_bitfield(prior: &BitField, n: u128, length: u128, seed: u128) -> Self {
+    pub fn create_random_bitfield(prior: &BitField, n: u32, length: u32, seed: u128) -> Self {
         let mut bitfield = BitField::with_zeroes(prior.len());
         let mut found = 0;
         let mut i = 0;
         while found < n {
-            // for found in 0..n {
             let randomness = sp_io::hashing::blake2_128(&(seed + i).to_be_bytes());
 
-            let index = u128::from_be_bytes(randomness) % length;
+            // length is u32, so mod is u32
+            let index = (u128::from_be_bytes(randomness) % length as u128) as u32;
 
             if !prior.is_set(index as usize) {
                 i += 1;
@@ -110,8 +110,8 @@ impl BitField {
 
     // Util:
     #[inline]
-    pub fn count_set_bits(&self) -> u128 {
-        self.0.count_ones() as u128
+    pub fn count_set_bits(&self) -> usize {
+        self.0.count_ones()
     }
 
     #[inline]
@@ -155,7 +155,7 @@ mod test {
     pub fn create_bitfield_success() {
         let bits_to_set = vec![0, 1, 2];
         let len = 3;
-        let bf = super::BitField::create_bitfield(bits_to_set, len);
+        let bf = super::BitField::create_bitfield(&bits_to_set, len);
         assert!(bf[0]);
         assert!(bf[1]);
         assert!(bf[2]);

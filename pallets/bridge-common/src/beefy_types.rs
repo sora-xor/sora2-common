@@ -50,20 +50,4 @@ pub struct ValidatorProof {
 pub type BeefyMMRLeaf =
     beefy_primitives::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
 
-#[derive(
-    Encode,
-    Decode,
-    Clone,
-    RuntimeDebug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    scale_info::TypeInfo,
-    Default,
-)]
-pub struct ValidatorSet {
-    pub id: u128,
-    pub length: u128,
-    pub root: H256,
-}
+pub type ValidatorSet = beefy_primitives::mmr::BeefyAuthoritySet<H256>;
