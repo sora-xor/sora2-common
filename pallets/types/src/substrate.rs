@@ -27,26 +27,34 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#![allow(clippy::large_enum_variant)]
 
 use codec::{Decode, Encode};
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
+use crate::types::AssetKind;
+
 pub type ParachainAccountId = xcm::VersionedMultiLocation;
 
-pub type ParachainAssetId = xcm::VersionedMultiAsset;
+pub type ParachainAssetId = xcm::v2::AssetId;
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
 }
 
+/// Message to SubstrateApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum SubstrateAppMessage<AccountId, AssetId, Balance> {
     Transfer {
         asset_id: AssetId,
-        sender: ParachainAccountId,
+        sender: Option<ParachainAccountId>,
         recipient: AccountId,
         amount: Balance,
+    },
+    FinalizeAssetRegistration {
+        asset_id: AssetId,
+        asset_kind: AssetKind,
     },
 }
 
@@ -58,6 +66,7 @@ impl<AccountId: Encode, Balance: Encode, AssetId: Encode> SubstrateBridgeMessage
     }
 }
 
+/// Message to XCMApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppMessage<AccountId, AssetId, Balance> {
     Transfer {
@@ -69,6 +78,7 @@ pub enum XCMAppMessage<AccountId, AssetId, Balance> {
     RegisterAsset {
         asset_id: AssetId,
         sidechain_asset: ParachainAssetId,
+        asset_kind: AssetKind,
     },
 }
 

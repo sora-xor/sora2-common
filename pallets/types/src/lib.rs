@@ -135,6 +135,7 @@ pub enum GenericAccount<AccountId> {
     EVM(H160),
     Sora(AccountId),
     Parachain(xcm::VersionedMultiLocation),
+    Unknown,
 }
 
 pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"commitment";

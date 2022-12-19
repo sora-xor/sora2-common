@@ -79,6 +79,13 @@ impl<T: Config> From<SubstrateAppMessage<T::AccountId, AssetIdOf<T>, BalanceOf<T
                 amount,
                 asset_id,
             },
+            SubstrateAppMessage::FinalizeAssetRegistration {
+                asset_id,
+                asset_kind,
+            } => Call::finalize_asset_registration {
+                asset_id,
+                asset_kind,
+            },
         }
     }
 }
@@ -171,7 +178,7 @@ pub mod pallet {
         Minted(
             SubNetworkId,
             AssetIdOf<T>,
-            ParachainAccountId,
+            Option<ParachainAccountId>,
             T::AccountId,
             BalanceOf<T>,
         ),
@@ -204,7 +211,7 @@ pub mod pallet {
         pub fn mint(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
-            sender: ParachainAccountId,
+            sender: Option<ParachainAccountId>,
             recipient: T::AccountId,
             amount: BalanceOf<T>,
         ) -> DispatchResult {
@@ -237,7 +244,10 @@ pub mod pallet {
             T::MessageStatusNotifier::inbound_request(
                 GenericNetworkId::Sub(network_id),
                 message_id,
-                GenericAccount::Parachain(sender.clone()),
+                sender
+                    .clone()
+                    .map(GenericAccount::Parachain)
+                    .unwrap_or(GenericAccount::Unknown),
                 recipient.clone(),
                 asset_id,
                 amount,
@@ -246,6 +256,17 @@ pub mod pallet {
             Self::deposit_event(Event::Minted(
                 network_id, asset_id, sender, recipient, amount,
             ));
+            Ok(())
+        }
+
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        pub fn finalize_asset_registration(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            asset_kind: AssetKind,
+        ) -> DispatchResult {
+            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+            AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             Ok(())
         }
 
@@ -324,14 +345,13 @@ pub mod pallet {
             sidechain_asset: ParachainAssetId,
             asset_kind: AssetKind,
         ) -> DispatchResult {
-            AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
-
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
                 &XCMAppMessage::<T::AccountId, AssetIdOf<T>, BalanceOf<T>>::RegisterAsset {
                     asset_id,
                     sidechain_asset,
+                    asset_kind,
                 }
                 .prepare_message(),
                 (),
