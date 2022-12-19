@@ -236,7 +236,7 @@ pub mod pallet {
                 .payload
                 .get_decoded::<H256>(&beefy_primitives::known_payloads::MMR_ROOT_ID)
                 .ok_or(Error::<T>::MMRPayloadNotFound)?;
-            Self::verity_newest_mmr_leaf(&latest_mmr_leaf, &payload, &proof)?;
+            Self::verify_newest_mmr_leaf(&latest_mmr_leaf, &payload, &proof)?;
             Self::process_payload(payload, commitment.block_number.into())?;
 
             let block_number = <frame_system::Pallet<T>>::block_number();
@@ -289,10 +289,12 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         pub fn add_known_mmr_root(root: H256) {
             let mut mmr_roots = LatestMMRRoots::<T>::get();
-            mmr_roots.push_back(root);
+            // Add new root to the front of the list to check it first
+            mmr_roots.push_front(root);
             if mmr_roots.len() > MMR_ROOT_HISTORY_SIZE {
-                mmr_roots.pop_front();
+                mmr_roots.pop_back();
             }
+            LatestMMRRoots::<T>::put(mmr_roots);
         }
 
         pub fn is_known_root(root: H256) -> bool {
@@ -343,7 +345,7 @@ pub mod pallet {
 
         /* Private Functions */
 
-        fn verity_newest_mmr_leaf(
+        fn verify_newest_mmr_leaf(
             leaf: &BeefyMMRLeaf,
             root: &H256,
             proof: &SimplifiedMMRProof,
