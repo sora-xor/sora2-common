@@ -464,10 +464,7 @@ mod tests {
             arrow_glacier_fork_block: u64::MAX,
             gray_glacier_fork_block: u64::MAX,
         };
-        run_difficulty_test!(
-            "tests/DifficultyTests/dfFrontier/difficultyFrontier.json",
-            all_blocks_are_frontier
-        );
+        run_difficulty_test!("tests/difficultyFrontier.json", all_blocks_are_frontier);
     }
 
     #[test]
@@ -480,10 +477,7 @@ mod tests {
             arrow_glacier_fork_block: u64::MAX,
             gray_glacier_fork_block: u64::MAX,
         };
-        run_difficulty_test!(
-            "tests/DifficultyTests/dfHomestead/difficultyHomestead.json",
-            all_blocks_are_homestead
-        );
+        run_difficulty_test!("tests/difficultyHomestead.json", all_blocks_are_homestead);
     }
 
     #[test]
@@ -496,10 +490,7 @@ mod tests {
             arrow_glacier_fork_block: u64::MAX,
             gray_glacier_fork_block: u64::MAX,
         };
-        run_difficulty_test!(
-            "tests/DifficultyTests/dfByzantium/difficultyByzantium.json",
-            all_blocks_are_byzantium
-        );
+        run_difficulty_test!("tests/difficultyByzantium.json", all_blocks_are_byzantium);
     }
 
     #[test]
@@ -513,7 +504,7 @@ mod tests {
             gray_glacier_fork_block: u64::MAX,
         };
         run_difficulty_test!(
-            "tests/DifficultyTests/dfConstantinople/difficultyConstantinople.json",
+            "tests/difficultyConstantinople.json",
             all_blocks_are_constantinople
         );
     }
@@ -528,16 +519,13 @@ mod tests {
             arrow_glacier_fork_block: u64::MAX,
             gray_glacier_fork_block: u64::MAX,
         };
+        run_difficulty_test!("tests/difficultyEIP2384.json", all_blocks_are_muir_glacier);
         run_difficulty_test!(
-            "tests/DifficultyTests/dfEIP2384/difficultyEIP2384.json",
+            "tests/difficultyEIP2384_random.json",
             all_blocks_are_muir_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfEIP2384/difficultyEIP2384_random.json",
-            all_blocks_are_muir_glacier
-        );
-        run_difficulty_test!(
-            "tests/DifficultyTests/dfEIP2384/difficultyEIP2384_random_to20M.json",
+            "tests/difficultyEIP2384_random_to20M.json",
             all_blocks_are_muir_glacier
         );
     }
@@ -553,23 +541,23 @@ mod tests {
             gray_glacier_fork_block: u64::MAX,
         };
         run_difficulty_test!(
-            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacier.json",
+            "tests/difficultyArrowGlacier.json",
             all_blocks_are_arrow_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierForkBlock.json",
+            "tests/difficultyArrowGlacierForkBlock.json",
             all_blocks_are_arrow_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierMinus1.json",
+            "tests/difficultyArrowGlacierMinus1.json",
             all_blocks_are_arrow_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierTimeDiff1.json",
+            "tests/difficultyArrowGlacierTimeDiff1.json",
             all_blocks_are_arrow_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfArrowGlacier/difficultyArrowGlacierTimeDiff2.json",
+            "tests/difficultyArrowGlacierTimeDiff2.json",
             all_blocks_are_arrow_glacier
         );
     }
@@ -585,23 +573,23 @@ mod tests {
             gray_glacier_fork_block: 0,
         };
         run_difficulty_test!(
-            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacier.json",
+            "tests/difficultyGrayGlacier.json",
             all_blocks_are_gray_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierForkBlock.json",
+            "tests/difficultyGrayGlacierForkBlock.json",
             all_blocks_are_gray_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierMinus1.json",
+            "tests/difficultyGrayGlacierMinus1.json",
             all_blocks_are_gray_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierTimeDiff1.json",
+            "tests/difficultyGrayGlacierTimeDiff1.json",
             all_blocks_are_gray_glacier
         );
         run_difficulty_test!(
-            "tests/DifficultyTests/dfGrayGlacier/difficultyGrayGlacierTimeDiff2.json",
+            "tests/difficultyGrayGlacierTimeDiff2.json",
             all_blocks_are_gray_glacier
         );
     }
@@ -609,15 +597,12 @@ mod tests {
     #[test]
     fn mainnet_difficulty_calc_is_correct() {
         let mainnet_config = ForkConfig::mainnet();
-        run_basic_test!(
-            "tests/BasicTests/difficultyMainNetwork.json",
-            mainnet_config
-        );
+        run_basic_test!("tests/difficultyMainNetwork.json", mainnet_config);
     }
 
     #[test]
     fn ropsten_difficulty_calc_is_correct() {
         let ropsten_config = ForkConfig::ropsten();
-        run_basic_test!("tests/BasicTests/difficultyRopsten.json", ropsten_config);
+        run_basic_test!("tests/difficultyRopsten.json", ropsten_config);
     }
 }
