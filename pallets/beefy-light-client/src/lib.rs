@@ -137,6 +137,15 @@ pub mod pallet {
     #[pallet::getter(fn next_validator_set)]
     pub type NextValidatorSet<T> = StorageValue<_, ValidatorSet, OptionQuery>;
 
+    #[pallet::type_value]
+    pub fn DefaultForThisNetworkId() -> SubNetworkId {
+        SubNetworkId::Mainnet
+    }
+
+    #[pallet::storage]
+    #[pallet::getter(fn this_network_id)]
+    pub type ThisNetworkId<T> = StorageValue<_, SubNetworkId, ValueQuery, DefaultForThisNetworkId>;
+
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -251,15 +260,38 @@ pub mod pallet {
         }
     }
 
+    #[pallet::genesis_config]
+    pub struct GenesisConfig {
+        /// Network id for current network
+        pub network_id: SubNetworkId,
+    }
+
+    #[cfg(feature = "std")]
+    impl Default for GenesisConfig {
+        fn default() -> Self {
+            Self {
+                network_id: SubNetworkId::Mainnet,
+            }
+        }
+    }
+
+    #[pallet::genesis_build]
+    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+        fn build(&self) {
+            ThisNetworkId::<T>::put(self.network_id);
+        }
+    }
+
     impl<T: Config>
         bridge_types::traits::Verifier<SubNetworkId, ProvedSubstrateBridgeMessage<T::Message>>
         for Pallet<T>
     {
         type Result = T::Message;
         fn verify(
-            network_id: SubNetworkId,
+            _network_id: SubNetworkId,
             message: &ProvedSubstrateBridgeMessage<T::Message>,
         ) -> Result<Self::Result, DispatchError> {
+            let this_network_id = ThisNetworkId::<T>::get();
             Self::verify_mmr_leaf(&message.leaf, &message.proof)?;
             let digest_hash = message.digest.using_encoded(keccak_256);
             ensure!(
@@ -274,7 +306,7 @@ pub mod pallet {
                 .filter(|x| {
                     let AuxiliaryDigestItem::Commitment(log_network_id, log_commitment_hash) = x;
                     if let GenericNetworkId::Sub(log_network_id) = log_network_id {
-                        return *log_network_id == network_id
+                        return *log_network_id == this_network_id
                             && commitment_hash == log_commitment_hash.0;
                     }
                     false
