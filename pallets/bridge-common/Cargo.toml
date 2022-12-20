@@ -1,0 +1,60 @@
+[package]
+name = "bridge-common"
+authors = ["Anonymous"]
+description = "FRAME pallet template for defining custom runtime logic."
+version = "0.1.0"
+license = "Unlicense"
+homepage = "https://substrate.io"
+repository = "https://github.com/paritytech/substrate/"
+edition = "2021"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { package = "parity-scale-codec", version = "3.0.0", features = [
+	"derive",
+	"bit-vec",
+], default-features = false }
+scale-info = { version = "2.0.0", default-features = false, features = [
+	"derive",
+	"bit-vec",
+] }
+bitvec = { version = "1", default-features = false, features = [
+	"alloc",
+	"serde",
+] }
+serde = { version = "1.0", features = [
+	"alloc",
+	"derive",
+], default-features = false }
+
+# Substrate
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+bridge-types = { path = "../types", default-features = false }
+
+[dev-dependencies]
+# Substrate
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+hex-literal = "0.3.1"
+
+[features]
+default = ["std"]
+runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+std = [
+	"codec/std",
+	"serde/std",
+	"scale-info/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"beefy-primitives/std",
+	"bridge-types/std",
+]
+try-runtime = ["frame-support/try-runtime"]

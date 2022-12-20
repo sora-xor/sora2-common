@@ -1,10 +1,12 @@
+[profile.release]
+panic = "unwind"
+
 [workspace]
 members = [
-    "pallets/trustless-eth-bridge/dispatch",
-    "pallets/trustless-eth-bridge/types",
+    "pallets/*",
+    "pallets/leaf-provider/runtime-api",
+    "pallets/leaf-provider/rpc",
+    "pallets/substrate-channel/rpc",
+    "pallets/beefy-light-client/runtime-api",
+    "pallets/beefy-light-client/rpc",
 ]
-
-resolver = "2"
-
-[profile.release]
-panic = 'unwind'
