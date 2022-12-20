@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use beefy_light_client_runtime_api::SubNetworkId;
 use codec::Codec;
 use jsonrpsee::{
     core::{Error as RpcError, RpcResult as Result},
@@ -47,6 +48,7 @@ pub trait BeefyLightClientAPI<BHash, Bitfield> {
     #[method(name = "beefyLightClient_getRandomBitfield")]
     fn get_random_bitfield(
         &self,
+        network_id: SubNetworkId,
         prior: Bitfield,
         num_of_validators: u32,
         at: Option<BHash>,
@@ -79,6 +81,7 @@ where
 {
     fn get_random_bitfield(
         &self,
+        network_id: SubNetworkId,
         prior: Bitfield,
         num_of_validators: u32,
         at: Option<<B as BlockT>::Hash>,
@@ -88,7 +91,7 @@ where
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
         ));
-        api.get_random_bitfield(&at, prior, num_of_validators)
+        api.get_random_bitfield(&at, network_id, prior, num_of_validators)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

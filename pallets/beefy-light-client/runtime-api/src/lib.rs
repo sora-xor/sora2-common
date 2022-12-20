@@ -32,11 +32,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::unnecessary_mut_passed)]
 
+pub use bridge_types::SubNetworkId;
 use codec::Codec;
 
 sp_api::decl_runtime_apis! {
     pub trait BeefyLightClientAPI<Bitfield> where Bitfield: Codec
     {
-        fn get_random_bitfield(prior: Bitfield, num_of_validators: u32) -> Bitfield;
+        fn get_random_bitfield(network_id: SubNetworkId, prior: Bitfield, num_of_validators: u32) -> Bitfield;
     }
 }

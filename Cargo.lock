@@ -212,6 +212,7 @@ dependencies = [
 name = "beefy-light-client-runtime-api"
 version = "0.1.0"
 dependencies = [
+ "bridge-types",
  "parity-scale-codec",
  "scale-info",
  "serde",
