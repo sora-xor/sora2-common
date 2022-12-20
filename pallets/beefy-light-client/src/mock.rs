@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as beefy_light_client;
+use bridge_types::SubNetworkId;
 use frame_support::{parameter_types, traits::Everything};
 use frame_system as system;
 use sp_core::H256;
@@ -55,6 +56,7 @@ frame_support::construct_runtime!(
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const SS58Prefix: u8 = 42;
+    pub const SidechainRandomnessNetwork: SubNetworkId = SubNetworkId::Mainnet;
 }
 
 impl system::Config for Test {
@@ -86,7 +88,7 @@ impl system::Config for Test {
 
 impl beefy_light_client::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type Randomness = BeefyLightClient;
+    type Randomness = beefy_light_client::SidechainRandomness<Test, SidechainRandomnessNetwork>;
     type Message = ();
 }
 

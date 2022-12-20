@@ -34,6 +34,7 @@ use bridge_common::beefy_types::ValidatorProof;
 use bridge_common::beefy_types::ValidatorSet;
 use bridge_common::bitfield::BitField;
 use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
+use bridge_types::SubNetworkId;
 use bridge_types::H160;
 use bridge_types::H256;
 use codec::Decode;
@@ -114,6 +115,7 @@ fn validator_proof(
         .collect::<Vec<_>>();
     let initial_bitfield = BitField::create_bitfield(&bits_to_set, signatures.len());
     let random_bitfield = BeefyLightClient::create_random_bit_field(
+        SubNetworkId::Mainnet,
         initial_bitfield.clone(),
         signatures.len() as u32,
     )
@@ -157,6 +159,7 @@ fn submit_fixture_success(validators: usize, tree_size: usize) {
         let next_validator_set = fixture.next_validator_set.clone().into();
         assert_ok!(BeefyLightClient::initialize(
             RuntimeOrigin::root(),
+            SubNetworkId::Mainnet,
             0,
             validator_set,
             next_validator_set
@@ -172,6 +175,7 @@ fn submit_fixture_success(validators: usize, tree_size: usize) {
 
         assert_ok!(BeefyLightClient::submit_signature_commitment(
             RuntimeOrigin::signed(alice::<Test>()),
+            SubNetworkId::Mainnet,
             commitment,
             validator_proof,
             leaf,
@@ -187,6 +191,7 @@ fn it_works_initialize_pallet() {
         assert_ok!(
             BeefyLightClient::initialize(
                 RuntimeOrigin::root(),
+                SubNetworkId::Mainnet,
                 1,
                 ValidatorSet {
                     id: 0,
