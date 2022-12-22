@@ -28,6 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// use core::fmt::Error;
+
+use crate::Error;
 use crate::mock::*;
 use bridge_common::beefy_types::BeefyMMRLeaf;
 use bridge_common::beefy_types::ValidatorProof;
@@ -38,6 +41,7 @@ use bridge_types::SubNetworkId;
 use bridge_types::H160;
 use bridge_types::H256;
 use codec::Decode;
+use frame_support::assert_noop;
 use frame_support::assert_ok;
 use hex_literal::hex;
 use serde::Deserialize;
@@ -182,6 +186,99 @@ fn submit_fixture_success(validators: usize, tree_size: usize) {
             fixture.leaf_proof.into(),
         ));
     });
+}
+
+#[test_case(3, 5; "3 validators, 5 leaves")]
+fn submit_fixture_failed_pallet_not_initialized(validators: usize, tree_size: usize) {
+    new_test_ext().execute_with(|| {
+        let fixture = load_fixture(validators, tree_size);
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+
+        assert_noop!(BeefyLightClient::submit_signature_commitment(
+            RuntimeOrigin::signed(alice::<Test>()),
+            SubNetworkId::Mainnet,
+            commitment,
+            validator_proof,
+            leaf,
+            fixture.leaf_proof.into(),
+        ), Error::<Test>::PalletNotInitialized);
+    })
+}
+
+#[test_case(3, 5; "3 validators, 5 leaves")]
+fn submit_fixture_failed_invalid_set_id(validators: usize, tree_size: usize) {
+    new_test_ext().execute_with(|| {
+        let fixture = load_fixture(validators, tree_size);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+        assert_ok!(BeefyLightClient::initialize(
+            RuntimeOrigin::root(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ));
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let mut commitment = signed_commitment.commitment.clone();
+        commitment.validator_set_id += 10;
+        let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+
+        assert_noop!(BeefyLightClient::submit_signature_commitment(
+            RuntimeOrigin::signed(alice::<Test>()),
+            SubNetworkId::Mainnet,
+            commitment,
+            validator_proof,
+            leaf,
+            fixture.leaf_proof.into(),
+        ), Error::<Test>::InvalidValidatorSetId);
+    })
+}
+
+#[test_case(3, 5; "3 validators, 5 leaves")]
+fn submit_fixture_failed_invalid_commitment_signatures_threshold(validators: usize, tree_size: usize) {
+    new_test_ext().execute_with(|| {
+        let fixture = load_fixture(validators, tree_size);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+        assert_ok!(BeefyLightClient::initialize(
+            RuntimeOrigin::root(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ));
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        //invalid payload
+        // commitment.payload = beefy_primitives::Payload::from_single_entry([55, 66], vec![0, 1, 2]);
+        let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+
+        assert_noop!(BeefyLightClient::submit_signature_commitment(
+            RuntimeOrigin::signed(alice::<Test>()),
+            SubNetworkId::Mainnet,
+            commitment,
+            validator_proof,
+            leaf,
+            fixture.leaf_proof.into(),
+        ), Error::<Test>::NotEnoughValidatorSignatures);
+    })
 }
 
 #[test]
