@@ -89,7 +89,7 @@ pub struct Message {
 
 /// A message relayed from Parachain.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ParachainMessage<Balance> {
     pub payload: Vec<u8>,
     pub nonce: MessageNonce,
@@ -132,7 +132,7 @@ impl From<Digest> for AuxiliaryDigest {
 
 /// Auxiliary [`DigestItem`] to include in header digest.
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
     Commitment(GenericNetworkId, H256),

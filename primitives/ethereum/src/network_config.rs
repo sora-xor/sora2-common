@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
+    beacon::config::BeaconConsensusConfig,
     difficulty::{ClassicForkConfig, ForkConfig},
     EVMChainId,
 };
@@ -44,6 +45,7 @@ pub enum Consensus {
     Ethash { fork_config: ForkConfig },
     Etchash { fork_config: ClassicForkConfig },
     Clique { period: u64, epoch: u64 },
+    Beacon(BeaconConsensusConfig),
 }
 
 impl Consensus {
@@ -52,6 +54,7 @@ impl Consensus {
             Consensus::Clique { epoch, .. } => *epoch,
             Consensus::Ethash { fork_config } => fork_config.epoch_length(),
             Consensus::Etchash { fork_config } => fork_config.calc_epoch_length(block_number),
+            Consensus::Beacon(consensus) => consensus.config.epoch_length(),
         }
     }
 }
@@ -60,61 +63,71 @@ impl Consensus {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum NetworkConfig {
     Mainnet,
-    Ropsten,
     Sepolia,
-    Rinkeby,
     Goerli,
     Classic,
     Mordor,
+    Local,
     Custom {
         chain_id: EVMChainId,
         consensus: Consensus,
     },
+    // Keep it for tests
+    #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+    RopstenEthash,
+    #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+    SepoliaEthash,
+    #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+    MainnetEthash,
 }
 
 impl NetworkConfig {
     pub fn chain_id(&self) -> EVMChainId {
         match self {
             NetworkConfig::Mainnet => 1u32.into(),
-            NetworkConfig::Ropsten => 3u32.into(),
             NetworkConfig::Sepolia => 11155111u32.into(),
-            NetworkConfig::Rinkeby => 4u32.into(),
             NetworkConfig::Goerli => 5u32.into(),
             NetworkConfig::Classic => 61u32.into(),
             NetworkConfig::Mordor => 63u32.into(),
+            NetworkConfig::Local => 4224u32.into(),
             NetworkConfig::Custom { chain_id, .. } => *chain_id,
+            #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+            NetworkConfig::RopstenEthash => 3u32.into(),
+            #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+            NetworkConfig::MainnetEthash => 1u32.into(),
+            #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+            NetworkConfig::SepoliaEthash => 11155111u32.into(),
         }
     }
 
     pub fn consensus(&self) -> Consensus {
         match self {
-            NetworkConfig::Mainnet => Consensus::Ethash {
-                fork_config: ForkConfig::mainnet(),
-            },
-            NetworkConfig::Ropsten => Consensus::Ethash {
-                fork_config: ForkConfig::ropsten(),
-            },
-            NetworkConfig::Sepolia => Consensus::Ethash {
-                fork_config: ForkConfig::sepolia(),
-            },
+            NetworkConfig::Mainnet => Consensus::Beacon(BeaconConsensusConfig::mainnet()),
+            NetworkConfig::Goerli => Consensus::Beacon(BeaconConsensusConfig::goerli()),
+            NetworkConfig::Sepolia => Consensus::Beacon(BeaconConsensusConfig::sepolia()),
+            NetworkConfig::Local => Consensus::Beacon(BeaconConsensusConfig::local()),
             NetworkConfig::Classic => Consensus::Etchash {
                 fork_config: ClassicForkConfig::classic(),
             },
             NetworkConfig::Mordor => Consensus::Etchash {
                 fork_config: ClassicForkConfig::mordor(),
             },
-            NetworkConfig::Rinkeby => Consensus::Clique {
-                period: 15,
-                epoch: 30000,
-            },
-            NetworkConfig::Goerli => Consensus::Clique {
-                period: 15,
-                epoch: 30000,
-            },
             NetworkConfig::Custom {
                 consensus: protocol,
                 ..
             } => *protocol,
+            #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+            NetworkConfig::RopstenEthash => Consensus::Ethash {
+                fork_config: ForkConfig::ropsten(),
+            },
+            #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+            NetworkConfig::MainnetEthash => Consensus::Ethash {
+                fork_config: ForkConfig::mainnet(),
+            },
+            #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
+            NetworkConfig::SepoliaEthash => Consensus::Ethash {
+                fork_config: ForkConfig::sepolia(),
+            },
         }
     }
 }
