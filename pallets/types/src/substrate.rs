@@ -80,6 +80,17 @@ pub enum XCMAppMessage<AccountId, AssetId, Balance> {
         sidechain_asset: ParachainAssetId,
         asset_kind: AssetKind,
     },
+    DisableAsset {
+        asset_id: AssetId,
+    },
+    EnableAsset {
+        asset_id: AssetId,
+    },
+    UpdateSidechainAssetId {
+        sidechain_asset: ParachainAssetId,
+    },
+    DisableBridge,
+    EnableBridge,
 }
 
 impl<AccountId: Encode, Balance: Encode, AssetId: Encode> SubstrateBridgeMessageEncode
