@@ -568,9 +568,10 @@ fn submit_fixture_failed_validator_set_incorrect_position(validators: usize, tre
     new_test_ext().execute_with(|| {
         let fixture = load_fixture(validators, tree_size);
         let mut validator_set: beefy_primitives::mmr::BeefyAuthoritySet<H256>  = fixture.validator_set.clone().into();
-        let next_validator_set = fixture.next_validator_set.clone().into();
-        // just change authority set to some random to cause an error
-        validator_set.root = H256::random();
+        let mut next_validator_set: beefy_primitives::mmr::BeefyAuthoritySet<H256> = fixture.next_validator_set.clone().into();
+        // just change authority set to some invalid to cause an error
+        validator_set.root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1").into();
+        next_validator_set.root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1").into();
         assert_ok!(BeefyLightClient::initialize(
             RuntimeOrigin::root(),
             SubNetworkId::Mainnet,
