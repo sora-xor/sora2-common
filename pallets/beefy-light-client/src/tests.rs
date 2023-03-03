@@ -567,8 +567,10 @@ fn submit_fixture_failed_not_once_in_bitfield(validators: usize, tree_size: usiz
 fn submit_fixture_failed_validator_set_incorrect_position(validators: usize, tree_size: usize) {
     new_test_ext().execute_with(|| {
         let fixture = load_fixture(validators, tree_size);
-        let validator_set = fixture.validator_set.clone().into();
+        let mut validator_set: beefy_primitives::mmr::BeefyAuthoritySet<H256>  = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
+        // just change authority set to some random to cause an error
+        validator_set.root = H256::random();
         assert_ok!(BeefyLightClient::initialize(
             RuntimeOrigin::root(),
             SubNetworkId::Mainnet,
@@ -584,15 +586,14 @@ fn submit_fixture_failed_validator_set_incorrect_position(validators: usize, tre
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
-        todo!("ValidatorSetIncorrectPosition");
-        assert_ok!(BeefyLightClient::submit_signature_commitment(
+        assert_noop!(BeefyLightClient::submit_signature_commitment(
             RuntimeOrigin::signed(alice::<Test>()),
             SubNetworkId::Mainnet,
             commitment,
             validator_proof,
             leaf,
             fixture.leaf_proof.into(),
-        ));
+        ), Error::<Test>::ValidatorSetIncorrectPosition);
     });
 }
 
