@@ -543,7 +543,8 @@ fn submit_fixture_failed_not_once_in_bitfield(validators: usize, tree_size: usiz
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let mut validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
+        let mut validator_proof =
+            validator_proof(&fixture, signed_commitment.signatures, validators);
         // for example clear 4 pos that is used
         validator_proof.validator_claims_bitfield.clear(4);
         println!("{:?}", validator_proof.validator_claims_bitfield);
@@ -567,11 +568,15 @@ fn submit_fixture_failed_not_once_in_bitfield(validators: usize, tree_size: usiz
 fn submit_fixture_failed_validator_set_incorrect_position(validators: usize, tree_size: usize) {
     new_test_ext().execute_with(|| {
         let fixture = load_fixture(validators, tree_size);
-        let mut validator_set: beefy_primitives::mmr::BeefyAuthoritySet<H256>  = fixture.validator_set.clone().into();
-        let mut next_validator_set: beefy_primitives::mmr::BeefyAuthoritySet<H256> = fixture.next_validator_set.clone().into();
+        let mut validator_set: beefy_primitives::mmr::BeefyAuthoritySet<H256> =
+            fixture.validator_set.clone().into();
+        let mut next_validator_set: beefy_primitives::mmr::BeefyAuthoritySet<H256> =
+            fixture.next_validator_set.clone().into();
         // just change authority set to some invalid to cause an error
-        validator_set.root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1").into();
-        next_validator_set.root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1").into();
+        validator_set.root =
+            hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1").into();
+        next_validator_set.root =
+            hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1").into();
         assert_ok!(BeefyLightClient::initialize(
             RuntimeOrigin::root(),
             SubNetworkId::Mainnet,
@@ -587,61 +592,121 @@ fn submit_fixture_failed_validator_set_incorrect_position(validators: usize, tre
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
-        assert_noop!(BeefyLightClient::submit_signature_commitment(
-            RuntimeOrigin::signed(alice::<Test>()),
-            SubNetworkId::Mainnet,
-            commitment,
-            validator_proof,
-            leaf,
-            fixture.leaf_proof.into(),
-        ), Error::<Test>::ValidatorSetIncorrectPosition);
+        assert_noop!(
+            BeefyLightClient::submit_signature_commitment(
+                RuntimeOrigin::signed(alice::<Test>()),
+                SubNetworkId::Mainnet,
+                commitment,
+                validator_proof,
+                leaf,
+                fixture.leaf_proof.into(),
+            ),
+            Error::<Test>::ValidatorSetIncorrectPosition
+        );
     });
 }
 
-// #[test_case(69, 5000; "69 validators, 5000 leaves")]
-// #[test_case(200, 5000; "200 validators, 5000 leaves")]
-// fn submit_fixture_failed_mmr_payload_not_found(validators: usize, tree_size: usize) {
-//     new_test_ext().execute_with(|| {
-//         let fixture = load_fixture(validators, tree_size);
-//         let validator_set = fixture.validator_set.clone().into();
-//         let next_validator_set = fixture.next_validator_set.clone().into();
-//         assert_ok!(BeefyLightClient::initialize(
-//             RuntimeOrigin::root(),
-//             SubNetworkId::Mainnet,
-//             0,
-//             validator_set,
-//             next_validator_set
-//         ));
+#[test]
+fn submit_fixture_failed_mmr_payload_not_found() {
+    new_test_ext().execute_with(|| {
+        let fixture: Fixture = serde_json::from_str(
+            &std::fs::read_to_string(format!("src/fixtures/beefy-badpayload-88-1000.json"))
+                .unwrap(),
+        )
+        .unwrap();
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+        assert_ok!(BeefyLightClient::initialize(
+            RuntimeOrigin::root(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ));
 
-//         let signed_commitment: beefy_primitives::SignedCommitment<
-//             u32,
-//             beefy_primitives::crypto::Signature,
-//         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
-//         let mut commitment = signed_commitment.commitment.clone();
-//         // commitment.payload = Payload::from_single_entry([0, 0], Vec::new());
-//         let raw = commitment
-//             .payload
-//             .get_raw(&beefy_primitives::known_payloads::MMR_ROOT_ID)
-//             .unwrap()
-//             .clone();
-//         commitment.payload = Payload::from_single_entry(beefy_primitives::known_payloads::MMR_ROOT_ID, raw);
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
 
-//         let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
-//         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
-//         todo!("MMRPayloadNotFound");
-//         assert_noop!(
-//             BeefyLightClient::submit_signature_commitment(
-//                 RuntimeOrigin::signed(alice::<Test>()),
-//                 SubNetworkId::Mainnet,
-//                 commitment,
-//                 validator_proof,
-//                 leaf,
-//                 fixture.leaf_proof.into(),
-//             ),
-//             Error::<Test>::MMRPayloadNotFound
-//         );
-//     });
-// }
+        let validator_proof = validator_proof(&fixture, signed_commitment.signatures, 88);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+        assert_noop!(
+            BeefyLightClient::submit_signature_commitment(
+                RuntimeOrigin::signed(alice::<Test>()),
+                SubNetworkId::Mainnet,
+                commitment,
+                validator_proof,
+                leaf,
+                fixture.leaf_proof.into(),
+            ),
+            Error::<Test>::MMRPayloadNotFound
+        );
+    });
+}
+
+#[test_case(37, 5000; "37 validators, 5000 leaves")]
+#[test_case(69, 5000; "69 validators, 5000 leaves")]
+#[test_case(200, 5000; "200 validators, 5000 leaves")]
+fn submit_fixture_invalid_signature(validators: usize, tree_size: usize) {
+    new_test_ext().execute_with(|| {
+        let fixture = load_fixture(validators, tree_size);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+        assert_ok!(BeefyLightClient::initialize(
+            RuntimeOrigin::root(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ));
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+
+        let mut commitment1 = commitment.clone();
+        let mut raw = commitment
+            .payload
+            .get_raw(&beefy_primitives::known_payloads::MMR_ROOT_ID)
+            .unwrap()
+            .clone();
+        commitment1.payload = Payload::from_single_entry(*b"mm", raw.clone());
+
+        assert_noop!(
+            BeefyLightClient::submit_signature_commitment(
+                RuntimeOrigin::signed(alice::<Test>()),
+                SubNetworkId::Mainnet,
+                commitment1,
+                validator_proof.clone(),
+                leaf.clone(),
+                fixture.leaf_proof.clone().into(),
+            ),
+            Error::<Test>::InvalidSignature
+        );
+
+        let mut commitment2 = commitment.clone();
+        raw.pop();
+        commitment2.payload =
+            Payload::from_single_entry(beefy_primitives::known_payloads::MMR_ROOT_ID, raw);
+        assert_noop!(
+            BeefyLightClient::submit_signature_commitment(
+                RuntimeOrigin::signed(alice::<Test>()),
+                SubNetworkId::Mainnet,
+                commitment2,
+                validator_proof,
+                leaf,
+                fixture.leaf_proof.into(),
+            ),
+            Error::<Test>::InvalidSignature
+        );
+    });
+}
 
 #[test]
 fn it_works_initialize_pallet() {
