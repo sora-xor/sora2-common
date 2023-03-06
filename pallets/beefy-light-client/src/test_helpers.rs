@@ -94,7 +94,7 @@ pub fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
     fixture
 }
 
-pub fn validator_proof_<T: crate::Config>(
+pub fn validator_proof<T: crate::Config>(
     fixture: &Fixture,
     signatures: Vec<Option<beefy_primitives::crypto::Signature>>,
     count: usize,
