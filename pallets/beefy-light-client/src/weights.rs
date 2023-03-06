@@ -27,57 +27,38 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#![cfg_attr(rustfmt, rustfmt_skip)]
+#![allow(unused_parens)]
+#![allow(unused_imports)]
 
-use super::*;
+use frame_support::{traits::Get, weights::Weight};
+use core::marker::PhantomData;
+use bridge_common::EXTRINSIC_FIXED_WEIGHT;
 
-use crate::test_helpers::*;
-#[allow(unused)]
-use crate::Pallet as BeefyLightClient;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_system::RawOrigin;
-use hex_literal::hex;
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+	// Storage: Converter AssetIdToMultilocation (r:1 w:1)
+	// Storage: Converter MultilocationToAssetId (r:0 w:1)
+	fn initialize() -> Weight {
+		Weight::from_ref_time(15_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(2))
+	}
+	// Storage: Converter AssetIdToMultilocation (r:1 w:1)
+	// Storage: Converter MultilocationToAssetId (r:1 w:2)
+	fn submit_signature_commitment() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(3))
+	}
+}
 
-benchmarks! {
-    initialize {
-        let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
-        let curr_val_set = ValidatorSet {
-            id: 0,
-            len: 3,
-            root: root.into(),
-        };
-        let next_val_set = ValidatorSet {
-            id: 1,
-            len: 3,
-            root: root.into(),
-        };
-    }: _(RawOrigin::Root, SubNetworkId::Mainnet, 1, curr_val_set, next_val_set)
-    verify {
-    }
+impl crate::WeightInfo for () {
+	fn initialize() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
 
-    submit_signature_commitment {
-        let validators = 200;
-        let tree_size = 5000;
-
-        let fixture = load_fixture(validators, tree_size);
-        let validator_set = fixture.validator_set.clone().into();
-        let next_validator_set = fixture.next_validator_set.clone().into();
-
-        BeefyLightClient::<T>::initialize(
-            RawOrigin::Root.into(),
-            SubNetworkId::Mainnet,
-            0,
-            validator_set,
-            next_validator_set
-        );
-
-        let signed_commitment: beefy_primitives::SignedCommitment<
-            u32,
-            beefy_primitives::crypto::Signature,
-        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
-        let commitment = signed_commitment.commitment.clone();
-        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
-        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
-    }: _(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
-    verify {
-    }
+	fn submit_signature_commitment() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
 }
