@@ -28,8 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::test_helpers::*;
 use crate::mock::*;
+use crate::test_helpers::*;
 use crate::Error;
 use beefy_primitives::Payload;
 use bridge_common::beefy_types::BeefyMMRLeaf;
@@ -68,7 +68,11 @@ fn submit_fixture_success(validators: usize, tree_size: usize) {
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let validator_proof = validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let validator_proof = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
 
         assert_ok!(BeefyLightClient::submit_signature_commitment(
@@ -92,7 +96,11 @@ fn submit_fixture_failed_pallet_not_initialized(validators: usize, tree_size: us
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let validator_proof = validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let validator_proof = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
 
         assert_noop!(
@@ -129,7 +137,11 @@ fn submit_fixture_failed_invalid_set_id(validators: usize, tree_size: usize) {
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let mut commitment = signed_commitment.commitment.clone();
         commitment.validator_set_id += 10;
-        let validator_proof = validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let validator_proof = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
 
         assert_noop!(
@@ -169,8 +181,11 @@ fn submit_fixture_failed_invalid_commitment_signatures_threshold(
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let mut validator_proof =
-            validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let mut validator_proof = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let count_set_bits = validator_proof.validator_claims_bitfield.count_set_bits();
         let treshold = validators - (validators - 1) / 3 - 1;
         let error_diff = count_set_bits - treshold;
@@ -221,8 +236,11 @@ fn submit_fixture_failed_invalid_number_of_signatures(validators: usize, tree_si
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let mut validator_proof_small =
-            validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let mut validator_proof_small = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let mut validator_proof_big = validator_proof_small.clone();
         validator_proof_small.signatures.pop();
         validator_proof_big.signatures.push(Vec::new());
@@ -274,8 +292,11 @@ fn submit_fixture_failed_invalid_number_of_positions(validators: usize, tree_siz
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let mut validator_proof_small =
-            validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let mut validator_proof_small = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let mut validator_proof_big = validator_proof_small.clone();
         validator_proof_small.positions.pop();
         validator_proof_big.positions.push(0);
@@ -327,8 +348,11 @@ fn submit_fixture_failed_invalid_number_of_public_keys(validators: usize, tree_s
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let mut validator_proof_small =
-            validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let mut validator_proof_small = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let mut validator_proof_big = validator_proof_small.clone();
         validator_proof_small.public_keys.pop();
         validator_proof_big.public_keys.push(H160([
@@ -382,8 +406,11 @@ fn submit_fixture_failed_invalid_number_of_public_keys_mp(validators: usize, tre
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let mut validator_proof_small =
-            validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let mut validator_proof_small = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let mut validator_proof_big = validator_proof_small.clone();
         validator_proof_small.public_key_merkle_proofs.pop();
         validator_proof_big
@@ -436,8 +463,11 @@ fn submit_fixture_failed_not_once_in_bitfield(validators: usize, tree_size: usiz
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let mut validator_proof =
-            validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let mut validator_proof = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         // for example clear 4 pos that is used
         validator_proof.validator_claims_bitfield.clear(4);
         println!("{:?}", validator_proof.validator_claims_bitfield);
@@ -483,7 +513,11 @@ fn submit_fixture_failed_validator_set_incorrect_position(validators: usize, tre
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let validator_proof = validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let validator_proof = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
         assert_noop!(
             BeefyLightClient::submit_signature_commitment(
@@ -523,7 +557,8 @@ fn submit_fixture_failed_mmr_payload_not_found() {
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
 
-        let validator_proof = validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, 88);
+        let validator_proof =
+            validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, 88);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
         assert_noop!(
             BeefyLightClient::submit_signature_commitment(
@@ -556,11 +591,15 @@ fn submit_fixture_invalid_signature(validators: usize, tree_size: usize) {
         ));
 
         let signed_commitment: beefy_primitives::SignedCommitment<
-            u32,    
+            u32,
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let validator_proof = validator_proof::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
+        let validator_proof = validator_proof::<crate::mock::Test>(
+            &fixture,
+            signed_commitment.signatures,
+            validators,
+        );
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
 
         let mut commitment1 = commitment.clone();

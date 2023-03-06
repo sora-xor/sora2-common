@@ -105,7 +105,8 @@ pub fn validator_proof<T: crate::Config>(
         .filter_map(|(i, x)| x.clone().map(|_| i as u32))
         .take(count)
         .collect::<Vec<_>>();
-    let initial_bitfield = bridge_common::bitfield::BitField::create_bitfield(&bits_to_set, signatures.len());
+    let initial_bitfield =
+        bridge_common::bitfield::BitField::create_bitfield(&bits_to_set, signatures.len());
     let random_bitfield = crate::Pallet::<T>::create_random_bit_field(
         bridge_types::SubNetworkId::Mainnet,
         initial_bitfield.clone(),

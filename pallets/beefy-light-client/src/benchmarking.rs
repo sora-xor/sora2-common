@@ -30,12 +30,12 @@
 
 use super::*;
 
+use crate::test_helpers::*;
 #[allow(unused)]
 use crate::Pallet as BeefyLightClient;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_system::RawOrigin;
 use hex_literal::hex;
-use crate::test_helpers::*;
 
 benchmarks! {
     initialize {
@@ -54,19 +54,31 @@ benchmarks! {
     verify {
     }
 
-    // submit_signature_commitment {
-    //     let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
-    //     let curr_val_set = ValidatorSet {
-    //         id: 0,
-    //         len: 3,
-    //         root: root.into(),
-    //     };
-    //     let next_val_set = ValidatorSet {
-    //         id: 1,
-    //         len: 3,
-    //         root: root.into(),
-    //     };
-    // }: _(RawOrigin::Root, SubNetworkId::Mainnet, 1, curr_val_set, next_val_set)
-    // verify {
-    // }
+    submit_signature_commitment {
+        let validators = 200;
+        let tree_size = 5000;
+
+        let fixture = load_fixture(validators, tree_size);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        );
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+
+    }: _(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+    }
 }
