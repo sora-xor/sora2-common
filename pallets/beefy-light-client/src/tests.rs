@@ -28,16 +28,12 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// use core::fmt::Error;
-
+use crate::helpers::*;
 use crate::mock::*;
 use crate::Error;
 use beefy_primitives::Payload;
 use bridge_common::beefy_types::BeefyMMRLeaf;
-use bridge_common::beefy_types::ValidatorProof;
 use bridge_common::beefy_types::ValidatorSet;
-use bridge_common::bitfield::BitField;
-use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
 use bridge_types::SubNetworkId;
 use bridge_types::H160;
 use bridge_types::H256;
@@ -45,110 +41,7 @@ use codec::Decode;
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use hex_literal::hex;
-use serde::Deserialize;
 use test_case::test_case;
-
-fn alice<T: crate::Config>() -> T::AccountId {
-    T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct MMRProof {
-    order: u64,
-    items: Vec<H256>,
-}
-
-impl From<MMRProof> for SimplifiedMMRProof {
-    fn from(proof: MMRProof) -> Self {
-        SimplifiedMMRProof {
-            merkle_proof_items: proof.items,
-            merkle_proof_order_bit_field: proof.order,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct FixtureValidatorSet {
-    id: u64,
-    root: H256,
-    len: u32,
-}
-
-impl From<FixtureValidatorSet> for ValidatorSet {
-    fn from(f: FixtureValidatorSet) -> Self {
-        ValidatorSet {
-            id: f.id,
-            len: f.len,
-            root: f.root,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct Fixture {
-    addresses: Vec<H160>,
-    validator_set: FixtureValidatorSet,
-    next_validator_set: FixtureValidatorSet,
-    validator_set_proofs: Vec<Vec<H256>>,
-    commitment: Vec<u8>,
-    leaf_proof: MMRProof,
-    leaf: Vec<u8>,
-}
-
-fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
-    let fixture: Fixture = serde_json::from_str(
-        &std::fs::read_to_string(format!(
-            "src/fixtures/beefy-{}-{}.json",
-            validators, tree_size
-        ))
-        .unwrap(),
-    )
-    .unwrap();
-    fixture
-}
-
-fn validator_proof(
-    fixture: &Fixture,
-    signatures: Vec<Option<beefy_primitives::crypto::Signature>>,
-    count: usize,
-) -> ValidatorProof {
-    let bits_to_set = signatures
-        .iter()
-        .enumerate()
-        .filter_map(|(i, x)| x.clone().map(|_| i as u32))
-        .take(count)
-        .collect::<Vec<_>>();
-    let initial_bitfield = BitField::create_bitfield(&bits_to_set, signatures.len());
-    let random_bitfield = BeefyLightClient::create_random_bit_field(
-        SubNetworkId::Mainnet,
-        initial_bitfield.clone(),
-        signatures.len() as u32,
-    )
-    .unwrap();
-    let mut positions = vec![];
-    let mut proof_signatures = vec![];
-    let mut public_keys = vec![];
-    let mut public_key_merkle_proofs = vec![];
-    for i in 0..random_bitfield.len() {
-        let bit = random_bitfield.is_set(i);
-        if bit {
-            positions.push(i as u128);
-            let mut signature = signatures.get(i).unwrap().clone().unwrap().to_vec();
-            signature[64] += 27;
-            proof_signatures.push(signature);
-            public_keys.push(fixture.addresses[i]);
-            public_key_merkle_proofs.push(fixture.validator_set_proofs[i].clone());
-        }
-    }
-    let validator_proof = bridge_common::beefy_types::ValidatorProof {
-        signatures: proof_signatures,
-        positions,
-        public_keys,
-        public_key_merkle_proofs: public_key_merkle_proofs,
-        validator_claims_bitfield: initial_bitfield,
-    };
-    validator_proof
-}
 
 #[test_case(3, 5; "3 validators, 5 leaves")]
 #[test_case(3, 5000; "3 validators, 5000 leaves")]

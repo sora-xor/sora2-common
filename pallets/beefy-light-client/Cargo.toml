@@ -12,6 +12,7 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+hex-literal = { version = "0.3.1", optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", features = [
 	"derive",
 ], default-features = false }
@@ -46,7 +47,10 @@ test-case = "2.2.2"
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks", 
+	"hex-literal"
+]
 std = [
 	"codec/std",
 	"serde/std",

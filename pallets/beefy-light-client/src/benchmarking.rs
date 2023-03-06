@@ -30,7 +30,42 @@
 
 use super::*;
 
-// #[allow(unused)]
-// use crate::Pallet as BeefyLightClient;
-// use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-// use frame_system::RawOrigin;
+#[allow(unused)]
+use crate::Pallet as BeefyLightClient;
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_system::RawOrigin;
+use hex_literal::hex;
+
+benchmarks! {
+    initialize {
+        let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
+        let curr_val_set = ValidatorSet {
+            id: 0,
+            len: 3,
+            root: root.into(),
+        };
+        let next_val_set = ValidatorSet {
+            id: 1,
+            len: 3,
+            root: root.into(),
+        };
+    }: _(RawOrigin::Root, SubNetworkId::Mainnet, 1, curr_val_set, next_val_set)
+    verify {
+    }
+
+    // submit_signature_commitment {
+    //     let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
+    //     let curr_val_set = ValidatorSet {
+    //         id: 0,
+    //         len: 3,
+    //         root: root.into(),
+    //     };
+    //     let next_val_set = ValidatorSet {
+    //         id: 1,
+    //         len: 3,
+    //         root: root.into(),
+    //     };
+    // }: _(RawOrigin::Root, SubNetworkId::Mainnet, 1, curr_val_set, next_val_set)
+    // verify {
+    // }
+}
