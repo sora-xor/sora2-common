@@ -28,12 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::mock::*;
-use bridge_common::beefy_types::ValidatorProof;
 use bridge_common::beefy_types::ValidatorSet;
-use bridge_common::bitfield::BitField;
 use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
-use bridge_types::SubNetworkId;
 use bridge_types::H160;
 use bridge_types::H256;
 use codec::Decode;
@@ -98,20 +94,20 @@ pub fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
     fixture
 }
 
-pub fn validator_proof(
+pub fn validator_proof_<T: crate::Config>(
     fixture: &Fixture,
     signatures: Vec<Option<beefy_primitives::crypto::Signature>>,
     count: usize,
-) -> ValidatorProof {
+) -> bridge_common::beefy_types::ValidatorProof {
     let bits_to_set = signatures
         .iter()
         .enumerate()
         .filter_map(|(i, x)| x.clone().map(|_| i as u32))
         .take(count)
         .collect::<Vec<_>>();
-    let initial_bitfield = BitField::create_bitfield(&bits_to_set, signatures.len());
-    let random_bitfield = BeefyLightClient::create_random_bit_field(
-        SubNetworkId::Mainnet,
+    let initial_bitfield = bridge_common::bitfield::BitField::create_bitfield(&bits_to_set, signatures.len());
+    let random_bitfield = crate::Pallet::<T>::create_random_bit_field(
+        bridge_types::SubNetworkId::Mainnet,
         initial_bitfield.clone(),
         signatures.len() as u32,
     )

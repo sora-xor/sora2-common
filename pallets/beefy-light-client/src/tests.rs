@@ -28,12 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::helpers::*;
+use crate::test_helpers::*;
 use crate::mock::*;
 use crate::Error;
 use beefy_primitives::Payload;
 use bridge_common::beefy_types::BeefyMMRLeaf;
+use bridge_common::beefy_types::ValidatorProof;
 use bridge_common::beefy_types::ValidatorSet;
+use bridge_common::bitfield::BitField;
 use bridge_types::SubNetworkId;
 use bridge_types::H160;
 use bridge_types::H256;
@@ -42,6 +44,49 @@ use frame_support::assert_noop;
 use frame_support::assert_ok;
 use hex_literal::hex;
 use test_case::test_case;
+
+fn validator_proof(
+    fixture: &Fixture,
+    signatures: Vec<Option<beefy_primitives::crypto::Signature>>,
+    count: usize,
+) -> ValidatorProof {
+    let bits_to_set = signatures
+        .iter()
+        .enumerate()
+        .filter_map(|(i, x)| x.clone().map(|_| i as u32))
+        .take(count)
+        .collect::<Vec<_>>();
+    let initial_bitfield = BitField::create_bitfield(&bits_to_set, signatures.len());
+    let random_bitfield = BeefyLightClient::create_random_bit_field(
+        SubNetworkId::Mainnet,
+        initial_bitfield.clone(),
+        signatures.len() as u32,
+    )
+    .unwrap();
+    let mut positions = vec![];
+    let mut proof_signatures = vec![];
+    let mut public_keys = vec![];
+    let mut public_key_merkle_proofs = vec![];
+    for i in 0..random_bitfield.len() {
+        let bit = random_bitfield.is_set(i);
+        if bit {
+            positions.push(i as u128);
+            let mut signature = signatures.get(i).unwrap().clone().unwrap().to_vec();
+            signature[64] += 27;
+            proof_signatures.push(signature);
+            public_keys.push(fixture.addresses[i]);
+            public_key_merkle_proofs.push(fixture.validator_set_proofs[i].clone());
+        }
+    }
+    let validator_proof = bridge_common::beefy_types::ValidatorProof {
+        signatures: proof_signatures,
+        positions,
+        public_keys,
+        public_key_merkle_proofs: public_key_merkle_proofs,
+        validator_claims_bitfield: initial_bitfield,
+    };
+    validator_proof
+}
 
 #[test_case(3, 5; "3 validators, 5 leaves")]
 #[test_case(3, 5000; "3 validators, 5000 leaves")]
@@ -560,7 +605,7 @@ fn submit_fixture_invalid_signature(validators: usize, tree_size: usize) {
             beefy_primitives::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
-        let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
+        let validator_proof = validator_proof_::<crate::mock::Test>(&fixture, signed_commitment.signatures, validators);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
 
         let mut commitment1 = commitment.clone();

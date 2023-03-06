@@ -70,7 +70,7 @@ mod tests;
 mod benchmarking;
 
 #[cfg(any(test, feature = "runtime-benchmarks"))]
-mod helpers;
+mod test_helpers;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ProvedSubstrateBridgeMessage<Message> {
