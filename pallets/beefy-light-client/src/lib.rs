@@ -72,7 +72,7 @@ mod benchmarking;
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 mod test_helpers;
 
-mod weights;
+pub mod weights;
 
 pub trait WeightInfo {
 	fn initialize() -> Weight;
