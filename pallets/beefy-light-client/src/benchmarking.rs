@@ -33,7 +33,7 @@ use super::*;
 use crate::test_helpers::*;
 #[allow(unused)]
 use crate::Pallet as BeefyLightClient;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_benchmarking::benchmarks;
 use frame_system::RawOrigin;
 use hex_literal::hex;
 
@@ -52,6 +52,8 @@ benchmarks! {
         };
     }: _(RawOrigin::Root, SubNetworkId::Mainnet, 1, curr_val_set, next_val_set)
     verify {
+        assert!(BeefyLightClient::<T>::current_validator_set(SubNetworkId::Mainnet).is_some());
+        assert!(BeefyLightClient::<T>::next_validator_set(SubNetworkId::Mainnet).is_some());
     }
 
     submit_signature_commitment_10_128 {
@@ -79,6 +81,7 @@ benchmarks! {
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
     }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
     verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 
     submit_signature_commitment_20_256 {
@@ -106,6 +109,7 @@ benchmarks! {
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
     }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
     verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 
     submit_signature_commitment_40_512 {
@@ -133,6 +137,7 @@ benchmarks! {
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
     }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
     verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 
     submit_signature_commitment_80_1024 {
@@ -160,6 +165,7 @@ benchmarks! {
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
     }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
     verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 
     submit_signature_commitment_160_2048 {
@@ -187,6 +193,7 @@ benchmarks! {
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
     }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
     verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 
     submit_signature_commitment_200_4096 {
@@ -214,6 +221,7 @@ benchmarks! {
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
     }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
     verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 
     submit_signature_commitment_300_8192 {
@@ -241,5 +249,6 @@ benchmarks! {
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
     }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
     verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 }
