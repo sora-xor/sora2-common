@@ -33,7 +33,7 @@ use super::*;
 use crate::test_helpers::*;
 #[allow(unused)]
 use crate::Pallet as BeefyLightClient;
-use frame_benchmarking::benchmarks;
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use hex_literal::hex;
 
@@ -252,3 +252,5 @@ benchmarks! {
         assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
     }
 }
+
+impl_benchmark_test_suite!(BeefyLightClient, crate::mock::new_test_ext(), crate::mock::Test,);
