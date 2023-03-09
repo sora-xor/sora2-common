@@ -66,6 +66,9 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod consts;
+
 // #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
@@ -75,9 +78,9 @@ mod test_helpers;
 pub mod weights;
 
 pub trait WeightInfo {
-	fn initialize() -> Weight;
+    fn initialize() -> Weight;
 
-	fn submit_signature_commitment() -> Weight;
+    fn submit_signature_commitment() -> Weight;
 }
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]

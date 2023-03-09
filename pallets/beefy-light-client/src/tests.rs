@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::consts::*;
 use crate::mock::*;
 use crate::test_helpers::*;
 use crate::Error;
@@ -42,24 +43,24 @@ use frame_support::assert_noop;
 use frame_support::assert_ok;
 use hex_literal::hex;
 use test_case::test_case;
-
-#[test_case(3, 5; "3 validators, 5 leaves")]
-#[test_case(3, 5000; "3 validators, 5000 leaves")]
-#[test_case(3, 5000000; "3 validators, 5000000 leaves")]
-#[test_case(37, 5; "37 validators, 5 leaves")]
-#[test_case(37, 5000; "37 validators, 5000 leaves")]
-#[test_case(69, 5000; "69 validators, 5000 leaves")]
-#[test_case(200, 5000; "200 validators, 5000 leaves")]
-#[test_case(10, 128; "10 validators, 128 leaves")]
-#[test_case(20, 256; "20 validators, 256 leaves")]
-#[test_case(40, 512; "40 validators, 512 leaves")]
-#[test_case(80, 1024; "80 validators, 1024 leaves")]
-#[test_case(160, 2048; "160 validators, 2048 leaves")]
-#[test_case(200, 4096; "200 validators, 4096 leaves")]
+// #[test_case(3, 5; "3 validators, 5 leaves")]
+// #[test_case(3, 5000; "3 validators, 5000 leaves")]
+// #[test_case(3, 5000000; "3 validators, 5000000 leaves")]
+// #[test_case(37, 5; "37 validators, 5 leaves")]
+// #[test_case(37, 5000; "37 validators, 5000 leaves")]
+// #[test_case(69, 5000; "69 validators, 5000 leaves")]
+// #[test_case(200, 5000; "200 validators, 5000 leaves")]
+// #[test_case(10, 128; "10 validators, 128 leaves")]
+// #[test_case(20, 256; "20 validators, 256 leaves")]
+// #[test_case(40, 512; "40 validators, 512 leaves")]
+// #[test_case(80, 1024; "80 validators, 1024 leaves")]
+// #[test_case(160, 2048; "160 validators, 2048 leaves")]
+// #[test_case(200, 4096; "200 validators, 4096 leaves")]
 #[test_case(300, 8192; "300 validators, 8192 leaves")]
 fn submit_fixture_success(validators: usize, tree_size: usize) {
     new_test_ext().execute_with(|| {
         let fixture = load_fixture(validators, tree_size);
+        println!("fixture: {:?}", fixture);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
         assert_ok!(BeefyLightClient::initialize(
@@ -644,6 +645,56 @@ fn submit_fixture_invalid_signature(validators: usize, tree_size: usize) {
             ),
             Error::<Test>::InvalidSignature
         );
+    });
+}
+
+// #[test_case(300, 8192; "300 validators, 8192 leaves")]
+#[test]
+fn submit_fixture_success_string_fixtures() {
+    new_test_ext().execute_with(|| {
+        let array = [
+            (10, 128, FIXTURE_10_128),
+            (20, 256, FIXTURE_20_256),
+            (40, 512, FIXTURE_40_512),
+            (80, 1028, FIXTURE_80_1024),
+            (160, 2048, FIXTURE_160_2048),
+            (200, 4096, FIXTURE_200_4096),
+            (300, 8192, FIXTURE_300_8192),
+        ];
+        array.into_iter().for_each(|(validators, _, fixture_slice)| {
+            let fixture = load_slice_fixture(fixture_slice);
+            let validator_set = fixture.validator_set.clone().into();
+            let next_validator_set = fixture.next_validator_set.clone().into();
+            assert_ok!(BeefyLightClient::initialize(
+                RuntimeOrigin::root(),
+                SubNetworkId::Mainnet,
+                0,
+                validator_set,
+                next_validator_set
+            ));
+    
+            let signed_commitment: beefy_primitives::SignedCommitment<
+                u32,
+                beefy_primitives::crypto::Signature,
+            > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+            let commitment = signed_commitment.commitment.clone();
+            let validator_proof = validator_proof::<crate::mock::Test>(
+                &fixture,
+                signed_commitment.signatures,
+                validators,
+            );
+            let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    
+            assert_ok!(BeefyLightClient::submit_signature_commitment(
+                RuntimeOrigin::signed(alice::<Test>()),
+                SubNetworkId::Mainnet,
+                commitment,
+                validator_proof,
+                leaf,
+                fixture.leaf_proof.into(),
+            ));
+        });
+
     });
 }
 

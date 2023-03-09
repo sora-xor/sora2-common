@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::Vec;
 use bridge_common::beefy_types::ValidatorSet;
 use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
 use bridge_types::H160;
@@ -91,6 +92,19 @@ pub fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
         .unwrap(),
     )
     .unwrap();
+    fixture
+}
+
+pub fn load_slice_fixture(slice: &[u8]) -> Fixture {
+    // let fixture: Fixture = serde_json::from_str(
+    //     &std::fs::read_to_string(format!(
+    //         "src/fixtures/beefy-{}-{}.json",
+    //         validators, tree_size
+    //     ))
+    //     .unwrap(),
+    // )
+    // .unwrap();
+    let fixture: Fixture = serde_json::from_slice(slice).expect("Error loading fixture");
     fixture
 }
 
