@@ -36,6 +36,7 @@ use crate::Pallet as BeefyLightClient;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use hex_literal::hex;
+use crate::consts::*;
 
 benchmarks! {
     initialize {
@@ -60,7 +61,7 @@ benchmarks! {
         let validators = 10;
         let tree_size = 128;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = load_slice_fixture(FIXTURE_10_128);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -88,7 +89,7 @@ benchmarks! {
         let validators = 20;
         let tree_size = 256;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = load_slice_fixture(FIXTURE_20_256);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -116,7 +117,7 @@ benchmarks! {
         let validators = 40;
         let tree_size = 512;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = load_slice_fixture(FIXTURE_40_512);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -144,7 +145,7 @@ benchmarks! {
         let validators = 80;
         let tree_size = 1024;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = load_slice_fixture(FIXTURE_80_1024);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -172,7 +173,7 @@ benchmarks! {
         let validators = 160;
         let tree_size = 2048;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = load_slice_fixture(FIXTURE_160_2048);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -200,7 +201,7 @@ benchmarks! {
         let validators = 200;
         let tree_size = 4096;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = load_slice_fixture(FIXTURE_200_4096);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -228,7 +229,7 @@ benchmarks! {
         let validators = 300;
         let tree_size = 8192;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = load_slice_fixture(FIXTURE_300_8192);
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 

@@ -35,6 +35,7 @@ use bridge_types::H160;
 use bridge_types::H256;
 use codec::Decode;
 use serde::Deserialize;
+use sp_std::vec;
 
 pub fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
@@ -83,6 +84,7 @@ pub struct Fixture {
     pub leaf: Vec<u8>,
 }
 
+#[cfg(test)]
 pub fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
     let fixture: Fixture = serde_json::from_str(
         &std::fs::read_to_string(format!(

@@ -66,7 +66,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
+// #[cfg(test)]
 mod consts;
 
 // #[cfg(feature = "runtime-benchmarks")]
