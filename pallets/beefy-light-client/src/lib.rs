@@ -69,16 +69,19 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-// #[cfg(any(test, feature = "runtime-benchmarks"))]
-#[cfg(test)]
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmark_features;
+
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+// #[cfg(test)]
 mod test_helpers;
 
 pub mod weights;
 
 pub trait WeightInfo {
-	fn initialize() -> Weight;
+    fn initialize() -> Weight;
 
-	fn submit_signature_commitment() -> Weight;
+    fn submit_signature_commitment() -> Weight;
 }
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]

@@ -82,6 +82,13 @@ pub struct Fixture {
     pub leaf: Vec<u8>,
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+pub fn load_slice_fixture(slice: &[u8]) -> Fixture {
+    let fixture: Fixture = serde_json::from_slice(slice).expect("Error loading fixture");
+    fixture
+}
+
+#[cfg(test)]
 pub fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
     let fixture: Fixture = serde_json::from_str(
         &std::fs::read_to_string(format!(

@@ -30,7 +30,8 @@
 
 use super::*;
 
-// use crate::test_helpers::*;
+use crate::test_helpers::*;
+use crate::benchmark_features::*;
 #[allow(unused)]
 use crate::Pallet as BeefyLightClient;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
@@ -56,33 +57,34 @@ benchmarks! {
         assert!(BeefyLightClient::<T>::next_validator_set(SubNetworkId::Mainnet).is_some());
     }
 
-    // submit_signature_commitment_10_128 {
-    //     let validators = 10;
-    //     let tree_size = 128;
 
-    //     let fixture = load_fixture(validators, tree_size);
-    //     let validator_set = fixture.validator_set.clone().into();
-    //     let next_validator_set = fixture.next_validator_set.clone().into();
+    submit_signature_commitment_10_128 {
+        let validators = 10;
+        let tree_size = 128;
 
-    //     BeefyLightClient::<T>::initialize(
-    //         RawOrigin::Root.into(),
-    //         SubNetworkId::Mainnet,
-    //         0,
-    //         validator_set,
-    //         next_validator_set
-    //     ).expect("Error while initializing pallet");
+        let fixture = load_slice_fixture(FIXTURE_10_128);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
 
-    //     let signed_commitment: beefy_primitives::SignedCommitment<
-    //         u32,
-    //         beefy_primitives::crypto::Signature,
-    //     > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
-    //     let commitment = signed_commitment.commitment.clone();
-    //     let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
-    //     let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
-    // }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
-    // verify {
-    //     assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
-    // }
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
 
     // submit_signature_commitment_20_256 {
     //     let validators = 20;
@@ -253,4 +255,8 @@ benchmarks! {
     // }
 }
 
-impl_benchmark_test_suite!(BeefyLightClient, crate::mock::new_test_ext(), crate::mock::Test,);
+impl_benchmark_test_suite!(
+    BeefyLightClient,
+    crate::mock::new_test_ext(),
+    crate::mock::Test,
+);
