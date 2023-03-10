@@ -37,15 +37,11 @@ use bridge_common::EXTRINSIC_FIXED_WEIGHT;
 
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-	// Storage: Converter AssetIdToMultilocation (r:1 w:1)
-	// Storage: Converter MultilocationToAssetId (r:0 w:1)
 	fn initialize() -> Weight {
 		Weight::from_ref_time(15_000_000)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(2))
 	}
-	// Storage: Converter AssetIdToMultilocation (r:1 w:1)
-	// Storage: Converter MultilocationToAssetId (r:1 w:2)
 	fn submit_signature_commitment() -> Weight {
 		Weight::from_ref_time(22_000_000)
 			.saturating_add(T::DbWeight::get().reads(2))
