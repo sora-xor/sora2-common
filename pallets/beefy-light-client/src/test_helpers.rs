@@ -34,6 +34,8 @@ use bridge_types::H160;
 use bridge_types::H256;
 use codec::Decode;
 use serde::Deserialize;
+use crate::Vec;
+use sp_std::vec;
 
 pub fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
