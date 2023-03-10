@@ -59,11 +59,12 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T>(_);
+    pub struct Pallet<T, I = ()>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {
-        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+    pub trait Config<I: 'static = ()>: frame_system::Config {
+        type RuntimeEvent: From<Event<Self, I>>
+            + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         type EthSpec: EthSpec;
         type TimeProvider: UnixTime;
         type WeightInfo: WeightInfo;
@@ -73,14 +74,14 @@ pub mod pallet {
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config> {
+    pub enum Event<T: Config<I>, I: 'static = ()> {
         BeaconHeaderImported { block_hash: H256, slot: Slot },
         ExecutionHeaderImported { block_hash: H256, block_number: u64 },
         SyncCommitteeUpdated { period: u64 },
     }
 
     #[pallet::error]
-    pub enum Error<T> {
+    pub enum Error<T, I = ()> {
         SyncCommitteeMissing,
         SyncCommitteeParticipantsNotSupermajority,
         InvalidHeaderMerkleProof,
@@ -106,14 +107,14 @@ pub mod pallet {
     }
 
     #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+    impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {}
 
     #[pallet::storage]
-    pub(super) type FinalizedBeaconHeaders<T: Config> =
+    pub(super) type FinalizedBeaconHeaders<T: Config<I>, I: 'static = ()> =
         StorageDoubleMap<_, Identity, EVMChainId, Identity, H256, BeaconBlockHeader, OptionQuery>;
 
     #[pallet::storage]
-    pub(super) type FinalizedBeaconHeaderSlots<T: Config> = StorageMap<
+    pub(super) type FinalizedBeaconHeaderSlots<T: Config<I>, I: 'static = ()> = StorageMap<
         _,
         Identity,
         EVMChainId,
@@ -122,11 +123,11 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    pub(super) type FinalizedBeaconHeadersBlockRoot<T: Config> =
+    pub(super) type FinalizedBeaconHeadersBlockRoot<T: Config<I>, I: 'static = ()> =
         StorageDoubleMap<_, Identity, EVMChainId, Identity, H256, H256, OptionQuery>;
 
     #[pallet::storage]
-    pub(super) type ExecutionHeaders<T: Config> = StorageDoubleMap<
+    pub(super) type ExecutionHeaders<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
         _,
         Identity,
         EVMChainId,
@@ -139,7 +140,7 @@ pub mod pallet {
     /// Current sync committee corresponding to the active header.
     /// TODO  prune older sync committees than xxx
     #[pallet::storage]
-    pub(super) type SyncCommittees<T: Config> = StorageDoubleMap<
+    pub(super) type SyncCommittees<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
         _,
         Identity,
         EVMChainId,
@@ -150,30 +151,31 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    pub(super) type ValidatorsRoot<T: Config> =
+    pub(super) type ValidatorsRoot<T: Config<I>, I: 'static = ()> =
         StorageMap<_, Identity, EVMChainId, H256, OptionQuery>;
 
     #[pallet::storage]
-    pub(super) type LatestFinalizedHeaderState<T: Config> =
+    pub(super) type LatestFinalizedHeaderState<T: Config<I>, I: 'static = ()> =
         StorageMap<_, Identity, EVMChainId, FinalizedHeaderState, OptionQuery>;
 
     #[pallet::storage]
-    pub(super) type LatestExecutionHeaderState<T: Config> =
+    pub(super) type LatestExecutionHeaderState<T: Config<I>, I: 'static = ()> =
         StorageMap<_, Identity, EVMChainId, ExecutionHeaderState, OptionQuery>;
 
     #[pallet::storage]
-    pub(super) type LatestSyncCommitteePeriod<T: Config> =
+    pub(super) type LatestSyncCommitteePeriod<T: Config<I>, I: 'static = ()> =
         StorageMap<_, Identity, EVMChainId, u64, OptionQuery>;
 
     #[pallet::storage]
-    pub(super) type NetworkConfigs<T: Config> =
+    pub(super) type NetworkConfigs<T: Config<I>, I: 'static = ()> =
         StorageMap<_, Identity, EVMChainId, NetworkConfig, OptionQuery>;
 
     #[pallet::storage]
-    pub(super) type Blocked<T: Config> = StorageMap<_, Identity, EVMChainId, bool, ValueQuery>;
+    pub(super) type Blocked<T: Config<I>, I: 'static = ()> =
+        StorageMap<_, Identity, EVMChainId, bool, ValueQuery>;
 
     #[pallet::call]
-    impl<T: Config> Pallet<T> {
+    impl<T: Config<I>, I: 'static> Pallet<T, I> {
         #[pallet::weight(T::WeightInfo::initialize())]
         #[transactional]
         pub fn initialize(
@@ -217,7 +219,7 @@ pub mod pallet {
             let signature_epoch = update.signature_slot.epoch_with_spec::<T::EthSpec>();
             let sync_committee_period = signature_epoch
                 .sync_committee_period_with_spec::<T::EthSpec>()
-                .map_err(|_| Error::<T>::ArithError)?;
+                .map_err(|_| Error::<T, I>::ArithError)?;
             log::info!(
                 target: "ethereum-beacon-client",
                 "💫 Received sync committee update for period {}. Applying update",
@@ -326,7 +328,7 @@ pub mod pallet {
         pub fn unblock_bridge(origin: OriginFor<T>, chain_id: EVMChainId) -> DispatchResult {
             let _sender = ensure_root(origin)?;
 
-            <Blocked<T>>::set(chain_id, false);
+            <Blocked<T, I>>::set(chain_id, false);
 
             log::info!(target: "ethereum-beacon-client","💫 syncing bridge from governance provided checkpoint.");
 
@@ -334,7 +336,7 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> Pallet<T> {
+    impl<T: Config<I>, I: 'static> Pallet<T, I> {
         fn process_initial_sync(
             chain_id: EVMChainId,
             initial_sync: LightClientBootstrap<T::EthSpec>,
@@ -366,7 +368,7 @@ pub mod pallet {
             ensure!(
                 update.signature_slot > update.attested_header.slot
                     && update.attested_header.slot >= update.finalized_header.slot,
-                Error::<T>::InvalidSyncCommitteeHeaderUpdate
+                Error::<T, I>::InvalidSyncCommitteeHeaderUpdate
             );
             Self::sync_committee_participation_is_supermajority(&update.sync_aggregate)?;
             Self::verify_sync_committee(
@@ -387,26 +389,26 @@ pub mod pallet {
             )?;
 
             let current_period = Self::compute_current_sync_period(update.attested_header.slot)?;
-            let latest_committee_period = <LatestSyncCommitteePeriod<T>>::get(chain_id)
-                .ok_or(Error::<T>::NetworkNotInitialized)?;
+            let latest_committee_period = <LatestSyncCommitteePeriod<T, I>>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             ensure!(
-                <SyncCommittees<T>>::contains_key(chain_id, current_period),
-                Error::<T>::SyncCommitteeMissing
+                <SyncCommittees<T, I>>::contains_key(chain_id, current_period),
+                Error::<T, I>::SyncCommitteeMissing
             );
             let next_period = current_period + 1;
             ensure!(
-                !<SyncCommittees<T>>::contains_key(chain_id, next_period),
-                Error::<T>::InvalidSyncCommitteePeriodUpdateWithDuplication
+                !<SyncCommittees<T, I>>::contains_key(chain_id, next_period),
+                Error::<T, I>::InvalidSyncCommitteePeriodUpdateWithDuplication
             );
             ensure!(
                 (next_period == latest_committee_period + 1),
-                Error::<T>::InvalidSyncCommitteePeriodUpdateWithGap
+                Error::<T, I>::InvalidSyncCommitteePeriodUpdateWithGap
             );
 
             let current_sync_committee =
                 Self::get_sync_committee_for_period(chain_id, current_period)?;
-            let validators_root =
-                <ValidatorsRoot<T>>::get(chain_id).ok_or(Error::<T>::NetworkNotInitialized)?;
+            let validators_root = <ValidatorsRoot<T, I>>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
 
             Self::verify_signed_header(
                 chain_id,
@@ -427,13 +429,13 @@ pub mod pallet {
             chain_id: EVMChainId,
             update: LightClientFinalityUpdate<T::EthSpec>,
         ) -> DispatchResult {
-            let last_finalized_header = <LatestFinalizedHeaderState<T>>::get(chain_id)
-                .ok_or(Error::<T>::NetworkNotInitialized)?;
+            let last_finalized_header = <LatestFinalizedHeaderState<T, I>>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             ensure!(
                 update.signature_slot > update.attested_header.slot
                     && update.attested_header.slot >= update.finalized_header.slot
                     && update.finalized_header.slot > last_finalized_header.beacon_slot,
-                Error::<T>::InvalidFinalizedHeaderUpdate
+                Error::<T, I>::InvalidFinalizedHeaderUpdate
             );
             let import_time = last_finalized_header.import_time;
             let weak_subjectivity_period_check =
@@ -449,8 +451,8 @@ pub mod pallet {
 
             if time > weak_subjectivity_period_check {
                 log::info!(target: "ethereum-beacon-client","💫 Weak subjectivity period exceeded, blocking bridge.",);
-                <Blocked<T>>::insert(chain_id, true);
-                return Err(Error::<T>::BridgeBlocked.into());
+                <Blocked<T, I>>::insert(chain_id, true);
+                return Err(Error::<T, I>::BridgeBlocked.into());
             }
 
             Self::sync_committee_participation_is_supermajority(&update.sync_aggregate)?;
@@ -471,12 +473,12 @@ pub mod pallet {
             ensure!(
                 (current_period == last_finalized_period
                     || current_period == last_finalized_period + 1),
-                Error::<T>::InvalidFinalizedPeriodUpdate
+                Error::<T, I>::InvalidFinalizedPeriodUpdate
             );
             let sync_committee = Self::get_sync_committee_for_period(chain_id, current_period)?;
 
-            let validators_root =
-                <ValidatorsRoot<T>>::get(chain_id).ok_or(Error::<T>::NetworkNotInitialized)?;
+            let validators_root = <ValidatorsRoot<T, I>>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             Self::verify_signed_header(
                 chain_id,
                 update.sync_aggregate,
@@ -505,38 +507,38 @@ pub mod pallet {
             update: LightClientOptimisticUpdate<T::EthSpec>,
             block: BlindedBeaconBlock<T::EthSpec>,
         ) -> DispatchResult {
-            let last_finalized_header = <LatestFinalizedHeaderState<T>>::get(chain_id)
-                .ok_or(Error::<T>::NetworkNotInitialized)?;
+            let last_finalized_header = <LatestFinalizedHeaderState<T, I>>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             let latest_finalized_header_slot = last_finalized_header.beacon_slot;
             let block_slot = update.attested_header.slot;
             ensure!(
                 block_slot <= latest_finalized_header_slot,
-                Error::<T>::HeaderNotFinalized
+                Error::<T, I>::HeaderNotFinalized
             );
 
-            let execution_header_state = <LatestExecutionHeaderState<T>>::get(chain_id)
-                .ok_or(Error::<T>::NetworkNotInitialized)?;
+            let execution_header_state = <LatestExecutionHeaderState<T, I>>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             let execution_payload = block
                 .body()
                 .execution_payload()
-                .map_err(|_| Error::<T>::ArithError)?
+                .map_err(|_| Error::<T, I>::ArithError)?
                 .to_execution_payload_header();
             ensure!(
                 execution_payload.block_number() > execution_header_state.block_number,
-                Error::<T>::InvalidExecutionHeaderUpdate
+                Error::<T, I>::InvalidExecutionHeaderUpdate
             );
             let body_root_hash = Self::body_tree_root_hash(&block);
 
             ensure!(
                 body_root_hash == update.attested_header.body_root,
-                Error::<T>::WrongBlockBodyHashTreeRoot
+                Error::<T, I>::WrongBlockBodyHashTreeRoot
             );
 
             let current_period = Self::compute_current_sync_period(update.attested_header.slot)?;
             let sync_committee = Self::get_sync_committee_for_period(chain_id, current_period)?;
 
-            let validators_root =
-                <ValidatorsRoot<T>>::get(chain_id).ok_or(Error::<T>::NetworkNotInitialized)?;
+            let validators_root = <ValidatorsRoot<T, I>>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             Self::verify_signed_header(
                 chain_id,
                 update.sync_aggregate,
@@ -552,19 +554,19 @@ pub mod pallet {
         }
 
         fn check_bridge_blocked_state(chain_id: EVMChainId) -> DispatchResult {
-            if <Blocked<T>>::get(chain_id) {
-                return Err(Error::<T>::BridgeBlocked.into());
+            if <Blocked<T, I>>::get(chain_id) {
+                return Err(Error::<T, I>::BridgeBlocked.into());
             }
 
             Ok(())
         }
 
         fn check_network_config(chain_id: EVMChainId) -> DispatchResult {
-            let network_config =
-                NetworkConfigs::<T>::get(chain_id).ok_or(Error::<T>::NetworkNotInitialized)?;
+            let network_config = NetworkConfigs::<T, I>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             match network_config.consensus() {
                 ethereum_primitives::network_config::Consensus::Beacon(_config) => Ok(()),
-                _ => Err(Error::<T>::WrongConsensus.into()),
+                _ => Err(Error::<T, I>::WrongConsensus.into()),
             }
         }
 
@@ -588,7 +590,7 @@ pub mod pallet {
                     participant_pubkeys.push(
                         pubkey
                             .decompress()
-                            .map_err(|_| Error::<T>::InvalidPublicKeyBytes)?,
+                            .map_err(|_| Error::<T, I>::InvalidPublicKeyBytes)?,
                     );
                 }
             }
@@ -614,7 +616,7 @@ pub mod pallet {
                     &participant_pubkeys.iter().collect::<Vec<_>>(),
                 )
             {
-                return Err(Error::<T>::SignatureVerificationFailed.into());
+                return Err(Error::<T, I>::SignatureVerificationFailed.into());
             }
             Ok(())
         }
@@ -649,7 +651,7 @@ pub mod pallet {
                     index,
                     header_state_root
                 ),
-                Error::<T>::InvalidSyncCommitteeMerkleProof
+                Error::<T, I>::InvalidSyncCommitteeMerkleProof
             );
 
             Ok(())
@@ -670,7 +672,7 @@ pub mod pallet {
                     index,
                     attested_header_state_root
                 ),
-                Error::<T>::InvalidHeaderMerkleProof
+                Error::<T, I>::InvalidHeaderMerkleProof
             );
 
             Ok(())
@@ -681,7 +683,7 @@ pub mod pallet {
             period: u64,
             sync_committee: SyncCommittee<T::EthSpec>,
         ) {
-            <SyncCommittees<T>>::insert(chain_id, period, sync_committee);
+            <SyncCommittees<T, I>>::insert(chain_id, period, sync_committee);
 
             log::trace!(
                 target: "ethereum-beacon-client",
@@ -689,7 +691,7 @@ pub mod pallet {
                 period
             );
 
-            <LatestSyncCommitteePeriod<T>>::insert(chain_id, period);
+            <LatestSyncCommitteePeriod<T, I>>::insert(chain_id, period);
 
             Self::deposit_event(Event::SyncCommitteeUpdated { period });
         }
@@ -701,7 +703,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let slot = header.slot;
 
-            <FinalizedBeaconHeaders<T>>::insert(chain_id, block_root, header);
+            <FinalizedBeaconHeaders<T, I>>::insert(chain_id, block_root, header);
             Self::add_finalized_header_slot(chain_id, slot)?;
 
             log::info!(
@@ -711,7 +713,7 @@ pub mod pallet {
                 slot
             );
 
-            LatestFinalizedHeaderState::<T>::insert(
+            LatestFinalizedHeaderState::<T, I>::insert(
                 chain_id,
                 FinalizedHeaderState {
                     import_time: T::TimeProvider::now().as_secs(),
@@ -729,14 +731,14 @@ pub mod pallet {
         }
 
         fn add_finalized_header_slot(chain_id: EVMChainId, slot: Slot) -> DispatchResult {
-            <FinalizedBeaconHeaderSlots<T>>::try_mutate(chain_id, |b_vec| {
+            <FinalizedBeaconHeaderSlots<T, I>>::try_mutate(chain_id, |b_vec| {
                 let b_vec = b_vec.get_or_insert(Default::default());
                 if b_vec.len() as u32 == T::MaxFinalizedHeaderSlotArray::get() {
                     b_vec.remove(0);
                 }
                 b_vec.try_push(slot)
             })
-            .map_err(|_| <Error<T>>::FinalizedBeaconHeaderSlotsExceeded)?;
+            .map_err(|_| <Error<T, I>>::FinalizedBeaconHeaderSlotsExceeded)?;
 
             Ok(())
         }
@@ -750,7 +752,7 @@ pub mod pallet {
             let block_number = header.block_number();
             let block_hash = header.block_hash().into_root();
 
-            <ExecutionHeaders<T>>::insert(chain_id, block_hash, header);
+            <ExecutionHeaders<T, I>>::insert(chain_id, block_hash, header);
 
             log::trace!(
                 target: "ethereum-beacon-client",
@@ -759,7 +761,7 @@ pub mod pallet {
                 block_number
             );
 
-            LatestExecutionHeaderState::<T>::insert(
+            LatestExecutionHeaderState::<T, I>::insert(
                 chain_id,
                 ExecutionHeaderState {
                     beacon_block_root,
@@ -776,14 +778,14 @@ pub mod pallet {
         }
 
         fn store_validators_root(chain_id: EVMChainId, validators_root: H256) {
-            <ValidatorsRoot<T>>::insert(chain_id, validators_root);
+            <ValidatorsRoot<T, I>>::insert(chain_id, validators_root);
         }
 
-        pub(super) fn compute_current_sync_period(slot: Slot) -> Result<u64, Error<T>> {
+        pub(super) fn compute_current_sync_period(slot: Slot) -> Result<u64, Error<T, I>> {
             let period = slot
                 .epoch_with_spec::<T::EthSpec>()
                 .sync_committee_period_with_spec::<T::EthSpec>()
-                .map_err(|_| Error::<T>::ArithError)?;
+                .map_err(|_| Error::<T, I>::ArithError)?;
             Ok(period)
         }
 
@@ -835,7 +837,7 @@ pub mod pallet {
             let sync_committee_len = sync_agg.sync_committee_bits.len();
             ensure!(
                 (sync_committee_sum * 3 >= sync_committee_len * 2),
-                Error::<T>::SyncCommitteeParticipantsNotSupermajority
+                Error::<T, I>::SyncCommitteeParticipantsNotSupermajority
             );
 
             Ok(())
@@ -845,13 +847,13 @@ pub mod pallet {
             chain_id: EVMChainId,
             period: u64,
         ) -> Result<SyncCommittee<T::EthSpec>, DispatchError> {
-            let sync_committee = <SyncCommittees<T>>::get(chain_id, period);
+            let sync_committee = <SyncCommittees<T, I>>::get(chain_id, period);
 
             if let Some(sync_committee) = sync_committee {
                 Ok(sync_committee)
             } else {
                 log::error!(target: "ethereum-beacon-client", "💫 Sync committee for period {} missing", period);
-                return Err(Error::<T>::SyncCommitteeMissing.into());
+                return Err(Error::<T, I>::SyncCommitteeMissing.into());
             }
         }
 
@@ -859,13 +861,13 @@ pub mod pallet {
             chain_id: EVMChainId,
             epoch: Epoch,
         ) -> Result<ForkVersion, DispatchError> {
-            let network_config =
-                NetworkConfigs::<T>::get(chain_id).ok_or(Error::<T>::NetworkNotInitialized)?;
+            let network_config = NetworkConfigs::<T, I>::get(chain_id)
+                .ok_or(Error::<T, I>::NetworkNotInitialized)?;
             match network_config.consensus() {
                 ethereum_primitives::network_config::Consensus::Beacon(config) => {
                     Ok(config.fork_version_from_epoch(epoch.as_u64()))
                 }
-                _ => Err(Error::<T>::WrongConsensus.into()),
+                _ => Err(Error::<T, I>::WrongConsensus.into()),
             }
         }
 
@@ -907,7 +909,7 @@ pub mod pallet {
                 stored_header.receipts_root(),
                 &proof.data,
             )
-            .ok_or(Error::<T>::InvalidProof)?;
+            .ok_or(Error::<T, I>::InvalidProof)?;
 
             match result {
                 Ok(receipt) => Ok(receipt),
@@ -917,13 +919,13 @@ pub mod pallet {
                         "💫 Failed to decode transaction receipt: {}",
                         err
                     );
-                    Err(Error::<T>::InvalidProof.into())
+                    Err(Error::<T, I>::InvalidProof.into())
                 }
             }
         }
     }
 
-    impl<T: Config> Verifier<EVMChainId, Message> for Pallet<T> {
+    impl<T: Config<I>, I: 'static> Verifier<EVMChainId, Message> for Pallet<T, I> {
         type Result = (Log, u64);
         /// Verify a message by verifying the existence of the corresponding
         /// Ethereum log in a block. Returns the log if successful.
@@ -934,8 +936,8 @@ pub mod pallet {
                 message.proof.block_hash,
             );
 
-            let stored_header = <ExecutionHeaders<T>>::get(chain_id, message.proof.block_hash)
-                .ok_or(Error::<T>::MissingHeader)?;
+            let stored_header = <ExecutionHeaders<T, I>>::get(chain_id, message.proof.block_hash)
+                .ok_or(Error::<T, I>::MissingHeader)?;
 
             let block_number = stored_header.block_number();
 
@@ -967,7 +969,7 @@ pub mod pallet {
                         message.proof.block_hash,
                         err
                     );
-                    return Err(Error::<T>::DecodeFailed.into());
+                    return Err(Error::<T, I>::DecodeFailed.into());
                 }
             };
 
@@ -977,7 +979,7 @@ pub mod pallet {
                     "💫 Event log not found in receipt for transaction at index {} in block {}",
                     message.proof.tx_index, message.proof.block_hash,
                 );
-                return Err(Error::<T>::InvalidProof.into());
+                return Err(Error::<T, I>::InvalidProof.into());
             }
 
             log::info!(
