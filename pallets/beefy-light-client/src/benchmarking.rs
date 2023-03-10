@@ -30,7 +30,232 @@
 
 use super::*;
 
-// #[allow(unused)]
-// use crate::Pallet as BeefyLightClient;
-// use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-// use frame_system::RawOrigin;
+use crate::benchmark_features::*;
+use crate::test_helpers::*;
+use crate::Pallet as BeefyLightClient;
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_system::RawOrigin;
+use hex_literal::hex;
+
+benchmarks! {
+    initialize {
+        let root = hex!("36ee7c9903f810b22f7e6fca82c1c0cd6a151eca01f087683d92333094d94dc1");
+        let curr_val_set = ValidatorSet {
+            id: 0,
+            len: 3,
+            root: root.into(),
+        };
+        let next_val_set = ValidatorSet {
+            id: 1,
+            len: 3,
+            root: root.into(),
+        };
+    }: _(RawOrigin::Root, SubNetworkId::Mainnet, 1, curr_val_set, next_val_set)
+    verify {
+        assert!(BeefyLightClient::<T>::current_validator_set(SubNetworkId::Mainnet).is_some());
+        assert!(BeefyLightClient::<T>::next_validator_set(SubNetworkId::Mainnet).is_some());
+    }
+
+
+    submit_signature_commitment_10_128 {
+        let validators = 10;
+        let tree_size = 128;
+
+        let fixture = load_slice_fixture(FIXTURE_10_128);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
+
+    submit_signature_commitment_20_256 {
+        let validators = 20;
+        let tree_size = 256;
+
+        let fixture = load_slice_fixture(FIXTURE_20_256);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
+
+    submit_signature_commitment_40_512 {
+        let validators = 40;
+        let tree_size = 512;
+
+        let fixture = load_slice_fixture(FIXTURE_40_512);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
+
+    submit_signature_commitment_80_1024 {
+        let validators = 80;
+        let tree_size = 1024;
+
+        let fixture = load_slice_fixture(FIXTURE_80_1024);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
+
+    submit_signature_commitment_160_2048 {
+        let validators = 160;
+        let tree_size = 2048;
+
+        let fixture = load_slice_fixture(FIXTURE_160_2048);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
+
+    submit_signature_commitment_200_4096 {
+        let validators = 200;
+        let tree_size = 4096;
+
+        let fixture = load_slice_fixture(FIXTURE_200_4096);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
+
+    submit_signature_commitment_300_8192 {
+        let validators = 300;
+        let tree_size = 8192;
+
+        let fixture = load_slice_fixture(FIXTURE_300_8192);
+        let validator_set = fixture.validator_set.clone().into();
+        let next_validator_set = fixture.next_validator_set.clone().into();
+
+        BeefyLightClient::<T>::initialize(
+            RawOrigin::Root.into(),
+            SubNetworkId::Mainnet,
+            0,
+            validator_set,
+            next_validator_set
+        ).expect("Error while initializing pallet");
+
+        let signed_commitment: beefy_primitives::SignedCommitment<
+            u32,
+            beefy_primitives::crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let commitment = signed_commitment.commitment.clone();
+        let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
+        let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();
+    }: submit_signature_commitment(RawOrigin::Signed(alice::<T>()), SubNetworkId::Mainnet, commitment, validator_proof, leaf, fixture.leaf_proof.into())
+    verify {
+        assert!(BeefyLightClient::<T>::latest_mmr_roots(SubNetworkId::Mainnet).len() > 0);
+    }
+}
+
+impl_benchmark_test_suite!(
+    BeefyLightClient,
+    crate::mock::new_test_ext(),
+    crate::mock::Test,
+);

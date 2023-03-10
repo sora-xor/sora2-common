@@ -69,6 +69,21 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmark_features;
+
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+// #[cfg(test)]
+mod test_helpers;
+
+pub mod weights;
+
+pub trait WeightInfo {
+    fn initialize() -> Weight;
+
+    fn submit_signature_commitment() -> Weight;
+}
+
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ProvedSubstrateBridgeMessage<Message> {
     pub message: Message,
@@ -115,6 +130,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        type WeightInfo: WeightInfo;
         type Randomness: frame_support::traits::Randomness<Self::Hash, Self::BlockNumber>;
         type Message: Parameter;
     }
@@ -202,7 +218,7 @@ pub mod pallet {
     // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::initialize())]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -217,7 +233,7 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::submit_signature_commitment())]
         #[frame_support::transactional]
         pub fn submit_signature_commitment(
             origin: OriginFor<T>,

@@ -34,8 +34,11 @@ pub mod beefy_types;
 pub mod bitfield;
 pub mod simplified_mmr_proof;
 
+use frame_support::weights::Weight;
 use scale_info::prelude::vec::Vec;
 
 pub fn concat_u8(slice: &[&[u8]]) -> Vec<u8> {
     slice.concat()
 }
+
+pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_ref_time(100_000_000);

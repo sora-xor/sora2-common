@@ -90,6 +90,7 @@ impl beefy_light_client::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Randomness = beefy_light_client::SidechainRandomness<Test, SidechainRandomnessNetwork>;
     type Message = ();
+    type WeightInfo = ();
 }
 
 // Build genesis storage according to the mock runtime.

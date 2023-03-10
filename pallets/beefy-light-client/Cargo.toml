@@ -12,6 +12,8 @@ edition = "2021"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+hex-literal = { version = "0.3.1", optional = true }
+serde_json = { version = "1.0.73", default-features = false, features = ["alloc"], optional = true }
 codec = { package = "parity-scale-codec", version = "3.0.0", features = [
 	"derive",
 ], default-features = false }
@@ -37,16 +39,18 @@ beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch
 beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 
 [dev-dependencies]
-# Substrate
-
-serde_json = "1.0.73"
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 hex-literal = "0.3.1"
+serde_json = "1.0.73"
 test-case = "2.2.2"
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks", 
+	"hex-literal",
+	"serde_json",
+]
 std = [
 	"codec/std",
 	"serde/std",

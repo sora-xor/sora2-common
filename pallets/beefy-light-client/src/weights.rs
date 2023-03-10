@@ -27,67 +27,34 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#![cfg_attr(rustfmt, rustfmt_skip)]
+#![allow(unused_parens)]
+#![allow(unused_imports)]
 
-#![allow(deprecated)]
+use frame_support::{traits::Get, weights::Weight};
+use core::marker::PhantomData;
+use bridge_common::EXTRINSIC_FIXED_WEIGHT;
 
-use crate::H160;
-use ethabi::{Function, Param, ParamType, StateMutability, Token};
-use frame_support::RuntimeDebug;
-use sp_std::prelude::*;
-use sp_std::vec;
-
-fn authorize_operator_function() -> Function {
-    Function {
-        name: "authorizeDefaultOperator".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "operator".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
-    }
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+	fn initialize() -> Weight {
+		Weight::from_ref_time(15_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(2))
+	}
+	fn submit_signature_commitment() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(3))
+	}
 }
 
-fn revoke_operator_function() -> Function {
-    Function {
-        name: "revokeDefaultOperator".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "operator".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
-    }
-}
+impl crate::WeightInfo for () {
+	fn initialize() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
 
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct DeregisterOperatorPayload {
-    pub operator: H160,
-}
-
-impl DeregisterOperatorPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.operator)];
-        revoke_operator_function().encode_input(tokens.as_ref())
-    }
-}
-
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RegisterOperatorPayload {
-    pub operator: H160,
-}
-
-impl RegisterOperatorPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.operator)];
-        authorize_operator_function().encode_input(tokens.as_ref())
-    }
+	fn submit_signature_commitment() -> Weight {
+		EXTRINSIC_FIXED_WEIGHT
+	}
 }
