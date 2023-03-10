@@ -30,7 +30,7 @@
 
 use super::*;
 
-use crate::test_helpers::*;
+// use crate::test_helpers::*;
 #[allow(unused)]
 use crate::Pallet as BeefyLightClient;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
