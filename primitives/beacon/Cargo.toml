@@ -1,0 +1,44 @@
+[package]
+name = "beacon"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eth2_ssz = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.4.1", default-features = false }
+eth2_ssz_derive = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.3.1" }
+superstruct = "0.7.0"
+tree_hash = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.4.1", default-features = false }
+tree_hash_derive = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.4.0" }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+bls = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.2.0", default-features = false, features = ["milagro"] }
+eth2_serde_utils = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.1.1", default-features = false }
+serde = { version = "1.0.152", features = ["derive"], default-features = false }
+ethereum-types = { version = "0.14.1", default-features = false, features = [
+  "codec",
+  "rlp",
+  "serialize",
+] }
+derivative = { version = "2.2.0", features = ["use_core"] }
+bytes = { version = "1.4.0", default-features = false }
+eth2_ssz_types = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.2.2", default-features = false }
+serde_json = { version = "1.0.94", optional = true }
+serde-big-array = "0.5.1"
+serde_with = { version = "2.2.0", default-features = false, features = ["alloc", "macros"] }
+eth2_hashing = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.3.0", default-features = false }
+hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
+lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+maplit = "1.0.2"
+
+[dev-dependencies]
+itertools = "0.10.5"
+serde_yaml = "0.9.19"
+tempfile = "3.4.0"
+
+[features]
+default = ["std"]
+std = ["eth2_ssz/std", "tree_hash/std", "codec/std", "scale-info/std", "bls/std", "eth2_serde_utils/std", "ethereum-types/std", "bytes/std", "eth2_ssz_types/std", "serde_json", "eth2_hashing/std"]

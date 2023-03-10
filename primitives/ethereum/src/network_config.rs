@@ -29,17 +29,19 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    beacon::config::BeaconConsensusConfig,
+    beacon::BeaconConsensusConfig,
     difficulty::{ClassicForkConfig, ForkConfig},
     EVMChainId,
 };
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::RuntimeDebug;
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum Consensus {
     Ethash { fork_config: ForkConfig },
@@ -49,17 +51,19 @@ pub enum Consensus {
 }
 
 impl Consensus {
-    pub fn calc_epoch_length(&self, block_number: u64) -> u64 {
+    pub fn calc_epoch_length(&self, block_number: u64) -> Option<u64> {
         match self {
-            Consensus::Clique { epoch, .. } => *epoch,
-            Consensus::Ethash { fork_config } => fork_config.epoch_length(),
-            Consensus::Etchash { fork_config } => fork_config.calc_epoch_length(block_number),
-            Consensus::Beacon(consensus) => consensus.config.epoch_length(),
+            Consensus::Clique { epoch, .. } => Some(*epoch),
+            Consensus::Ethash { fork_config } => Some(fork_config.epoch_length()),
+            Consensus::Etchash { fork_config } => Some(fork_config.calc_epoch_length(block_number)),
+            Consensus::Beacon(_consensus) => None,
         }
     }
 }
 
-#[derive(Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum NetworkConfig {
     Mainnet,
