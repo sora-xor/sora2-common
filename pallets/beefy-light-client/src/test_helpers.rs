@@ -28,13 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use crate::Vec;
 use bridge_common::beefy_types::ValidatorSet;
 use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
 use bridge_types::H160;
 use bridge_types::H256;
 use codec::Decode;
 use serde::Deserialize;
-use crate::Vec;
 use sp_std::vec;
 
 pub fn alice<T: crate::Config>() -> T::AccountId {
