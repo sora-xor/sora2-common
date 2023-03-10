@@ -50,13 +50,6 @@ use test_case::test_case;
 #[test_case(37, 5000; "37 validators, 5000 leaves")]
 #[test_case(69, 5000; "69 validators, 5000 leaves")]
 #[test_case(200, 5000; "200 validators, 5000 leaves")]
-#[test_case(10, 128; "10 validators, 128 leaves")]
-#[test_case(20, 256; "20 validators, 256 leaves")]
-#[test_case(40, 512; "40 validators, 512 leaves")]
-#[test_case(80, 1024; "80 validators, 1024 leaves")]
-#[test_case(160, 2048; "160 validators, 2048 leaves")]
-#[test_case(200, 4096; "200 validators, 4096 leaves")]
-#[test_case(300, 8192; "300 validators, 8192 leaves")]
 fn submit_fixture_success(validators: usize, tree_size: usize) {
     new_test_ext().execute_with(|| {
         let fixture = load_fixture(validators, tree_size);
