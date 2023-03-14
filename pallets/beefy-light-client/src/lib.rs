@@ -248,15 +248,15 @@ pub mod pallet {
             proof: SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
-            println!("==={}===", proof.clone().merkle_proof_items.len());
-            println!(
-                "==={}===",
-                validator_proof.clone().public_key_merkle_proofs.len()
-            );
-            println!(
-                "==={}===",
-                validator_proof.clone().validator_claims_bitfield.len()
-            ); //
+            // println!("==={}===", proof.clone().merkle_proof_items.len());
+            // println!(
+            //     "==={}===",
+            //     validator_proof.clone().public_key_merkle_proofs.len()
+            // );
+            // println!(
+            //     "==={}===",
+            //     validator_proof.clone().validator_claims_bitfield.len()
+            // ); //
             log::debug!(
                 "BeefyLightClient: submit_signature_commitment: {:?}",
                 commitment
