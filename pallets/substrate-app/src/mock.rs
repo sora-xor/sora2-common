@@ -164,15 +164,10 @@ impl tokens::Config for Test {
     type CurrencyId = AssetId;
     type WeightInfo = ();
     type ExistentialDeposits = ExistentialDeposits;
-    type OnDust = ();
+    type CurrencyHooks = ();
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type OnNewTokenAccount = ();
-    type OnKilledTokenAccount = ();
-    type OnDeposit = ();
-    type OnSlash = ();
-    type OnTransfer = ();
     type DustRemovalWhitelist = Everything;
 }
 

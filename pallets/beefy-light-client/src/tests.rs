@@ -104,7 +104,7 @@ fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
 
 fn validator_proof(
     fixture: &Fixture,
-    signatures: Vec<Option<beefy_primitives::crypto::Signature>>,
+    signatures: Vec<Option<sp_beefy::crypto::Signature>>,
     count: usize,
 ) -> ValidatorProof {
     let bits_to_set = signatures
@@ -165,10 +165,8 @@ fn submit_fixture_success(validators: usize, tree_size: usize) {
             next_validator_set
         ));
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
-            u32,
-            beefy_primitives::crypto::Signature,
-        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let signed_commitment: sp_beefy::SignedCommitment<u32, sp_beefy::crypto::Signature> =
+            Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();

@@ -202,6 +202,7 @@ pub mod pallet {
     // Dispatchable functions must be annotated with a weight and must return a DispatchResult.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
         #[pallet::weight(0)]
         pub fn initialize(
             origin: OriginFor<T>,
@@ -217,6 +218,7 @@ pub mod pallet {
             Ok(().into())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(0)]
         #[frame_support::transactional]
         pub fn submit_signature_commitment(
@@ -262,7 +264,7 @@ pub mod pallet {
             Self::verify_commitment(network_id, &commitment, &validator_proof, vset)?;
             let payload = commitment
                 .payload
-                .get_decoded::<H256>(&beefy_primitives::known_payloads::MMR_ROOT_ID)
+                .get_decoded::<H256>(&sp_beefy::known_payloads::MMR_ROOT_ID)
                 .ok_or(Error::<T>::MMRPayloadNotFound)?;
             Self::verify_newest_mmr_leaf(&latest_mmr_leaf, &payload, &proof)?;
             Self::process_payload(network_id, payload, commitment.block_number.into())?;
