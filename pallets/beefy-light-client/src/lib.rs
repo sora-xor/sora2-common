@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![recursion_limit = "1024"]
 
 use bridge_common::simplified_mmr_proof::*;
 use bridge_common::{beefy_types::*, bitfield, simplified_mmr_proof::SimplifiedMMRProof};
@@ -71,6 +72,9 @@ mod benchmarking;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmark_features;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod my_file;
 
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 // #[cfg(test)]
@@ -244,6 +248,15 @@ pub mod pallet {
             proof: SimplifiedMMRProof,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
+            println!("==={}===", proof.clone().merkle_proof_items.len());
+            println!(
+                "==={}===",
+                validator_proof.clone().public_key_merkle_proofs.len()
+            );
+            println!(
+                "==={}===",
+                validator_proof.clone().validator_claims_bitfield.len()
+            ); //
             log::debug!(
                 "BeefyLightClient: submit_signature_commitment: {:?}",
                 commitment
