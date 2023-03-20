@@ -33,7 +33,7 @@ use crate::U256;
 use sp_runtime::RuntimeDebug;
 use sp_std::convert::TryFrom;
 
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -67,7 +67,9 @@ pub enum BombDelay {
 
 /// Describes when hard forks occurred in Ethereum Mainnet based networks
 /// that affect difficulty calculations. These values are network-specific.
-#[derive(Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ForkConfig {
     // Block number on which Byzantium (EIP-649) rules activated
@@ -153,7 +155,9 @@ impl ForkConfig {
 
 /// Describes when hard forks occurred in Ethereum Classic based networks
 /// that affect difficulty calculations. These values are network-specific.
-#[derive(Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+#[derive(
+    Copy, Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct ClassicForkConfig {
     // https://ecips.ethereumclassic.org/ECIPs/ecip-1041

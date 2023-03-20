@@ -114,14 +114,21 @@ impl Header {
         &self,
         proof: &[Vec<u8>],
     ) -> Option<Result<receipt::Receipt, rlp::DecoderError>> {
-        match self.apply_merkle_proof(proof) {
-            Some((root, data)) if root == self.receipts_root => Some(rlp::decode(&data)),
+        Self::check_receipt_proof_with_root(self.receipts_root, proof)
+    }
+
+    pub fn check_receipt_proof_with_root(
+        receipts_root: H256,
+        proof: &[Vec<u8>],
+    ) -> Option<Result<receipt::Receipt, rlp::DecoderError>> {
+        match Self::apply_merkle_proof(proof) {
+            Some((root, data)) if root == receipts_root => Some(rlp::decode(&data)),
             Some((_, _)) => None,
             None => None,
         }
     }
 
-    pub fn apply_merkle_proof(&self, proof: &[Vec<u8>]) -> Option<(H256, Vec<u8>)> {
+    pub fn apply_merkle_proof(proof: &[Vec<u8>]) -> Option<(H256, Vec<u8>)> {
         let mut iter = proof.iter().rev();
         let first_bytes = match iter.next() {
             Some(b) => b,

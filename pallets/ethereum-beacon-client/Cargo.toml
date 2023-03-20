@@ -1,0 +1,69 @@
+[package]
+name = "beacon-light-client"
+authors = ["Anonymous"]
+description = ""
+version = "0.1.0"
+edition = "2021"
+homepage = "https://substrate.io"
+repository = "https://github.com/paritytech/substrate/"
+license = "Unlicense"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+serde = { version = "1.0.137", optional = true }
+codec = { version = "3.1.5", package = "parity-scale-codec", default-features = false, features = [ "derive" ] }
+scale-info = { version = "2.2.0", default-features = false, features = [ "derive" ] }
+rlp = { version = "0.5", default-features = false }
+hex-literal = { version = "0.3.4", optional = true }
+
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+beacon = { path = "../../primitives/beacon", default-features = false }
+ethereum-primitives = { path = "../../primitives/ethereum", default-features = false }
+bridge-types = { path = "../types", default-features = false }
+tree_hash = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.4.1", default-features = false }
+eth2_ssz_types = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.2.2", default-features = false }
+bls = { git = "https://github.com/vovac12/lighthouse-ssz.git", version = "0.2.0", default-features = false, features = ["milagro"] }
+
+[dev-dependencies]
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31" }
+serde_json = "1.0.68"
+hex-literal = { version = "0.3.4" }
+pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "serde",
+    "codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    'frame-benchmarking?/std',
+    "sp-core/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "pallet-timestamp/std",
+    "beacon/std",
+    "ethereum-primitives/std",
+    "tree_hash/std",
+    "bridge-types/std",
+    "eth2_ssz_types/std",
+    "bls/std"
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "hex-literal"
+]
+
+try-runtime = ["frame-support/try-runtime"]
