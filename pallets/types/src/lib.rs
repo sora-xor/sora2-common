@@ -31,30 +31,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod channel_abi;
-pub mod difficulty;
-pub mod ethashdata;
-pub mod ethashproof;
-pub mod header;
-pub mod log;
-mod mpt;
-pub mod network_config;
-pub mod receipt;
 pub mod substrate;
 pub mod traits;
 pub mod types;
 
-#[cfg(any(feature = "test", test))]
-pub mod test_utils;
-
+#[cfg(feature = "std")]
+use ::serde::{Deserialize, Serialize};
 use codec::{Decode, Encode};
-pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
 use frame_support::RuntimeDebug;
-use sp_std::vec;
-use sp_std::vec::Vec;
 
-pub use header::{Header, HeaderId};
-pub use log::Log;
-pub use receipt::Receipt;
+pub use ethereum_primitives::*;
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -91,7 +77,7 @@ pub type EVMChainId = U256;
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum SubNetworkId {
     Mainnet,
     Kusama,
@@ -111,7 +97,7 @@ pub enum SubNetworkId {
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum GenericNetworkId {
     EVM(EVMChainId),
     Sub(SubNetworkId),
@@ -139,14 +125,3 @@ pub enum GenericAccount<AccountId> {
 }
 
 pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"commitment";
-
-pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
-where
-    EVMChainId: Encode,
-    Header: Encode,
-{
-    let mut digest = vec![];
-    network_id.encode_to(&mut digest);
-    header.encode_to(&mut digest);
-    digest
-}

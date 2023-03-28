@@ -47,10 +47,9 @@ impl<'de> Deserialize<'de> for Hex {
             s = s[2..].to_string();
         }
         if s.len() % 2 == 1 {
-            s.insert(0, '0');
+            s.insert_str(0, "0");
         }
-        let v: Vec<u8> = hex::FromHexIter::new(&s).map(|x| x.unwrap()).collect();
-        Ok(Hex(v))
+        Ok(Hex(hex::decode(&s).unwrap()))
     }
 }
 

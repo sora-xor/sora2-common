@@ -9,4 +9,7 @@ members = [
     "pallets/substrate-channel/rpc",
     "pallets/beefy-light-client/runtime-api",
     "pallets/beefy-light-client/rpc",
+    "primitives/*",
 ]
+
+resolver = "2"
