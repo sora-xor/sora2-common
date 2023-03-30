@@ -33,6 +33,7 @@
 pub mod beefy_types;
 pub mod bitfield;
 pub mod simplified_mmr_proof;
+pub mod simplified_proof;
 
 use scale_info::prelude::vec::Vec;
 

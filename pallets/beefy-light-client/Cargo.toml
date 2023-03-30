@@ -38,11 +38,17 @@ beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branc
 
 [dev-dependencies]
 # Substrate
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 
 serde_json = "1.0.73"
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 hex-literal = "0.3.1"
 test-case = "2.2.2"
+mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false }
+rand = "0.8.5"
+anyhow = "1.0"
+log = "0.4.14"
 
 [features]
 default = ["std"]
