@@ -97,7 +97,7 @@ fn validator_proof(
 #[test_case(200, 5000; "200 validators, 5000 leaves")]
 fn submit_fixture_success(validators: usize, tree_size: u32) {
     new_test_ext().execute_with(|| {
-        let fixture = generate_fixture(validators, tree_size).unwrap();
+        let fixture = generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
         assert_ok!(BeefyLightClient::initialize(

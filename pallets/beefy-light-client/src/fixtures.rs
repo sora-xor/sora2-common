@@ -327,12 +327,6 @@ pub fn generate_fixture(validators: usize,  tree_size: u32) -> AnyResult<Fixture
         leaf_proof,
         leaf: leaf.encode(),
     };
-    // if self.binary {
-    //     let fixture = fixture.encode();
-    //     std::fs::write(&self.output, &fixture)?;
-    // } else {
-    //     let fixture = serde_json::to_string(&fixture)?;
-    //     std::fs::write(&self.output, &fixture)?;
-    // }
+
     Ok(fixture)
 }
