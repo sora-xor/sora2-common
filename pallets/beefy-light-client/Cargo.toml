@@ -24,6 +24,10 @@ serde = { version = "1.0", features = [
 	"alloc",
 	"derive",
 ], default-features = false }
+rand = { verson = "0.8.5", optional = true }
+mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false, optional = true }
+log = { version = "0.4.14", optional = true }
+anyhow = { version = "1.0", optional = true }
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
@@ -35,6 +39,7 @@ sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polka
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", optional= true }
 
 [dev-dependencies]
 # Substrate
@@ -52,7 +57,14 @@ log = "0.4.14"
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"rand",
+	"mmr-lib",
+	"log",
+	"anyhow",
+	"pallet-beefy-mmr"
+]
 std = [
 	"codec/std",
 	"serde/std",
