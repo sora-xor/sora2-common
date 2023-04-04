@@ -31,7 +31,7 @@ use bridge_types::H256;
 use codec::{Decode, Encode};
 use frame_support::log;
 use frame_support::RuntimeDebug;
-use scale_info::prelude::vec::Vec;
+use scale_info::prelude::{vec, vec::Vec};
 
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
