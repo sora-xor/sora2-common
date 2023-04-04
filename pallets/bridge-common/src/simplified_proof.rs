@@ -27,8 +27,15 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+use bridge_types::H256;
+use codec::{Decode, Encode};
+use frame_support::log;
+use frame_support::RuntimeDebug;
+use scale_info::prelude::vec::Vec;
 
-#[derive(Debug)]
+#[derive(
+    Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,
+)]
 pub struct Proof<T> {
     pub order: u64,
     pub items: Vec<T>,
@@ -214,6 +221,25 @@ pub fn convert_to_simplified_mmr_proof<T: Clone>(
     }
 }
 
+pub fn verify_inclusion_proof(root: H256, leaf_node_hash: H256, proof: &Proof<H256>) -> bool {
+    if proof.items.len() >= 64 {
+        return false;
+    }
+    log::debug!("verify_inclusion_proof: proof: {:?}", proof);
+    root == proof.root(hasher, leaf_node_hash)
+}
+
+pub fn bit(self_val: u64, index: u64) -> bool {
+    ((self_val >> index) & 1) as u8 == 1
+}
+
+pub fn hasher(a: H256, b: H256) -> H256 {
+    use sp_runtime::traits::Hash;
+    use sp_runtime::traits::Keccak256;
+
+    let res = [a.as_bytes(), b.as_bytes()].concat();
+    Keccak256::hash(&res)
+}
 #[cfg(test)]
 mod tests {
     use super::*;

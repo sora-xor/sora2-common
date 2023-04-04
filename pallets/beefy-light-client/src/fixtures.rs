@@ -35,12 +35,12 @@ use rand::prelude::*;
 use sp_core::{DeriveJunction, Pair};
 use sp_runtime::traits::{Convert, Hash};
 
-use serde::Serialize;
+use anyhow::Result as AnyResult;
 use codec::Encode;
 use log::debug;
-use anyhow::Result as AnyResult;
+use serde::Serialize;
 
-use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
+use bridge_common::simplified_proof::Proof;
 
 struct ValidatorSet {
     validators: Vec<sp_core::ecdsa::Pair>,
@@ -215,11 +215,11 @@ pub struct MMRProof {
     items: Vec<H256>,
 }
 
-impl From<MMRProof> for SimplifiedMMRProof {
+impl From<MMRProof> for Proof<H256> {
     fn from(proof: MMRProof) -> Self {
-        SimplifiedMMRProof {
-            merkle_proof_items: proof.items,
-            merkle_proof_order_bit_field: proof.order,
+        Proof {
+            items: proof.items,
+            order: proof.order,
         }
     }
 }
@@ -288,7 +288,7 @@ pub struct Fixture {
     pub leaf: Vec<u8>,
 }
 
-pub fn generate_fixture(validators: usize,  tree_size: u32) -> AnyResult<Fixture> {
+pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture> {
     let mut rng = thread_rng();
     let validator_set = ValidatorSet::generate(0, validators)?;
     let next_validator_set = ValidatorSet::generate(1, validators)?;

@@ -30,8 +30,8 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bridge_common::simplified_mmr_proof::*;
-use bridge_common::{beefy_types::*, bitfield, simplified_mmr_proof::SimplifiedMMRProof};
+use bridge_common::simplified_proof::*;
+use bridge_common::{beefy_types::*, bitfield, simplified_proof::Proof};
 use bridge_types::types::AuxiliaryDigest;
 use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::{GenericNetworkId, SubNetworkId};
@@ -75,7 +75,7 @@ mod benchmarking;
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ProvedSubstrateBridgeMessage<Message> {
     pub message: Message,
-    pub proof: SimplifiedMMRProof,
+    pub proof: Proof<H256>,
     pub leaf: BeefyMMRLeaf,
     pub digest: AuxiliaryDigest,
 }
@@ -230,7 +230,7 @@ pub mod pallet {
             commitment: Commitment,
             validator_proof: ValidatorProof,
             latest_mmr_leaf: BeefyMMRLeaf,
-            proof: SimplifiedMMRProof,
+            proof: Proof<H256>,
         ) -> DispatchResultWithPostInfo {
             let signer = ensure_signed(origin)?;
             log::debug!(
@@ -375,13 +375,9 @@ impl<T: Config> Pallet<T> {
     pub fn verify_beefy_merkle_leaf(
         network_id: SubNetworkId,
         beefy_mmr_leaf: H256,
-        proof: &SimplifiedMMRProof,
+        proof: &Proof<H256>,
     ) -> bool {
-        let proof_root = calculate_merkle_root(
-            beefy_mmr_leaf,
-            &proof.merkle_proof_items,
-            proof.merkle_proof_order_bit_field,
-        );
+        let proof_root = proof.root(hasher, beefy_mmr_leaf);
         Self::is_known_root(network_id, proof_root)
     }
 
@@ -414,7 +410,7 @@ impl<T: Config> Pallet<T> {
     fn verify_newest_mmr_leaf(
         leaf: &BeefyMMRLeaf,
         root: &H256,
-        proof: &SimplifiedMMRProof,
+        proof: &Proof<H256>,
     ) -> DispatchResultWithPostInfo {
         let hash_leaf = Keccak256::hash_of(&leaf);
         ensure!(
@@ -427,14 +423,10 @@ impl<T: Config> Pallet<T> {
     fn verify_mmr_leaf(
         network_id: SubNetworkId,
         leaf: &BeefyMMRLeaf,
-        proof: &SimplifiedMMRProof,
+        proof: &Proof<H256>,
     ) -> DispatchResult {
         let hash_leaf = Keccak256::hash_of(&leaf);
-        let root = calculate_merkle_root(
-            hash_leaf,
-            &proof.merkle_proof_items,
-            proof.merkle_proof_order_bit_field,
-        );
+        let root = proof.root(hasher, hash_leaf);
         ensure!(
             Self::is_known_root(network_id, root),
             Error::<T>::InvalidMMRProof
