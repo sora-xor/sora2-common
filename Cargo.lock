@@ -194,14 +194,19 @@ dependencies = [
 name = "beefy-light-client"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "beefy-merkle-tree",
  "bridge-common",
  "bridge-types",
+ "ckb-merkle-mountain-range",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "hex-literal",
+ "log",
+ "pallet-beefy-mmr",
  "parity-scale-codec",
+ "rand 0.8.5",
  "scale-info",
  "serde",
  "serde_json",
@@ -247,6 +252,8 @@ name = "beefy-merkle-tree"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#18bb7c7c841b101c19a8d1881b893ae8e37de460"
 dependencies = [
+ "array-bytes",
+ "log",
  "sp-api",
  "sp-beefy",
  "sp-runtime",
@@ -341,6 +348,7 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "serde",
+ "serde_json",
  "sp-beefy",
  "sp-core",
  "sp-io",
