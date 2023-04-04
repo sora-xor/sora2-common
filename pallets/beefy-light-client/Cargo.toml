@@ -24,36 +24,54 @@ serde = { version = "1.0", features = [
 	"alloc",
 	"derive",
 ], default-features = false }
+rand = { verson = "0.8.5", optional = true }
+mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false, optional = true }
+log = { version = "0.4.14", optional = true }
+anyhow = { version = "1.0", optional = true }
 
 # Substrate
-frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false, optional = true }
-frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-beefy-primitives = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
-beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", optional= true }
 
 [dev-dependencies]
 # Substrate
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+beefy-merkle-tree = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
+pallet-beefy-mmr = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 
 serde_json = "1.0.73"
-sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.31", default-features = false }
 hex-literal = "0.3.1"
 test-case = "2.2.2"
+mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false }
+rand = "0.8.5"
+anyhow = "1.0"
+log = "0.4.14"
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"rand",
+	"mmr-lib",
+	"log",
+	"anyhow",
+	"pallet-beefy-mmr"
+]
 std = [
 	"codec/std",
 	"serde/std",
 	"bridge-common/std",
 	"bridge-types/std",
-	"beefy-primitives/std",
 	"beefy-merkle-tree/std",
+	"sp-beefy/std",
 	"sp-core/std",
 	"sp-io/std",
 	"sp-std/std",

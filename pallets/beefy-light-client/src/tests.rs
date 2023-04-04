@@ -33,78 +33,21 @@ use bridge_common::beefy_types::BeefyMMRLeaf;
 use bridge_common::beefy_types::ValidatorProof;
 use bridge_common::beefy_types::ValidatorSet;
 use bridge_common::bitfield::BitField;
-use bridge_common::simplified_mmr_proof::SimplifiedMMRProof;
 use bridge_types::SubNetworkId;
-use bridge_types::H160;
-use bridge_types::H256;
+
+use crate::fixtures::{generate_fixture, Fixture};
 use codec::Decode;
 use frame_support::assert_ok;
 use hex_literal::hex;
-use serde::Deserialize;
 use test_case::test_case;
 
 fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct MMRProof {
-    order: u64,
-    items: Vec<H256>,
-}
-
-impl From<MMRProof> for SimplifiedMMRProof {
-    fn from(proof: MMRProof) -> Self {
-        SimplifiedMMRProof {
-            merkle_proof_items: proof.items,
-            merkle_proof_order_bit_field: proof.order,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct FixtureValidatorSet {
-    id: u64,
-    root: H256,
-    len: u32,
-}
-
-impl From<FixtureValidatorSet> for ValidatorSet {
-    fn from(f: FixtureValidatorSet) -> Self {
-        ValidatorSet {
-            id: f.id,
-            len: f.len,
-            root: f.root,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct Fixture {
-    addresses: Vec<H160>,
-    validator_set: FixtureValidatorSet,
-    next_validator_set: FixtureValidatorSet,
-    validator_set_proofs: Vec<Vec<H256>>,
-    commitment: Vec<u8>,
-    leaf_proof: MMRProof,
-    leaf: Vec<u8>,
-}
-
-fn load_fixture(validators: usize, tree_size: usize) -> Fixture {
-    let fixture: Fixture = serde_json::from_str(
-        &std::fs::read_to_string(format!(
-            "src/fixtures/beefy-{}-{}.json",
-            validators, tree_size
-        ))
-        .unwrap(),
-    )
-    .unwrap();
-    fixture
-}
-
 fn validator_proof(
     fixture: &Fixture,
-    signatures: Vec<Option<beefy_primitives::crypto::Signature>>,
+    signatures: Vec<Option<sp_beefy::crypto::Signature>>,
     count: usize,
 ) -> ValidatorProof {
     let bits_to_set = signatures
@@ -147,14 +90,14 @@ fn validator_proof(
 
 #[test_case(3, 5; "3 validators, 5 leaves")]
 #[test_case(3, 5000; "3 validators, 5000 leaves")]
-#[test_case(3, 5000000; "3 validators, 5000000 leaves")]
+// #[test_case(3, 5000000; "3 validators, 5000000 leaves")] TODO uncomment when #372 is done, now takes too long time
 #[test_case(37, 5; "37 validators, 5 leaves")]
 #[test_case(37, 5000; "37 validators, 5000 leaves")]
 #[test_case(69, 5000; "69 validators, 5000 leaves")]
 #[test_case(200, 5000; "200 validators, 5000 leaves")]
-fn submit_fixture_success(validators: usize, tree_size: usize) {
+fn submit_fixture_success(validators: usize, tree_size: u32) {
     new_test_ext().execute_with(|| {
-        let fixture = load_fixture(validators, tree_size);
+        let fixture = generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
         assert_ok!(BeefyLightClient::initialize(
@@ -165,10 +108,8 @@ fn submit_fixture_success(validators: usize, tree_size: usize) {
             next_validator_set
         ));
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
-            u32,
-            beefy_primitives::crypto::Signature,
-        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let signed_commitment: sp_beefy::SignedCommitment<u32, sp_beefy::crypto::Signature> =
+            Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();

@@ -207,6 +207,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Internal calls to be used from Parachain side.
 
+        #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
             origin: OriginFor<T>,
@@ -259,6 +260,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn finalize_asset_registration(
             origin: OriginFor<T>,
@@ -272,6 +274,7 @@ pub mod pallet {
 
         // Common exstrinsics
 
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,
@@ -287,8 +290,8 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -311,8 +314,8 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,

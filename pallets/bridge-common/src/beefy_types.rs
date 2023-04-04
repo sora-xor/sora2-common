@@ -36,7 +36,7 @@ use scale_info::prelude::vec::Vec;
 
 pub type EthAddress = H160;
 
-pub type Commitment = beefy_primitives::Commitment<u32>;
+pub type Commitment = sp_beefy::Commitment<u32>;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ValidatorProof {
@@ -48,6 +48,6 @@ pub struct ValidatorProof {
 }
 
 pub type BeefyMMRLeaf =
-    beefy_primitives::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
+    sp_beefy::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
 
-pub type ValidatorSet = beefy_primitives::mmr::BeefyAuthoritySet<H256>;
+pub type ValidatorSet = sp_beefy::mmr::BeefyAuthoritySet<H256>;

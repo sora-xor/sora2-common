@@ -37,7 +37,7 @@ use crate::types::AssetKind;
 
 pub type ParachainAccountId = xcm::VersionedMultiLocation;
 
-pub type ParachainAssetId = xcm::v2::AssetId;
+pub type ParachainAssetId = xcm::v3::AssetId;
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
