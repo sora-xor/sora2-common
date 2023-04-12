@@ -194,6 +194,15 @@ pub mod pallet {
             payload: &[u8],
             additional: T::Additional,
         ) {
+            let a = payload.len();
+            log::debug!(
+                "dispatch: payload len: {:?}",
+                a
+            );
+            log::debug!(
+                "dispatch: payload {:?}",
+                payload.clone()
+            );
             let call = match <T as Config<I>>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
