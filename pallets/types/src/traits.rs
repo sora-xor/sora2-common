@@ -34,10 +34,12 @@
 
 use crate::types::AuxiliaryDigestItem;
 use crate::H256;
+use crate::U256;
 use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
     GenericAccount, GenericNetworkId,
 };
+use ethereum_types::Address;
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
     Parameter,
@@ -171,6 +173,39 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
         _dest: GenericAccount<AccountId>,
         _asset_id: AssetId,
         _amount: Balance,
+    ) {
+    }
+}
+
+/// Trait for tracking Ethereum-based network transaction fee paid by relayer for messages relayed
+/// from Sora2 network to Ethereum-based network.
+pub trait GasTracker<Balance> {
+    /// Records fee paid.
+    /// `network_id`: Ethereum-like network ID
+    /// `message_id`: relayed message ID
+    /// `ethereum_tx_hash`: tx hash on Ethereum-based side
+    /// `ethereum_relayer_address`: address of relayer on Ethereum-based network (who paid fee)
+    /// `gas_used`: gas used for relay tx
+    /// `gas_price`: gas price of relay tx
+    /// fee is `gas_used` * `gas_price`
+    fn record_tx_fee(
+        network_id: GenericNetworkId,
+        message_id: H256,
+        ethereum_tx_hash: H256,
+        ethereum_relayer_address: Address,
+        gas_used: U256,
+        gas_price: U256,
+    );
+}
+
+impl<Balance> GasTracker<Balance> for () {
+    fn record_tx_fee(
+        _network_id: GenericNetworkId,
+        _message_id: H256,
+        _ethereum_tx_hash: H256,
+        _ethereum_relayer_address: Address,
+        _gas_used: U256,
+        _gas_price: U256,
     ) {
     }
 }
