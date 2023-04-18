@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #![allow(dead_code)]
 
-use bridge_types::{H160, H256};
+use bridge_types::{H160, H256, SubNetworkId};
 use mmr_lib::MMRStore;
 use rand::prelude::*;
 use sp_core::{DeriveJunction, Pair};
@@ -39,8 +39,56 @@ use anyhow::Result as AnyResult;
 use codec::Encode;
 use log::debug;
 use serde::Serialize;
+use codec::Decode;
 
-use bridge_common::simplified_proof::Proof;
+use bridge_common::{simplified_proof::Proof, bitfield::BitField};
+
+pub fn alice<T: crate::Config>() -> T::AccountId {
+    T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
+}
+
+pub fn validator_proof<T: crate::Config>(
+    fixture: &Fixture,
+    signatures: Vec<Option<sp_beefy::crypto::Signature>>,
+    count: usize,
+) -> bridge_common::beefy_types::ValidatorProof {
+    let bits_to_set = signatures
+        .iter()
+        .enumerate()
+        .filter_map(|(i, x)| x.clone().map(|_| i as u32))
+        .take(count)
+        .collect::<Vec<_>>();
+    let initial_bitfield = BitField::create_bitfield(&bits_to_set, signatures.len());
+    let random_bitfield = crate::Pallet::<T>::create_random_bit_field(
+        SubNetworkId::Mainnet,
+        initial_bitfield.clone(),
+        signatures.len() as u32,
+    )
+    .unwrap();
+    let mut positions = vec![];
+    let mut proof_signatures = vec![];
+    let mut public_keys = vec![];
+    let mut public_key_merkle_proofs = vec![];
+    for i in 0..random_bitfield.len() {
+        let bit = random_bitfield.is_set(i);
+        if bit {
+            positions.push(i as u128);
+            let mut signature = signatures.get(i).unwrap().clone().unwrap().to_vec();
+            signature[64] += 27;
+            proof_signatures.push(signature);
+            public_keys.push(fixture.addresses[i]);
+            public_key_merkle_proofs.push(fixture.validator_set_proofs[i].clone());
+        }
+    }
+    let validator_proof = bridge_common::beefy_types::ValidatorProof {
+        signatures: proof_signatures,
+        positions,
+        public_keys,
+        public_key_merkle_proofs: public_key_merkle_proofs,
+        validator_claims_bitfield: initial_bitfield,
+    };
+    validator_proof
+}
 
 struct ValidatorSet {
     validators: Vec<sp_core::ecdsa::Pair>,
@@ -288,7 +336,7 @@ pub struct Fixture {
     pub leaf: Vec<u8>,
 }
 
-pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture> {
+pub fn generate_fixture(validators: usize, tree_size: usize) -> AnyResult<Fixture> {
     let mut rng = thread_rng();
     let validator_set = ValidatorSet::generate(0, validators)?;
     let next_validator_set = ValidatorSet::generate(1, validators)?;
@@ -296,7 +344,7 @@ pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture>
     for i in 0..tree_size + 1 {
         mmr.add_leaf(MMRLeaf {
             version: sp_beefy::mmr::MmrLeafVersion::new(0, 0),
-            parent_number_and_hash: (i, H256::random_using(&mut rng)),
+            parent_number_and_hash: (i as u32, H256::random_using(&mut rng)),
             beefy_next_authority_set: next_validator_set.authority_set(),
             leaf_extra: bridge_types::types::LeafExtraData {
                 digest_hash: H256::random_using(&mut rng),
@@ -309,6 +357,93 @@ pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture>
     let commitment = sp_beefy::Commitment::<u32> {
         payload: sp_beefy::Payload::from_single_entry(
             sp_beefy::known_payloads::MMR_ROOT_ID,
+            mmr_root.encode(),
+        ),
+        block_number: tree_size as u32,
+        validator_set_id: validator_set.id,
+    };
+    let signed_commitment = validator_set.sign_commitment(&mut rng, commitment, None);
+    let leaf = mmr.leaf(tree_size as u64 - 1);
+    let leaf_proof = mmr.generate_proof(tree_size as u64 - 1, tree_size as u64)?;
+
+    let fixture = Fixture {
+        addresses: validator_set.addresses.clone(),
+        validator_set: validator_set.fixture(),
+        next_validator_set: next_validator_set.fixture(),
+        validator_set_proofs: validator_set.proofs(),
+        commitment: signed_commitment.encode(),
+        leaf_proof,
+        leaf: leaf.encode(),
+    };
+
+    Ok(fixture)
+}
+
+pub fn generate_bad_fixture_invalid_mmr_proof(validators: usize, tree_size: usize) -> AnyResult<Fixture> {
+    let mut rng = thread_rng();
+    let validator_set = ValidatorSet::generate(0, validators)?;
+    let next_validator_set = ValidatorSet::generate(1, validators)?;
+    let mut mmr = FakeMMR::new();
+    for i in 0..tree_size + 1 {
+        mmr.add_leaf(MMRLeaf {
+            version: sp_beefy::mmr::MmrLeafVersion::new(0, 0),
+            parent_number_and_hash: (i as u32, H256::random_using(&mut rng)),
+            beefy_next_authority_set: next_validator_set.authority_set(),
+            leaf_extra: bridge_types::types::LeafExtraData {
+                digest_hash: H256::random_using(&mut rng),
+                random_seed: H256::random_using(&mut rng),
+            },
+        })?;
+    }
+
+    let commitment = sp_beefy::Commitment::<u32> {
+        payload: sp_beefy::Payload::from_single_entry(
+            sp_beefy::known_payloads::MMR_ROOT_ID,
+            // invalid mmr root
+            H256::random_using(&mut rng).encode()
+        ),
+        block_number: tree_size as u32,
+        validator_set_id: validator_set.id,
+    };
+    let signed_commitment = validator_set.sign_commitment(&mut rng, commitment, None);
+    let leaf = mmr.leaf(tree_size as u64 - 1);
+    let leaf_proof = mmr.generate_proof(tree_size as u64 - 1, tree_size as u64)?;
+
+    let fixture = Fixture {
+        addresses: validator_set.addresses.clone(),
+        validator_set: validator_set.fixture(),
+        next_validator_set: next_validator_set.fixture(),
+        validator_set_proofs: validator_set.proofs(),
+        commitment: signed_commitment.encode(),
+        leaf_proof,
+        leaf: leaf.encode(),
+    };
+
+    Ok(fixture)
+}
+
+pub fn generate_bad_fixture_invalid_payload(validators: usize, tree_size: usize) -> AnyResult<Fixture> {
+    let mut rng = thread_rng();
+    let validator_set = ValidatorSet::generate(0, validators)?;
+    let next_validator_set = ValidatorSet::generate(1, validators)?;
+    let mut mmr = FakeMMR::new();
+    for i in 0..tree_size + 1 {
+        mmr.add_leaf(MMRLeaf {
+            version: sp_beefy::mmr::MmrLeafVersion::new(0, 0),
+            parent_number_and_hash: (i as u32, H256::random_using(&mut rng)),
+            beefy_next_authority_set: next_validator_set.authority_set(),
+            leaf_extra: bridge_types::types::LeafExtraData {
+                digest_hash: H256::random_using(&mut rng),
+                random_seed: H256::random_using(&mut rng),
+            },
+        })?;
+    }
+    let mmr_root = mmr.root(tree_size as u64)?;
+
+    let commitment = sp_beefy::Commitment::<u32> {
+        payload: sp_beefy::Payload::from_single_entry(
+            // invalid payload identifier
+            *b"ll",
             mmr_root.encode(),
         ),
         block_number: tree_size as u32,

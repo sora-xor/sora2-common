@@ -72,9 +72,6 @@ mod fixtures;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-#[cfg(any(test, feature = "runtime-benchmarks"))]
-mod test_helpers;
-
 pub mod weights;
 
 pub trait WeightInfo {
