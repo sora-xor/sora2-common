@@ -33,6 +33,7 @@ eth2_hashing = { git = "https://github.com/vovac12/lighthouse-ssz.git", version 
 hex = { version = "0.4.3", default-features = false, features = ["alloc"] }
 lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 maplit = "1.0.2"
+hex-literal = { version = "0.3.1", default-features = false }
 
 [dev-dependencies]
 itertools = "0.10.5"

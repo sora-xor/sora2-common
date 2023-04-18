@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::safe_arith::{ArithError, SafeArith};
 use crate::typenum::Unsigned;
-use crate::{EthSpec, FixedVector, SyncSubnetId};
+use crate::{EthSpec, FixedVector};
 use bls::PublicKeyBytes;
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -72,28 +72,6 @@ impl<T: EthSpec> SyncCommittee<T> {
                 subcommittee_index,
             })
             .map(|s| s.to_vec())
-    }
-
-    /// For a given `pubkey`, finds all subcommittees that it is included in, and maps the
-    /// subcommittee index (typed as `SyncSubnetId`) to all positions this `pubkey` is associated
-    /// with within the subcommittee.
-    pub fn subcommittee_positions_for_public_key(
-        &self,
-        pubkey: &PublicKeyBytes,
-    ) -> Result<BTreeMap<SyncSubnetId, Vec<usize>>, Error> {
-        let mut subnet_positions = BTreeMap::new();
-        for (committee_index, validator_pubkey) in self.pubkeys.iter().enumerate() {
-            if pubkey == validator_pubkey {
-                let subcommittee_index = committee_index.safe_div(T::sync_subcommittee_size())?;
-                let position_in_subcommittee =
-                    committee_index.safe_rem(T::sync_subcommittee_size())?;
-                subnet_positions
-                    .entry(SyncSubnetId::new(subcommittee_index as u64))
-                    .or_insert_with(Vec::new)
-                    .push(position_in_subcommittee);
-            }
-        }
-        Ok(subnet_positions)
     }
 
     /// Returns `true` if the pubkey exists in the `SyncCommittee`.

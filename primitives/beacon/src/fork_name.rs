@@ -1,6 +1,5 @@
 #[cfg(not(feature = "std"))]
 use crate::prelude::*;
-use crate::{ChainSpec, Epoch};
 use core::convert::TryFrom;
 use core::fmt::{self, Display, Formatter};
 use core::str::FromStr;
@@ -24,38 +23,6 @@ impl ForkName {
             ForkName::Merge,
             ForkName::Capella,
         ]
-    }
-
-    /// Set the activation slots in the given `ChainSpec` so that the fork named by `self`
-    /// is the only fork in effect from genesis.
-    pub fn make_genesis_spec(&self, mut spec: ChainSpec) -> ChainSpec {
-        // Assumes GENESIS_EPOCH = 0, which is safe because it's a constant.
-        match self {
-            ForkName::Base => {
-                spec.altair_fork_epoch = None;
-                spec.bellatrix_fork_epoch = None;
-                spec.capella_fork_epoch = None;
-                spec
-            }
-            ForkName::Altair => {
-                spec.altair_fork_epoch = Some(Epoch::new(0));
-                spec.bellatrix_fork_epoch = None;
-                spec.capella_fork_epoch = None;
-                spec
-            }
-            ForkName::Merge => {
-                spec.altair_fork_epoch = Some(Epoch::new(0));
-                spec.bellatrix_fork_epoch = Some(Epoch::new(0));
-                spec.capella_fork_epoch = None;
-                spec
-            }
-            ForkName::Capella => {
-                spec.altair_fork_epoch = Some(Epoch::new(0));
-                spec.bellatrix_fork_epoch = Some(Epoch::new(0));
-                spec.capella_fork_epoch = Some(Epoch::new(0));
-                spec
-            }
-        }
     }
 
     /// Return the name of the fork immediately prior to the current one.

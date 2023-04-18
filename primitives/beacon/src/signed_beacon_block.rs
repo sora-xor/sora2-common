@@ -94,19 +94,6 @@ pub struct SignedBeaconBlock<E: EthSpec, Payload: AbstractExecPayload<E> = FullP
 pub type SignedBlindedBeaconBlock<E> = SignedBeaconBlock<E, BlindedPayload<E>>;
 
 impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignedBeaconBlock<E, Payload> {
-    /// Returns the name of the fork pertaining to `self`.
-    ///
-    /// Will return an `Err` if `self` has been instantiated to a variant conflicting with the fork
-    /// dictated by `self.slot()`.
-    pub fn fork_name(&self, spec: &ChainSpec) -> Result<ForkName, InconsistentFork> {
-        self.message().fork_name(spec)
-    }
-
-    /// SSZ decode with fork variant determined by slot.
-    pub fn from_ssz_bytes(bytes: &[u8], spec: &ChainSpec) -> Result<Self, ssz::DecodeError> {
-        Self::from_ssz_bytes_with(bytes, |bytes| BeaconBlock::from_ssz_bytes(bytes, spec))
-    }
-
     /// SSZ decode which attempts to decode all variants (slow).
     pub fn any_from_ssz_bytes(bytes: &[u8]) -> Result<Self, ssz::DecodeError> {
         Self::from_ssz_bytes_with(bytes, BeaconBlock::any_from_ssz_bytes)
@@ -177,44 +164,6 @@ impl<E: EthSpec, Payload: AbstractExecPayload<E>> SignedBeaconBlock<E, Payload> 
             self.to_mut(),
             |inner, cons| cons(&mut inner.message)
         )
-    }
-
-    /// Verify `self.signature`.
-    ///
-    /// If the root of `block.message` is already known it can be passed in via `object_root_opt`.
-    /// Otherwise, it will be computed locally.
-    pub fn verify_signature(
-        &self,
-        object_root_opt: Option<Hash256>,
-        pubkey: &PublicKey,
-        fork: &Fork,
-        genesis_validators_root: Hash256,
-        spec: &ChainSpec,
-    ) -> bool {
-        // Refuse to verify the signature of a block if its structure does not match the fork at
-        // `self.slot()`.
-        if self.fork_name(spec).is_err() {
-            return false;
-        }
-
-        let domain = spec.get_domain(
-            self.slot().epoch(E::slots_per_epoch()),
-            Domain::BeaconProposer,
-            fork,
-            genesis_validators_root,
-        );
-
-        let message = if let Some(object_root) = object_root_opt {
-            SigningData {
-                object_root,
-                domain,
-            }
-            .tree_hash_root()
-        } else {
-            self.message().signing_root(domain)
-        };
-
-        self.signature().verify(pubkey, message)
     }
 
     /// Produce a signed beacon block header corresponding to this block.

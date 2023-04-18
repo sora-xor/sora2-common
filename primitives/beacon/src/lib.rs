@@ -27,39 +27,39 @@ mod prelude {
     pub use codec::{Decode as ScaleDecode, Encode as ScaleEncode, MaxEncodedLen};
     pub use core::fmt::Debug;
     pub use core::hash::Hash;
+    pub use derivative::Derivative;
     pub use scale_info::TypeInfo;
+    pub use ssz_derive::{Decode, Encode};
+    pub use superstruct::superstruct;
+    pub use tree_hash::TreeHash;
+    pub use tree_hash_derive::TreeHash;
 }
 
 #[cfg(feature = "std")]
 mod prelude {
     pub use codec::{Decode as ScaleDecode, Encode as ScaleEncode, MaxEncodedLen};
+    pub use derivative::Derivative;
     pub use scale_info::TypeInfo;
+    pub use ssz_derive::{Decode, Encode};
     pub use std::borrow::Cow;
     pub use std::collections::{BTreeMap, BTreeSet};
+    pub use superstruct::superstruct;
+    pub use tree_hash::TreeHash;
+    pub use tree_hash_derive::TreeHash;
 }
 
-pub mod aggregate_and_proof;
-pub mod application_domain;
 pub mod attestation;
 pub mod attestation_data;
-pub mod attestation_duty;
 pub mod attester_slashing;
 pub mod beacon_block;
 pub mod beacon_block_body;
 pub mod beacon_block_header;
-pub mod beacon_committee;
 pub mod beacon_state;
 pub mod bls_to_execution_change;
-pub mod builder_bid;
-pub mod chain_spec;
 pub mod checkpoint;
 pub mod consts;
-pub mod contribution_and_proof;
 pub mod deposit;
 pub mod deposit_data;
-pub mod deposit_message;
-pub mod deposit_tree_snapshot;
-pub mod enr_fork_id;
 pub mod eth1_data;
 pub mod eth_spec;
 pub mod execution_block_hash;
@@ -70,91 +70,54 @@ pub mod fork_data;
 pub mod fork_name;
 pub mod fork_versioned_response;
 pub mod graffiti;
-pub mod historical_batch;
-pub mod historical_summary;
 pub mod indexed_attestation;
 pub mod light_client_bootstrap;
-pub mod light_client_finality_update;
-pub mod light_client_optimistic_update;
 pub mod light_client_update;
-pub mod pending_attestation;
-pub mod proposer_preparation_data;
 pub mod proposer_slashing;
-pub mod relative_epoch;
-pub mod selection_proof;
-pub mod shuffling_id;
-pub mod signed_aggregate_and_proof;
 pub mod signed_beacon_block;
 pub mod signed_beacon_block_header;
 pub mod signed_bls_to_execution_change;
-pub mod signed_contribution_and_proof;
 pub mod signed_voluntary_exit;
 pub mod signing_data;
-pub mod sync_committee_subscription;
-pub mod sync_duty;
-pub mod validator;
-pub mod validator_subscription;
 pub mod voluntary_exit;
 #[macro_use]
 pub mod slot_epoch_macros;
-pub mod config_and_preset;
-pub mod execution_block_header;
 pub mod int_to_bytes;
-pub mod participation_flags;
-pub mod participation_list;
 pub mod payload;
-pub mod preset;
 pub mod slot_epoch;
-pub mod subnet_id;
 pub mod sync_aggregate;
-pub mod sync_aggregator_selection_data;
 pub mod sync_committee;
-pub mod sync_committee_contribution;
-pub mod sync_committee_message;
-pub mod sync_selection_proof;
-pub mod sync_subnet_id;
-pub mod validator_registration_data;
 pub mod withdrawal;
 
 pub mod slot_data;
 
+pub mod beacon_config;
+pub mod light_client_header;
 pub mod safe_arith;
 
 use ethereum_types::{H160, H256};
 
-pub use crate::aggregate_and_proof::AggregateAndProof;
 pub use crate::attestation::{Attestation, Error as AttestationError};
 pub use crate::attestation_data::AttestationData;
-pub use crate::attestation_duty::AttestationDuty;
 pub use crate::attester_slashing::AttesterSlashing;
 pub use crate::beacon_block::{
     BeaconBlock, BeaconBlockAltair, BeaconBlockBase, BeaconBlockCapella, BeaconBlockMerge,
-    BeaconBlockRef, BeaconBlockRefMut, BlindedBeaconBlock, EmptyBlock,
+    BeaconBlockRef, BeaconBlockRefMut, BlindedBeaconBlock,
 };
 pub use crate::beacon_block_body::{
     BeaconBlockBody, BeaconBlockBodyAltair, BeaconBlockBodyBase, BeaconBlockBodyCapella,
     BeaconBlockBodyMerge, BeaconBlockBodyRef, BeaconBlockBodyRefMut,
 };
 pub use crate::beacon_block_header::BeaconBlockHeader;
-pub use crate::beacon_committee::{BeaconCommittee, OwnedBeaconCommittee};
 pub use crate::beacon_state::{Error as BeaconStateError, *};
 pub use crate::bls_to_execution_change::BlsToExecutionChange;
-pub use crate::chain_spec::{ChainSpec, Config, Domain};
 pub use crate::checkpoint::Checkpoint;
-pub use crate::config_and_preset::{
-    ConfigAndPreset, ConfigAndPresetBellatrix, ConfigAndPresetCapella,
-};
-pub use crate::contribution_and_proof::ContributionAndProof;
 pub use crate::deposit::{Deposit, DEPOSIT_TREE_DEPTH};
 pub use crate::deposit_data::DepositData;
-pub use crate::deposit_message::DepositMessage;
-pub use crate::deposit_tree_snapshot::{DepositTreeSnapshot, FinalizedExecutionBlock};
-pub use crate::enr_fork_id::EnrForkId;
 pub use crate::eth1_data::Eth1Data;
 pub use crate::eth_spec::EthSpecId;
 pub use crate::eth_spec::{EthSpec, GnosisEthSpec, MainnetEthSpec, MinimalEthSpec};
 pub use crate::execution_block_hash::ExecutionBlockHash;
-pub use crate::execution_block_header::ExecutionBlockHeader;
 pub use crate::execution_payload::{
     ExecutionPayload, ExecutionPayloadCapella, ExecutionPayloadMerge, ExecutionPayloadRef,
     Transaction, Transactions, Withdrawals,
@@ -172,50 +135,30 @@ pub use crate::fork_versioned_response::{
     ExecutionOptimisticForkVersionedResponse, ForkVersionedResponse,
 };
 pub use crate::graffiti::{Graffiti, GRAFFITI_BYTES_LEN};
-pub use crate::historical_batch::HistoricalBatch;
 pub use crate::indexed_attestation::IndexedAttestation;
-pub use crate::light_client_finality_update::LightClientFinalityUpdate;
-pub use crate::light_client_optimistic_update::LightClientOptimisticUpdate;
-pub use crate::participation_flags::ParticipationFlags;
-pub use crate::participation_list::ParticipationList;
+pub use crate::light_client_header::{
+    LightClientHeader, LightClientHeaderCapella, LightClientHeaderMerge,
+};
 pub use crate::payload::{
     AbstractExecPayload, BlindedPayload, BlindedPayloadCapella, BlindedPayloadMerge,
     BlindedPayloadRef, BlockType, ExecPayload, FullPayload, FullPayloadCapella, FullPayloadMerge,
     FullPayloadRef, OwnedExecPayload,
 };
-pub use crate::pending_attestation::PendingAttestation;
-pub use crate::preset::{AltairPreset, BasePreset, BellatrixPreset, CapellaPreset};
-pub use crate::proposer_preparation_data::ProposerPreparationData;
 pub use crate::proposer_slashing::ProposerSlashing;
-pub use crate::relative_epoch::{Error as RelativeEpochError, RelativeEpoch};
-pub use crate::selection_proof::SelectionProof;
-pub use crate::shuffling_id::AttestationShufflingId;
-pub use crate::signed_aggregate_and_proof::SignedAggregateAndProof;
 pub use crate::signed_beacon_block::{
     SignedBeaconBlock, SignedBeaconBlockAltair, SignedBeaconBlockBase, SignedBeaconBlockCapella,
     SignedBeaconBlockHash, SignedBeaconBlockMerge, SignedBlindedBeaconBlock,
 };
 pub use crate::signed_beacon_block_header::SignedBeaconBlockHeader;
 pub use crate::signed_bls_to_execution_change::SignedBlsToExecutionChange;
-pub use crate::signed_contribution_and_proof::SignedContributionAndProof;
 pub use crate::signed_voluntary_exit::SignedVoluntaryExit;
 pub use crate::signing_data::{SignedRoot, SigningData};
 pub use crate::slot_epoch::{Epoch, Slot};
-pub use crate::subnet_id::SubnetId;
 pub use crate::sync_aggregate::SyncAggregate;
-pub use crate::sync_aggregator_selection_data::SyncAggregatorSelectionData;
 pub use crate::sync_committee::SyncCommittee;
-pub use crate::sync_committee_contribution::{SyncCommitteeContribution, SyncContributionData};
-pub use crate::sync_committee_message::SyncCommitteeMessage;
-pub use crate::sync_committee_subscription::SyncCommitteeSubscription;
-pub use crate::sync_duty::SyncDuty;
-pub use crate::sync_selection_proof::SyncSelectionProof;
-pub use crate::sync_subnet_id::SyncSubnetId;
-pub use crate::validator::Validator;
-pub use crate::validator_registration_data::*;
-pub use crate::validator_subscription::ValidatorSubscription;
 pub use crate::voluntary_exit::VoluntaryExit;
 pub use crate::withdrawal::Withdrawal;
+pub use beacon_config::{ConsensusConfig, ForkInfo, ForkSchedule};
 
 pub type CommitteeIndex = u64;
 pub type Hash256 = H256;

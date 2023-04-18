@@ -29,7 +29,6 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{
-    beacon::BeaconConsensusConfig,
     difficulty::{ClassicForkConfig, ForkConfig},
     EVMChainId,
 };
@@ -47,7 +46,7 @@ pub enum Consensus {
     Ethash { fork_config: ForkConfig },
     Etchash { fork_config: ClassicForkConfig },
     Clique { period: u64, epoch: u64 },
-    Beacon(BeaconConsensusConfig),
+    Beacon(beacon::ConsensusConfig),
 }
 
 impl Consensus {
@@ -71,7 +70,6 @@ pub enum NetworkConfig {
     Goerli,
     Classic,
     Mordor,
-    Local,
     Custom {
         chain_id: EVMChainId,
         consensus: Consensus,
@@ -93,7 +91,6 @@ impl NetworkConfig {
             NetworkConfig::Goerli => 5u32.into(),
             NetworkConfig::Classic => 61u32.into(),
             NetworkConfig::Mordor => 63u32.into(),
-            NetworkConfig::Local => 4224u32.into(),
             NetworkConfig::Custom { chain_id, .. } => *chain_id,
             #[cfg(any(test, feature = "test", feature = "runtime-benchmarks"))]
             NetworkConfig::RopstenEthash => 3u32.into(),
@@ -106,10 +103,9 @@ impl NetworkConfig {
 
     pub fn consensus(&self) -> Consensus {
         match self {
-            NetworkConfig::Mainnet => Consensus::Beacon(BeaconConsensusConfig::mainnet()),
-            NetworkConfig::Goerli => Consensus::Beacon(BeaconConsensusConfig::goerli()),
-            NetworkConfig::Sepolia => Consensus::Beacon(BeaconConsensusConfig::sepolia()),
-            NetworkConfig::Local => Consensus::Beacon(BeaconConsensusConfig::local()),
+            NetworkConfig::Mainnet => Consensus::Beacon(beacon::ConsensusConfig::mainnet()),
+            NetworkConfig::Goerli => Consensus::Beacon(beacon::ConsensusConfig::goerli()),
+            NetworkConfig::Sepolia => Consensus::Beacon(beacon::ConsensusConfig::sepolia()),
             NetworkConfig::Classic => Consensus::Etchash {
                 fork_config: ClassicForkConfig::classic(),
             },

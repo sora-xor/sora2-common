@@ -1,13 +1,13 @@
-use super::{EthSpec, FixedVector, Hash256, SyncCommittee};
-use crate::light_client_header::LightClientHeaderRef;
-use crate::light_client_update::*;
-use crate::prelude::*;
-use crate::LightClientHeaderCapella;
-use crate::LightClientHeaderMerge;
-use serde::{Deserialize, Serialize};
+use core::marker::PhantomData;
 
-/// A LightClientBootstrap is the initializer we send over to lightclient nodes
-/// that are trying to generate their basic storage when booting up.
+use super::BeaconBlockHeader;
+use crate::{
+    light_client_update::ExecutionPayloadProofLen, prelude::*, EthSpec,
+    ExecutionPayloadHeaderCapella, Hash256,
+};
+use serde::{Deserialize, Serialize};
+use ssz_types::FixedVector;
+
 #[superstruct(
     variants(Merge, Capella),
     variant_attributes(
@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
             TypeInfo,
             MaxEncodedLen,
         ),
-        derivative(PartialEq),
+        derivative(PartialEq, Hash(bound = "T: EthSpec")),
         serde(bound = "T: EthSpec", deny_unknown_fields),
         scale_info(skip_type_params(T))
     ),
@@ -39,41 +39,31 @@ use serde::{Deserialize, Serialize};
     TypeInfo,
     MaxEncodedLen,
 )]
-#[derivative(PartialEq)]
+#[derivative(PartialEq, Hash(bound = "T: EthSpec"))]
 #[serde(bound = "T: EthSpec", untagged)]
 #[scale_info(skip_type_params(T))]
-pub struct LightClientBootstrap<T: EthSpec> {
-    /// Requested beacon block header.
-    #[superstruct(only(Merge), partial_getter(rename = "header_merge"))]
-    pub header: LightClientHeaderMerge<T>,
-    #[superstruct(only(Capella), partial_getter(rename = "header_capella"))]
-    pub header: LightClientHeaderCapella<T>,
-    /// The `SyncCommittee` used in the requested period.
-    pub current_sync_committee: SyncCommittee<T>,
-    /// Merkle proof for sync committee
-    pub current_sync_committee_branch: FixedVector<Hash256, CurrentSyncCommitteeProofLen>,
+pub struct LightClientHeader<T: EthSpec> {
+    pub beacon: BeaconBlockHeader,
+    #[superstruct(only(Capella))]
+    pub execution: ExecutionPayloadHeaderCapella<T>,
+    #[superstruct(only(Capella))]
+    pub execution_branch: FixedVector<Hash256, ExecutionPayloadProofLen>,
+    #[superstruct(only(Merge))]
+    #[serde(skip)]
+    _phantom: PhantomData<T>,
 }
 
-impl<T: EthSpec> LightClientBootstrap<T> {
-    pub fn header(&self) -> LightClientHeaderRef<T> {
-        match self {
-            Self::Merge(update) => LightClientHeaderRef::Merge(&update.header),
-            Self::Capella(update) => LightClientHeaderRef::Capella(&update.header),
-        }
-    }
-}
-
-impl<'a, T: EthSpec> LightClientBootstrapRef<'a, T> {
-    pub fn owned(&self) -> LightClientBootstrap<T> {
+impl<'a, T: EthSpec> LightClientHeaderRef<'a, T> {
+    pub fn owned(&self) -> LightClientHeader<T> {
         match *self {
-            Self::Merge(update) => LightClientBootstrap::Merge(update.clone()),
-            Self::Capella(update) => LightClientBootstrap::Capella(update.clone()),
+            Self::Merge(update) => LightClientHeader::Merge(update.clone()),
+            Self::Capella(update) => LightClientHeader::Capella(update.clone()),
         }
     }
 }
 
 #[cfg(feature = "std")]
-impl<T: EthSpec> crate::ForkVersionDeserialize for LightClientBootstrap<T> {
+impl<T: EthSpec> crate::ForkVersionDeserialize for LightClientHeader<T> {
     fn deserialize_by_fork<'de, D: serde::Deserializer<'de>>(
         value: serde_json::value::Value,
         fork_name: crate::ForkName,

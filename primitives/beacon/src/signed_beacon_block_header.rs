@@ -1,7 +1,5 @@
 use crate::prelude::*;
-use crate::{
-    BeaconBlockHeader, ChainSpec, Domain, EthSpec, Fork, Hash256, PublicKey, Signature, SignedRoot,
-};
+use crate::{BeaconBlockHeader, Signature};
 use serde::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use tree_hash_derive::TreeHash;
@@ -28,26 +26,4 @@ use tree_hash_derive::TreeHash;
 pub struct SignedBeaconBlockHeader {
     pub message: BeaconBlockHeader,
     pub signature: Signature,
-}
-
-impl SignedBeaconBlockHeader {
-    /// Verify that this block header was signed by `pubkey`.
-    pub fn verify_signature<E: EthSpec>(
-        &self,
-        pubkey: &PublicKey,
-        fork: &Fork,
-        genesis_validators_root: Hash256,
-        spec: &ChainSpec,
-    ) -> bool {
-        let domain = spec.get_domain(
-            self.message.slot.epoch(E::slots_per_epoch()),
-            Domain::BeaconProposer,
-            fork,
-            genesis_validators_root,
-        );
-
-        let message = self.message.signing_root(domain);
-
-        self.signature.verify(pubkey, message)
-    }
 }

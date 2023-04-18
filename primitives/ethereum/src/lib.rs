@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub mod beacon;
 pub mod difficulty;
 pub mod ethashdata;
 pub mod ethashproof;

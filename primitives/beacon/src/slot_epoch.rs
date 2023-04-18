@@ -79,6 +79,12 @@ impl Slot {
         self.epoch(T::slots_per_epoch())
     }
 
+    /// Compute the sync committee period for an epoch.
+    pub fn sync_committee_period_with_spec<T: EthSpec>(&self) -> u64 {
+        self.epoch_with_spec::<T>()
+            .sync_committee_period_with_spec::<T>()
+    }
+
     pub fn max_value() -> Slot {
         Slot(u64::max_value())
     }
@@ -130,10 +136,10 @@ impl Epoch {
     }
 
     /// Compute the sync committee period for an epoch.
-    pub fn sync_committee_period_with_spec<T: EthSpec>(&self) -> Result<u64, ArithError> {
-        Ok(self
-            .safe_div(Epoch::new(T::EpochsPerSyncCommitteePeriod::to_u64()))?
-            .as_u64())
+    pub fn sync_committee_period_with_spec<T: EthSpec>(&self) -> u64 {
+        self.safe_div(Epoch::new(T::EpochsPerSyncCommitteePeriod::to_u64()))
+            .expect("epoch per sync committee period is not 0")
+            .as_u64()
     }
 
     pub fn slot_iter(&self, slots_per_epoch: u64) -> SlotIter {

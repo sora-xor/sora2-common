@@ -1,4 +1,4 @@
-use crate::{ChainSpec, Domain, Epoch, Fork, Hash256, SecretKey, SignedRoot, SignedVoluntaryExit};
+use crate::{Epoch, SignedRoot};
 
 use crate::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -31,25 +31,3 @@ pub struct VoluntaryExit {
 }
 
 impl SignedRoot for VoluntaryExit {}
-
-impl VoluntaryExit {
-    pub fn sign(
-        self,
-        secret_key: &SecretKey,
-        fork: &Fork,
-        genesis_validators_root: Hash256,
-        spec: &ChainSpec,
-    ) -> SignedVoluntaryExit {
-        let domain = spec.get_domain(
-            self.epoch,
-            Domain::VoluntaryExit,
-            fork,
-            genesis_validators_root,
-        );
-        let message = self.signing_root(domain);
-        SignedVoluntaryExit {
-            message: self,
-            signature: secret_key.sign(message),
-        }
-    }
-}

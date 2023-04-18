@@ -6,12 +6,9 @@ use ssz_derive::{Decode, Encode};
 use tree_hash_derive::TreeHash;
 
 use crate::slot_data::SlotData;
-use crate::{Hash256, Slot};
+use crate::Slot;
 
-use super::{
-    AggregateSignature, AttestationData, BitList, ChainSpec, Domain, EthSpec, Fork, SecretKey,
-    Signature, SignedRoot,
-};
+use super::{AggregateSignature, AttestationData, BitList, EthSpec, Signature};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -63,28 +60,6 @@ impl<T: EthSpec> Attestation<T> {
 
         self.aggregation_bits = self.aggregation_bits.union(&other.aggregation_bits);
         self.signature.add_assign_aggregate(&other.signature);
-    }
-
-    /// Signs `self`, setting the `committee_position`'th bit of `aggregation_bits` to `true`.
-    ///
-    /// Returns an `AlreadySigned` error if the `committee_position`'th bit is already `true`.
-    pub fn sign(
-        &mut self,
-        secret_key: &SecretKey,
-        committee_position: usize,
-        fork: &Fork,
-        genesis_validators_root: Hash256,
-        spec: &ChainSpec,
-    ) -> Result<(), Error> {
-        let domain = spec.get_domain(
-            self.data.target.epoch,
-            Domain::BeaconAttester,
-            fork,
-            genesis_validators_root,
-        );
-        let message = self.data.signing_root(domain);
-
-        self.add_signature(&secret_key.sign(message), committee_position)
     }
 
     /// Adds `signature` to `self` and sets the `committee_position`'th bit of `aggregation_bits` to `true`.

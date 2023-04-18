@@ -179,6 +179,7 @@ dependencies = [
  "eth2_ssz_types",
  "ethereum-types",
  "hex",
+ "hex-literal",
  "itertools",
  "lazy_static",
  "maplit",
@@ -1046,6 +1047,7 @@ dependencies = [
 name = "ethereum-primitives"
 version = "0.1.0"
 dependencies = [
+ "beacon",
  "ethabi",
  "ethash",
  "ethbloom",

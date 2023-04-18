@@ -1,6 +1,5 @@
 use crate::*;
 
-#[cfg(not(feature = "std"))]
 use crate::prelude::*;
 use core::fmt::{self, Debug};
 use core::str::FromStr;
@@ -18,7 +17,19 @@ const MINIMAL: &str = "minimal";
 pub const GNOSIS: &str = "gnosis";
 
 /// Used to identify one of the `EthSpec` instances defined here.
-#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Serialize,
+    Deserialize,
+    ScaleEncode,
+    ScaleDecode,
+    Eq,
+    TypeInfo,
+    MaxEncodedLen,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum EthSpecId {
     Mainnet,
@@ -121,29 +132,10 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq +
     /// Must be set to `SyncCommitteeSize / SyncCommitteeSubnetCount`.
     type SyncSubcommitteeSize: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 
-    fn default_spec() -> ChainSpec;
-
     fn spec_name() -> EthSpecId;
 
     fn genesis_epoch() -> Epoch {
         Epoch::new(Self::GenesisEpoch::to_u64())
-    }
-
-    /// Return the number of committees per slot.
-    ///
-    /// Note: the number of committees per slot is constant in each epoch, and depends only on
-    /// the `active_validator_count` during the slot's epoch.
-    ///
-    /// Spec v0.12.1
-    fn get_committee_count_per_slot(
-        active_validator_count: usize,
-        spec: &ChainSpec,
-    ) -> Result<usize, Error> {
-        Self::get_committee_count_per_slot_with(
-            active_validator_count,
-            spec.max_committees_per_slot,
-            spec.target_committee_size,
-        )
     }
 
     fn get_committee_count_per_slot_with(
@@ -286,10 +278,6 @@ impl EthSpec for MainnetEthSpec {
     type MaxWithdrawalsPerPayload = U16;
     type EpochsPerSyncCommitteePeriod = U256;
 
-    fn default_spec() -> ChainSpec {
-        ChainSpec::mainnet()
-    }
-
     fn spec_name() -> EthSpecId {
         EthSpecId::Mainnet
     }
@@ -334,10 +322,6 @@ impl EthSpec for MinimalEthSpec {
         MaxBlsToExecutionChanges
     });
 
-    fn default_spec() -> ChainSpec {
-        ChainSpec::minimal()
-    }
-
     fn spec_name() -> EthSpecId {
         EthSpecId::Minimal
     }
@@ -378,10 +362,6 @@ impl EthSpec for GnosisEthSpec {
     type MaxBlsToExecutionChanges = U16;
     type MaxWithdrawalsPerPayload = U16;
     type EpochsPerSyncCommitteePeriod = U512;
-
-    fn default_spec() -> ChainSpec {
-        ChainSpec::gnosis()
-    }
 
     fn spec_name() -> EthSpecId {
         EthSpecId::Gnosis
