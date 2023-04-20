@@ -30,7 +30,7 @@
 
 use super::*;
 
-use crate::test_helpers::*;
+use crate::fixtures::{validator_proof, alice, generate_fixture};
 #[allow(unused)]
 use crate::Pallet as BeefyLightClient;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
@@ -60,7 +60,7 @@ benchmarks! {
         let validators = 10;
         let tree_size = 128;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture =  generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -72,9 +72,9 @@ benchmarks! {
             next_validator_set
         ).expect("Error while initializing pallet");
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
+        let signed_commitment: sp_beefy::SignedCommitment<
             u32,
-            beefy_primitives::crypto::Signature,
+            sp_beefy::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
@@ -88,7 +88,7 @@ benchmarks! {
         let validators = 20;
         let tree_size = 256;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture =  generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -100,9 +100,9 @@ benchmarks! {
             next_validator_set
         ).expect("Error while initializing pallet");
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
+        let signed_commitment: sp_beefy::SignedCommitment<
             u32,
-            beefy_primitives::crypto::Signature,
+            sp_beefy::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
@@ -116,7 +116,7 @@ benchmarks! {
         let validators = 40;
         let tree_size = 512;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture =  generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -128,9 +128,9 @@ benchmarks! {
             next_validator_set
         ).expect("Error while initializing pallet");
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
+        let signed_commitment: sp_beefy::SignedCommitment<
             u32,
-            beefy_primitives::crypto::Signature,
+            sp_beefy::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
@@ -144,7 +144,7 @@ benchmarks! {
         let validators = 80;
         let tree_size = 1024;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture =  generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -156,9 +156,9 @@ benchmarks! {
             next_validator_set
         ).expect("Error while initializing pallet");
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
+        let signed_commitment: sp_beefy::SignedCommitment<
             u32,
-            beefy_primitives::crypto::Signature,
+            sp_beefy::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
@@ -172,7 +172,7 @@ benchmarks! {
         let validators = 160;
         let tree_size = 2048;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture =  generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -184,9 +184,9 @@ benchmarks! {
             next_validator_set
         ).expect("Error while initializing pallet");
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
+        let signed_commitment: sp_beefy::SignedCommitment<
             u32,
-            beefy_primitives::crypto::Signature,
+            sp_beefy::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
@@ -200,7 +200,7 @@ benchmarks! {
         let validators = 200;
         let tree_size = 4096;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture =  generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -212,9 +212,9 @@ benchmarks! {
             next_validator_set
         ).expect("Error while initializing pallet");
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
+        let signed_commitment: sp_beefy::SignedCommitment<
             u32,
-            beefy_primitives::crypto::Signature,
+            sp_beefy::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);
@@ -228,7 +228,7 @@ benchmarks! {
         let validators = 300;
         let tree_size = 8192;
 
-        let fixture = load_fixture(validators, tree_size);
+        let fixture =  generate_fixture(validators, tree_size).expect("error generating fixture");
         let validator_set = fixture.validator_set.clone().into();
         let next_validator_set = fixture.next_validator_set.clone().into();
 
@@ -240,9 +240,9 @@ benchmarks! {
             next_validator_set
         ).expect("Error while initializing pallet");
 
-        let signed_commitment: beefy_primitives::SignedCommitment<
+        let signed_commitment: sp_beefy::SignedCommitment<
             u32,
-            beefy_primitives::crypto::Signature,
+            sp_beefy::crypto::Signature,
         > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof::<T>(&fixture, signed_commitment.signatures, validators);

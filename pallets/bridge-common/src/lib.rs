@@ -32,7 +32,7 @@
 
 pub mod beefy_types;
 pub mod bitfield;
-pub mod simplified_mmr_proof;
+pub mod simplified_proof;
 
 use frame_support::weights::Weight;
 use scale_info::prelude::vec::Vec;

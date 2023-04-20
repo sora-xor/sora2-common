@@ -32,11 +32,11 @@
 
 use crate::H256;
 use crate::{H160, U256};
-use beefy_primitives::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use sp_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
 
