@@ -52,6 +52,7 @@ use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
 use sp_runtime::DispatchError;
 use sp_std::collections::vec_deque::VecDeque;
+use sp_std::collections::btree_set::BTreeSet;
 
 pub use bitfield::BitField;
 
@@ -105,7 +106,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn get_peer_keys)]
     pub type PeerKeys<T> =
-        StorageMap<_, Twox64Concat, SubNetworkId, Vec<EthAddress>, OptionQuery>;
+        StorageMap<_, Twox64Concat, SubNetworkId, BTreeSet<EthAddress>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_treshold)]
@@ -132,6 +133,8 @@ pub mod pallet {
     pub enum Error<T> {
         InvalidInitParams,
         NetworkNotInitialized,
+        InvalidNumberOfSignatures,
+        InvalidSignature,
     }
 
     #[pallet::hooks]
@@ -173,7 +176,9 @@ pub mod pallet {
             ensure!(keys_treshold > 0, Error::<T>::InvalidInitParams);
             ensure!(keys.len() > 0, Error::<T>::InvalidInitParams);
             ensure!(keys.len() >= keys_treshold as usize, Error::<T>::InvalidInitParams);
-            PeerKeys::<T>::set(network_id, Some(keys));
+
+            let btree_keys = keys.into_iter().collect();
+            PeerKeys::<T>::set(network_id, Some(btree_keys));
             Treshold::<T>::set(network_id, Some(keys_treshold));
             Ok(().into())
         }
@@ -183,14 +188,26 @@ pub mod pallet {
         pub fn verify(
             network_id: SubNetworkId,
             message: &T::Message,
-            signatures: Vec<[u8; 65]>,
-        ) -> DispatchResultWithPostInfo {
+            signatures: &Vec<[u8; 65]>,
+        ) -> DispatchResult {
+            let Some(treshold) = Treshold::<T>::get(network_id) else {
+                fail!(Error::<T>::NetworkNotInitialized)
+            };
+
             let Some(peers) = PeerKeys::<T>::get(network_id) else {
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
-            for peer in peers {
+            ensure!(signatures.len() >= treshold as usize, Error::<T>::InvalidNumberOfSignatures);
 
+            let hash = Keccak256::hash_of(&message);
+
+            // Insure that every sighnature exists in the storage
+            for sign in signatures {
+                let Some(rec_sign) = recover_signature(&sign, &hash) else {
+                    fail!(Error::<T>::InvalidSignature)
+                };
+                ensure!(peers.contains(&rec_sign), Error::<T>::InvalidSignature);
             }
 
             Ok(().into())
@@ -198,46 +215,19 @@ pub mod pallet {
     }
 }
 
-// impl<T: Config>
-//     bridge_types::traits::Verifier<SubNetworkId, ProvedSubstrateBridgeMessage<T::Message>>
-//     for Pallet<T>
-// {
-//     type Result = T::Message;
-//     fn verify(
-//         network_id: SubNetworkId,
-//         message: &ProvedSubstrateBridgeMessage<T::Message>,
-//     ) -> Result<Self::Result, DispatchError> {
-
-
-//         Ok(message.message.clone())
-//     }
-// }
-
+// Temporary name for verifier
 impl<T: Config>
-    bridge_types::traits::VerifierNew<T::Message>
+    bridge_types::traits::VerifierNew<SubNetworkId, T::Message>
     for Pallet<T>
 {
-    // type Result = T::Message;
-    // type Proof = T::Proof;
     type Proof = Vec<[u8; 65]>;
 
     fn verify(
-        network_id: GenericNetworkId,
+        network_id: SubNetworkId,
         message: &T::Message,
         proof: &Self::Proof,
     ) -> DispatchResult {
-        let hash = Keccak256::hash_of(&message);
+        Self::verify(network_id, message, proof)?;
         Ok(())
     }
-
-    // fn verify(
-    //     network_id: SubNetworkId,
-    //     message: &Vec<[u8; 65],
-    // ) -> DispatchResult {
-
-
-    //     Ok(().into())
-    // }
-
-
 }
