@@ -55,6 +55,16 @@ pub trait Verifier<NetworkId, Message> {
     fn verify(network_id: NetworkId, message: &Message) -> Result<Self::Result, DispatchError>;
 }
 
+pub trait VerifierNew<Message> {
+    type Proof;
+    fn verify(
+        network_id: GenericNetworkId,
+        message: &Message,
+        proof: &Self::Proof,
+    ) -> DispatchResult;
+}
+
+
 /// Outbound submission for applications
 pub trait OutboundChannel<NetworkId, AccountId, Additional> {
     fn submit(
