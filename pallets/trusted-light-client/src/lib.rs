@@ -30,31 +30,29 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use bridge_common::simplified_proof::*;
-use bridge_common::{beefy_types::*, bitfield, simplified_proof::Proof};
-use bridge_types::types::AuxiliaryDigest;
-use bridge_types::types::AuxiliaryDigestItem;
-use bridge_types::{GenericNetworkId, SubNetworkId};
+// use bridge_common::simplified_proof::*;
+use bridge_common::beefy_types::*;
+// use bridge_types::types::AuxiliaryDigest;
+// use bridge_types::types::AuxiliaryDigestItem;
+use bridge_types::SubNetworkId;
 use codec::Decode;
 use codec::Encode;
 use frame_support::ensure;
-use frame_support::fail;
-use frame_support::log;
+// use frame_support::fail;
+// use frame_support::log;
 use frame_support::pallet_prelude::*;
-use frame_support::traits::Randomness;
+// use frame_support::traits::Randomness;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::H256;
-use sp_core::{Get, RuntimeDebug};
+use sp_core::RuntimeDebug;
 use sp_io::hashing::keccak_256;
-use sp_runtime::traits::Hash;
-use sp_runtime::traits::Keccak256;
-use sp_runtime::DispatchError;
-use sp_std::collections::vec_deque::VecDeque;
+// use sp_runtime::traits::Hash;
+// use sp_runtime::traits::Keccak256;
+// use sp_runtime::DispatchError;
+// use sp_std::collections::vec_deque::VecDeque;
 use sp_std::collections::btree_set::BTreeSet;
-
-pub use bitfield::BitField;
 
 #[cfg(test)]
 mod mock;
@@ -126,7 +124,16 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        VerificationSuccessful(SubNetworkId, T::AccountId, u32),
+        NetworkInitialized(SubNetworkId),
+        VerificationSuccessful(SubNetworkId),
+
+        // Error events:
+
+        NetworkNotInitialized(SubNetworkId),
+        /// NetworkId, Required Number, Current Number
+        InvalidNumberOfSignatures(SubNetworkId, u32, u32),
+        InvalidSignature(SubNetworkId, H256, [u8; 65]),
+        NotTrustedPeerSignature(SubNetworkId, H256, [u8; 65], EthAddress),
     }
 
     #[pallet::error]
@@ -135,6 +142,7 @@ pub mod pallet {
         NetworkNotInitialized,
         InvalidNumberOfSignatures,
         InvalidSignature,
+        NotTrustedPeerSignature,
     }
 
     #[pallet::hooks]
@@ -180,33 +188,44 @@ pub mod pallet {
             let btree_keys = keys.into_iter().collect();
             PeerKeys::<T>::set(network_id, Some(btree_keys));
             Treshold::<T>::set(network_id, Some(keys_treshold));
+            Self::deposit_event(Event::NetworkInitialized(network_id));
             Ok(().into())
         }
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn verify(
+        pub fn verify_signatures(
             network_id: SubNetworkId,
             hash: &H256,
             signatures: &Vec<[u8; 65]>,
         ) -> DispatchResult {
             let Some(treshold) = Treshold::<T>::get(network_id) else {
+                Self::deposit_event(Event::NetworkNotInitialized(network_id));
                 fail!(Error::<T>::NetworkNotInitialized)
             };
-
             let Some(peers) = PeerKeys::<T>::get(network_id) else {
+                Self::deposit_event(Event::NetworkNotInitialized(network_id));
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
-            ensure!(signatures.len() >= treshold as usize, Error::<T>::InvalidNumberOfSignatures);
+            let len = signatures.len() as u32;
+            ensure!(len >= treshold, {
+                Self::deposit_event(Event::InvalidNumberOfSignatures(network_id, treshold, len));
+                Error::<T>::InvalidNumberOfSignatures
+            });
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
                 let Some(rec_sign) = recover_signature(&sign, &hash) else {
+                    Self::deposit_event(Event::InvalidSignature(network_id, *hash, *sign));
                     fail!(Error::<T>::InvalidSignature)
                 };
-                ensure!(peers.contains(&rec_sign), Error::<T>::InvalidSignature);
+                ensure!(peers.contains(&rec_sign), {
+                    Self::deposit_event(Event::NotTrustedPeerSignature(network_id, *hash, *sign, rec_sign));
+                    Error::<T>::NotTrustedPeerSignature
+                });
             }
+            Self::deposit_event(Event::VerificationSuccessful(network_id));
 
             Ok(().into())
         }
@@ -218,12 +237,14 @@ impl<T: Config>
     for Pallet<T>
 {
     type Proof = Vec<[u8; 65]>;
+    
+    #[inline]
     fn verify(
         network_id: SubNetworkId,
         hash: &H256,
         proof: &Vec<[u8; 65]>,
     ) -> DispatchResult {
-        Self::verify(network_id, hash, proof)?;
+        Self::verify_signatures(network_id, hash, proof)?;
         Ok(())
     }
 }
