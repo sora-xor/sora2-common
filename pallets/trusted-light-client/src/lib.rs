@@ -217,7 +217,6 @@ impl<T: Config>
     bridge_types::traits::Verifier<SubNetworkId, Vec<[u8; 65]>>
     for Pallet<T>
 {
-    // type Proof = Vec<[u8; 65]>;
     fn verify(
         network_id: SubNetworkId,
         hash: &H256,

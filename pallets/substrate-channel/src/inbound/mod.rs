@@ -96,7 +96,7 @@ pub mod pallet {
         /// The base asset as the core asset in all trading pairs
         type FeeAssetId: Get<AssetIdOf<Self>>;
 
-        type Currency: MultiCurrency<Self::AccountId> + Parameter;
+        type Currency: MultiCurrency<Self::AccountId>;
 
         type FeeAccountId: Get<Self::AccountId>;
 
