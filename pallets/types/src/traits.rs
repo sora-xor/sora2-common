@@ -55,11 +55,12 @@ pub trait VerifierOld<NetworkId, Message> {
     fn verify(network_id: NetworkId, message: &Message) -> Result<Self::Result, DispatchError>;
 }
 
-pub trait Verifier<NetworkId, Message, Proof> {
+pub trait Verifier<NetworkId, Proof> {
     // type Proof;
     fn verify(
         network_id: NetworkId,
-        message: &Message,
+        // message: &Message,
+        hash: &H256,
         // proof: &Self::Proof,
         proof: &Proof,
     ) -> DispatchResult;

@@ -77,12 +77,13 @@ pub mod pallet {
         /// Verifier module for message verification.
         type Verifier: Verifier<
             SubNetworkId,
-            Self::Message,
+            // Self::Message,
+            // ParachainMessage<BalanceOf<Self>>,
             Self::Proof,
         >;
 
         /// Message
-        type Message: Parameter;
+        // type Message: Parameter;
 
         /// Proof
         type Proof: Parameter;
@@ -95,7 +96,7 @@ pub mod pallet {
         /// The base asset as the core asset in all trading pairs
         type FeeAssetId: Get<AssetIdOf<Self>>;
 
-        type Currency: MultiCurrency<Self::AccountId>;
+        type Currency: MultiCurrency<Self::AccountId> + Parameter;
 
         type FeeAccountId: Get<Self::AccountId>;
 
@@ -160,38 +161,36 @@ pub mod pallet {
         pub fn submit(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
-            messages: Vec<T::Message>,
-            // proof: <<T as Config>::Verifier as Verifier<SubNetworkId, T::Message,>>::Proof,
+            messages: Vec<ParachainMessage<BalanceOf<T>>>,
             proof: T::Proof,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);
-            // submit message to verifier for verification
-            // let a = T::Verifier::verify(network_id, &message, &proof)?;
-            // let a = T::Verifier::verify(network_id, &message, &proof)?;
-
+            
             for message in messages {
-                let a = T::Verifier::verify(network_id, &message, &proof)?;
+                // submit message to verifier for verification
+                let message_hash = <sp_runtime::traits::Keccak256 as sp_runtime::traits::Hash>::hash_of(&message);
+                T::Verifier::verify(network_id, &message_hash, &proof)?;
                 // Verify message nonce
-                // <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                //     if message.nonce != *nonce + 1 {
-                //         Err(Error::<T>::InvalidNonce.into())
-                //     } else {
-                //         *nonce += 1;
-                //         Ok(())
-                //     }
-                // })?;
+                <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                    if message.nonce != *nonce + 1 {
+                        Err(Error::<T>::InvalidNonce.into())
+                    } else {
+                        *nonce += 1;
+                        Ok(())
+                    }
+                })?;
 
-                // Self::handle_fee(message.fee, &relayer);
+                Self::handle_fee(message.fee, &relayer);
 
-                // let message_id = MessageId::inbound(message.nonce);
-                // T::MessageDispatch::dispatch(
-                //     network_id,
-                //     message_id,
-                //     message.timestamp,
-                //     &message.payload,
-                //     (),
-                // );
+                let message_id = MessageId::inbound(message.nonce);
+                T::MessageDispatch::dispatch(
+                    network_id,
+                    message_id,
+                    message.timestamp,
+                    &message.payload,
+                    (),
+                );
             }
             Ok(().into())
         }
