@@ -214,9 +214,10 @@ pub mod pallet {
 }
 
 impl<T: Config>
-    bridge_types::traits::Verifier<SubNetworkId, Vec<[u8; 65]>>
+    bridge_types::traits::Verifier<SubNetworkId>
     for Pallet<T>
 {
+    type Proof = Vec<[u8; 65]>;
     fn verify(
         network_id: SubNetworkId,
         hash: &H256,

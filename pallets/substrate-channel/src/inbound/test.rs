@@ -189,9 +189,9 @@ parameter_types! {
 // Mock verifier
 pub struct MockVerifier;
 
-impl Verifier<SubNetworkId, Vec<u8>> for MockVerifier {
-    // type Result = Vec<ParachainMessage<Balance>>;
-
+impl Verifier<SubNetworkId> for MockVerifier {
+    type Proof = Vec<u8>;
+    
     fn verify(
         network_id: SubNetworkId,
         _hash: &H256,
@@ -242,7 +242,7 @@ impl bridge_inbound_channel::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
     // type ProvedMessage = ParachainMessage<Balance>;
-    type Proof = Vec<u8>;
+    // type Proof = Vec<u8>;
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = GetBaseAssetId;

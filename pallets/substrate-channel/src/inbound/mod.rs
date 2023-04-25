@@ -58,7 +58,7 @@ pub mod pallet {
     use bridge_types::types::ParachainMessage;
     use frame_support::log::{debug, warn};
     use frame_support::traits::StorageVersion;
-    use frame_support::{pallet_prelude::*, Parameter};
+    use frame_support::{pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::CheckedSub;
     use sp_std::prelude::*;
@@ -70,6 +70,8 @@ pub mod pallet {
     pub type BalanceOf<T> =
         <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
 
+    pub type ProofOf<T> = <<T as Config>::Verifier as Verifier<SubNetworkId>>::Proof;
+
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -77,16 +79,7 @@ pub mod pallet {
         /// Verifier module for message verification.
         type Verifier: Verifier<
             SubNetworkId,
-            // Self::Message,
-            // ParachainMessage<BalanceOf<Self>>,
-            Self::Proof,
         >;
-
-        /// Message
-        // type Message: Parameter;
-
-        /// Proof
-        type Proof: Parameter;
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
@@ -162,7 +155,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: SubNetworkId,
             messages: Vec<ParachainMessage<BalanceOf<T>>>,
-            proof: T::Proof,
+            proof: ProofOf<T>,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);

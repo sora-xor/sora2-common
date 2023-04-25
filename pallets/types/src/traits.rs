@@ -47,22 +47,22 @@ use frame_support::{
 use frame_system::{Config, RawOrigin};
 use sp_std::prelude::*;
 
-/// A trait for verifying messages.
-///
-/// This trait should be implemented by runtime modules that wish to provide message verification functionality.
+
 pub trait VerifierOld<NetworkId, Message> {
     type Result;
     fn verify(network_id: NetworkId, message: &Message) -> Result<Self::Result, DispatchError>;
 }
 
-pub trait Verifier<NetworkId, Proof> {
-    // type Proof;
+/// A trait for verifying messages.
+///
+/// This trait should be implemented by runtime modules that wish to provide message verification functionality.
+pub trait Verifier<NetworkId> {
+    type Proof: Parameter;
+    
     fn verify(
         network_id: NetworkId,
-        // message: &Message,
         hash: &H256,
-        // proof: &Self::Proof,
-        proof: &Proof,
+        proof: &Self::Proof,
     ) -> DispatchResult;
 }
 
