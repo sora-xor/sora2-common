@@ -187,7 +187,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         pub fn verify(
             network_id: SubNetworkId,
-            message: &T::Message,
+            hash: &H256,
             signatures: &Vec<[u8; 65]>,
         ) -> DispatchResult {
             let Some(treshold) = Treshold::<T>::get(network_id) else {
@@ -199,8 +199,6 @@ pub mod pallet {
             };
 
             ensure!(signatures.len() >= treshold as usize, Error::<T>::InvalidNumberOfSignatures);
-
-            let hash = Keccak256::hash_of(&message);
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
@@ -217,17 +215,16 @@ pub mod pallet {
 
 // Temporary name for verifier
 impl<T: Config>
-    bridge_types::traits::VerifierNew<SubNetworkId, T::Message>
+    bridge_types::traits::Verifier<SubNetworkId, H256, Vec<[u8; 65]>>
     for Pallet<T>
 {
-    type Proof = Vec<[u8; 65]>;
-
+    // type Proof = Vec<[u8; 65]>;
     fn verify(
         network_id: SubNetworkId,
-        message: &T::Message,
-        proof: &Self::Proof,
+        hash: &H256,
+        proof: &Vec<[u8; 65]>,
     ) -> DispatchResult {
-        Self::verify(network_id, message, proof)?;
+        Self::verify(network_id, hash, proof)?;
         Ok(())
     }
 }

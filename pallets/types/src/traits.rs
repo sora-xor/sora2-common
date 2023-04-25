@@ -50,17 +50,18 @@ use sp_std::prelude::*;
 /// A trait for verifying messages.
 ///
 /// This trait should be implemented by runtime modules that wish to provide message verification functionality.
-pub trait Verifier<NetworkId, Message> {
+pub trait VerifierOld<NetworkId, Message> {
     type Result;
     fn verify(network_id: NetworkId, message: &Message) -> Result<Self::Result, DispatchError>;
 }
 
-pub trait VerifierNew<NetworkId, Message> {
-    type Proof;
+pub trait Verifier<NetworkId, Message, Proof> {
+    // type Proof;
     fn verify(
         network_id: NetworkId,
         message: &Message,
-        proof: &Self::Proof,
+        // proof: &Self::Proof,
+        proof: &Proof,
     ) -> DispatchResult;
 }
 

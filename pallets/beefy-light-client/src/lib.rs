@@ -315,7 +315,7 @@ pub mod pallet {
 }
 
 impl<T: Config>
-    bridge_types::traits::Verifier<SubNetworkId, ProvedSubstrateBridgeMessage<T::Message>>
+    bridge_types::traits::VerifierOld<SubNetworkId, ProvedSubstrateBridgeMessage<T::Message>>
     for Pallet<T>
 {
     type Result = T::Message;

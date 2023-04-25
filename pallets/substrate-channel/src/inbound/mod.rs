@@ -77,12 +77,15 @@ pub mod pallet {
         /// Verifier module for message verification.
         type Verifier: Verifier<
             SubNetworkId,
-            Self::ProvedMessage,
-            Result = Vec<ParachainMessage<BalanceOf<Self>>>,
+            Self::Message,
+            Self::Proof,
         >;
 
-        /// Message with proof
-        type ProvedMessage: Parameter;
+        /// Message
+        type Message: Parameter;
+
+        /// Proof
+        type Proof: Parameter;
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
@@ -157,34 +160,38 @@ pub mod pallet {
         pub fn submit(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
-            message: T::ProvedMessage,
+            messages: Vec<T::Message>,
+            // proof: <<T as Config>::Verifier as Verifier<SubNetworkId, T::Message,>>::Proof,
+            proof: T::Proof,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);
             // submit message to verifier for verification
-            let messages = T::Verifier::verify(network_id, &message)?;
+            // let a = T::Verifier::verify(network_id, &message, &proof)?;
+            // let a = T::Verifier::verify(network_id, &message, &proof)?;
 
             for message in messages {
+                let a = T::Verifier::verify(network_id, &message, &proof)?;
                 // Verify message nonce
-                <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                    if message.nonce != *nonce + 1 {
-                        Err(Error::<T>::InvalidNonce.into())
-                    } else {
-                        *nonce += 1;
-                        Ok(())
-                    }
-                })?;
+                // <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                //     if message.nonce != *nonce + 1 {
+                //         Err(Error::<T>::InvalidNonce.into())
+                //     } else {
+                //         *nonce += 1;
+                //         Ok(())
+                //     }
+                // })?;
 
-                Self::handle_fee(message.fee, &relayer);
+                // Self::handle_fee(message.fee, &relayer);
 
-                let message_id = MessageId::inbound(message.nonce);
-                T::MessageDispatch::dispatch(
-                    network_id,
-                    message_id,
-                    message.timestamp,
-                    &message.payload,
-                    (),
-                );
+                // let message_id = MessageId::inbound(message.nonce);
+                // T::MessageDispatch::dispatch(
+                //     network_id,
+                //     message_id,
+                //     message.timestamp,
+                //     &message.payload,
+                //     (),
+                // );
             }
             Ok(().into())
         }
