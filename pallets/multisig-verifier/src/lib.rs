@@ -35,7 +35,7 @@ use bridge_common::beefy_types::*;
 use bridge_types::GenericNetworkId;
 // use bridge_types::types::AuxiliaryDigest;
 // use bridge_types::types::AuxiliaryDigestItem;
-use bridge_types::SubNetworkId;
+// use bridge_types::SubNetworkId;
 use codec::Decode;
 use codec::Encode;
 use frame_support::ensure;
@@ -105,36 +105,36 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn get_peer_keys)]
     pub type PeerKeys<T> =
-        StorageMap<_, Twox64Concat, SubNetworkId, BTreeSet<EthAddress>, OptionQuery>;
+        StorageMap<_, Twox64Concat, GenericNetworkId, BTreeSet<EthAddress>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_treshold)]
     pub type Treshold<T> =
-        StorageMap<_, Twox64Concat, SubNetworkId, u32, OptionQuery>;
+        StorageMap<_, Twox64Concat, GenericNetworkId, u32, OptionQuery>;
 
 
     #[pallet::type_value]
-    pub fn DefaultForThisNetworkId() -> SubNetworkId {
-        SubNetworkId::Mainnet
+    pub fn DefaultForThisNetworkId() -> GenericNetworkId {
+        GenericNetworkId::Sub(SubNetworkId::Mainnet)
     }
 
     #[pallet::storage]
     #[pallet::getter(fn this_network_id)]
-    pub type ThisNetworkId<T> = StorageValue<_, SubNetworkId, ValueQuery, DefaultForThisNetworkId>;
+    pub type ThisNetworkId<T> = StorageValue<_, GenericNetworkId, ValueQuery, DefaultForThisNetworkId>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        NetworkInitialized(SubNetworkId),
-        VerificationSuccessful(SubNetworkId),
+        NetworkInitialized(GenericNetworkId),
+        VerificationSuccessful(GenericNetworkId),
 
         // Error events:
 
-        NetworkNotInitialized(SubNetworkId),
+        NetworkNotInitialized(GenericNetworkId),
         /// NetworkId, Required Number, Current Number
-        InvalidNumberOfSignatures(SubNetworkId, u32, u32),
-        InvalidSignature(SubNetworkId, H256, [u8; 65]),
-        NotTrustedPeerSignature(SubNetworkId, H256, [u8; 65], EthAddress),
+        InvalidNumberOfSignatures(GenericNetworkId, u32, u32),
+        InvalidSignature(GenericNetworkId, H256, [u8; 65]),
+        NotTrustedPeerSignature(GenericNetworkId, H256, [u8; 65], EthAddress),
     }
 
     #[pallet::error]
@@ -152,14 +152,14 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig {
         /// Network id for current network
-        pub network_id: SubNetworkId,
+        pub network_id: GenericNetworkId,
     }
 
     #[cfg(feature = "std")]
     impl Default for GenesisConfig {
         fn default() -> Self {
             Self {
-                network_id: SubNetworkId::Mainnet,
+                network_id: GenericNetworkId::Sub(SubNetworkId::Mainnet),
             }
         }
     }
@@ -177,7 +177,7 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn initialize(
             origin: OriginFor<T>,
-            network_id: SubNetworkId,
+            network_id: GenericNetworkId,
             keys_treshold: u32,
             keys: Vec<EthAddress>,
         ) -> DispatchResultWithPostInfo {
@@ -196,7 +196,7 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         pub fn verify_signatures(
-            network_id: SubNetworkId,
+            network_id: GenericNetworkId,
             hash: &H256,
             signatures: &Vec<[u8; 65]>,
         ) -> DispatchResult {
@@ -245,10 +245,6 @@ impl<T: Config>
         hash: H256,
         proof: &Vec<[u8; 65]>,
     ) -> DispatchResult {
-        let network_id = match network_id {
-            bridge_types::GenericNetworkId::EVM(_) => todo!(),
-            bridge_types::GenericNetworkId::Sub(ni) => ni,
-        };
         Self::verify_signatures(network_id, &hash, proof)?;
         Ok(())
     }
