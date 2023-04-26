@@ -31,7 +31,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // use bridge_common::simplified_proof::*;
-use bridge_common::beefy_types::*;
+// use bridge_common::beefy_types::*;
 use bridge_types::GenericNetworkId;
 // use bridge_types::types::AuxiliaryDigest;
 // use bridge_types::types::AuxiliaryDigestItem;
@@ -48,12 +48,13 @@ pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::H256;
 use sp_core::RuntimeDebug;
-use sp_io::hashing::keccak_256;
+// use sp_io::hashing::keccak_256;
 // use sp_runtime::traits::Hash;
 // use sp_runtime::traits::Keccak256;
 // use sp_runtime::DispatchError;
 // use sp_std::collections::vec_deque::VecDeque;
 use sp_std::collections::btree_set::BTreeSet;
+use sp_core::ecdsa;
 
 #[cfg(test)]
 mod mock;
@@ -71,14 +72,6 @@ mod benchmarking;
 pub struct ProvedSubstrateBridgeMessage<Message, Proof> {
     pub message: Message,
     pub proof: Proof,
-}
-
-fn recover_signature(sig: &[u8; 65], msg_hash: &H256) -> Option<EthAddress> {
-    use sp_io::crypto::secp256k1_ecdsa_recover;
-
-    secp256k1_ecdsa_recover(sig, &msg_hash.0)
-        .map(|pubkey| EthAddress::from(H256::from_slice(&keccak_256(&pubkey))))
-        .ok()
 }
 
 #[frame_support::pallet]
@@ -105,7 +98,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn get_peer_keys)]
     pub type PeerKeys<T> =
-        StorageMap<_, Twox64Concat, GenericNetworkId, BTreeSet<EthAddress>, OptionQuery>;
+        StorageMap<_, Twox64Concat, GenericNetworkId, BTreeSet<ecdsa::Public>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_treshold)]
@@ -133,8 +126,8 @@ pub mod pallet {
         NetworkNotInitialized(GenericNetworkId),
         /// NetworkId, Required Number, Current Number
         InvalidNumberOfSignatures(GenericNetworkId, u32, u32),
-        InvalidSignature(GenericNetworkId, H256, [u8; 65]),
-        NotTrustedPeerSignature(GenericNetworkId, H256, [u8; 65], EthAddress),
+        InvalidSignature(GenericNetworkId, H256, ecdsa::Signature),
+        NotTrustedPeerSignature(GenericNetworkId, H256, ecdsa::Signature, ecdsa::Public),
     }
 
     #[pallet::error]
@@ -179,7 +172,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
             keys_treshold: u32,
-            keys: Vec<EthAddress>,
+            keys: Vec<ecdsa::Public>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             ensure!(keys_treshold > 0, Error::<T>::InvalidInitParams);
@@ -198,7 +191,8 @@ pub mod pallet {
         pub fn verify_signatures(
             network_id: GenericNetworkId,
             hash: &H256,
-            signatures: &Vec<[u8; 65]>,
+            // signatures: &Vec<[u8; 65]>,
+            signatures: &Vec<ecdsa::Signature>,
         ) -> DispatchResult {
             let Some(treshold) = Treshold::<T>::get(network_id) else {
                 Self::deposit_event(Event::NetworkNotInitialized(network_id));
@@ -217,12 +211,13 @@ pub mod pallet {
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
-                let Some(rec_sign) = recover_signature(&sign, &hash) else {
-                    Self::deposit_event(Event::InvalidSignature(network_id, *hash, *sign));
+                // let Some(rec_sign) = recover_signature(&sign, &hash) else {
+                let Some(rec_sign) = sign.recover_prehashed(&hash.0) else {
+                    Self::deposit_event(Event::InvalidSignature(network_id, *hash, sign.clone()));
                     fail!(Error::<T>::InvalidSignature)
                 };
                 ensure!(peers.contains(&rec_sign), {
-                    Self::deposit_event(Event::NotTrustedPeerSignature(network_id, *hash, *sign, rec_sign));
+                    Self::deposit_event(Event::NotTrustedPeerSignature(network_id, *hash, sign.clone(), rec_sign));
                     Error::<T>::NotTrustedPeerSignature
                 });
             }
@@ -237,13 +232,13 @@ impl<T: Config>
     bridge_types::traits::Verifier
     for Pallet<T>
 {
-    type Proof = Vec<[u8; 65]>;
+    type Proof = Vec<ecdsa::Signature>;
     
     #[inline]
     fn verify(
         network_id: GenericNetworkId,
         hash: H256,
-        proof: &Vec<[u8; 65]>,
+        proof: &Vec<ecdsa::Signature>,
     ) -> DispatchResult {
         Self::verify_signatures(network_id, &hash, proof)?;
         Ok(())
