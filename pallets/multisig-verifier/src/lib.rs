@@ -85,9 +85,11 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type Randomness: frame_support::traits::Randomness<Self::Hash, Self::BlockNumber>;
-        type Message: Parameter;
-        type Proof: Parameter;
+
+        type CallOrigin: EnsureOrigin<
+            Self::RuntimeOrigin,
+            Success = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
+         >;
     }
 
     #[pallet::pallet]
@@ -120,6 +122,8 @@ pub mod pallet {
     pub enum Event<T: Config> {
         NetworkInitialized(GenericNetworkId),
         VerificationSuccessful(GenericNetworkId),
+        PeerAdded(ecdsa::Public),
+        PeerRemoved(ecdsa::Public),
 
         // Error events:
 
@@ -128,6 +132,7 @@ pub mod pallet {
         InvalidNumberOfSignatures(GenericNetworkId, u32, u32),
         InvalidSignature(GenericNetworkId, H256, ecdsa::Signature),
         NotTrustedPeerSignature(GenericNetworkId, H256, ecdsa::Signature, ecdsa::Public),
+        NoSuchPeer(ecdsa::Public),
     }
 
     #[pallet::error]
@@ -137,6 +142,7 @@ pub mod pallet {
         InvalidNumberOfSignatures,
         InvalidSignature,
         NotTrustedPeerSignature,
+        NoSuchPeer,
     }
 
     #[pallet::hooks]
@@ -183,6 +189,57 @@ pub mod pallet {
             PeerKeys::<T>::set(network_id, Some(btree_keys));
             Treshold::<T>::set(network_id, Some(keys_treshold));
             Self::deposit_event(Event::NetworkInitialized(network_id));
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(0)]
+        pub fn add_peer(
+            origin: OriginFor<T>,
+            network_id: GenericNetworkId,
+            key: ecdsa::Public,
+        ) -> DispatchResultWithPostInfo {
+            let output = T::CallOrigin::ensure_origin(origin)?;
+            frame_support::log::info!(
+                "Call add_peer {:?} by {:?}",
+                key,
+                output
+            );
+            PeerKeys::<T>::try_mutate(network_id,|x| -> DispatchResult {
+                let Some(keys) = x else {
+                    fail!(Error::<T>::NetworkNotInitialized)
+                };
+                keys.insert(key);
+                Ok(())
+            })?;
+            Self::deposit_event(Event::PeerAdded(key));
+            Ok(().into())
+        }
+
+        #[pallet::call_index(2)]
+        #[pallet::weight(0)]
+        pub fn remove_peer(
+            origin: OriginFor<T>,
+            network_id: GenericNetworkId,
+            key: ecdsa::Public,
+        ) -> DispatchResultWithPostInfo {
+            let output = T::CallOrigin::ensure_origin(origin)?;
+            frame_support::log::info!(
+                "Call remove_peer{:?} by {:?}",
+                key,
+                output
+            );
+            PeerKeys::<T>::try_mutate(network_id,|x| -> DispatchResult {
+                let Some(keys) = x else {
+                    fail!(Error::<T>::NetworkNotInitialized)
+                };
+                ensure!(keys.remove(&key), {
+                    Self::deposit_event(Event::NoSuchPeer(key));
+                    Error::<T>::NoSuchPeer
+                });
+                Ok(())
+            })?;
+            Self::deposit_event(Event::PeerRemoved(key));
             Ok(().into())
         }
     }
