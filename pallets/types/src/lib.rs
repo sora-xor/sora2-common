@@ -117,6 +117,22 @@ pub enum GenericNetworkId {
     Sub(SubNetworkId),
 }
 
+impl GenericNetworkId {
+    pub fn evm(self) -> Option<EVMChainId> {
+        match self {
+            Self::EVM(chain_id) => Some(chain_id),
+            _ => None,
+        }
+    }
+
+    pub fn sub(self) -> Option<SubNetworkId> {
+        match self {
+            Self::Sub(network_id) => Some(network_id),
+            _ => None,
+        }
+    }
+}
+
 impl From<EVMChainId> for GenericNetworkId {
     fn from(id: EVMChainId) -> Self {
         GenericNetworkId::EVM(id)

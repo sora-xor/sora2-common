@@ -32,6 +32,7 @@
 
 // use bridge_common::simplified_proof::*;
 use bridge_common::beefy_types::*;
+use bridge_types::GenericNetworkId;
 // use bridge_types::types::AuxiliaryDigest;
 // use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::SubNetworkId;
@@ -233,18 +234,22 @@ pub mod pallet {
 }
 
 impl<T: Config>
-    bridge_types::traits::Verifier<SubNetworkId>
+    bridge_types::traits::Verifier
     for Pallet<T>
 {
     type Proof = Vec<[u8; 65]>;
     
     #[inline]
     fn verify(
-        network_id: SubNetworkId,
-        hash: &H256,
+        network_id: GenericNetworkId,
+        hash: H256,
         proof: &Vec<[u8; 65]>,
     ) -> DispatchResult {
-        Self::verify_signatures(network_id, hash, proof)?;
+        let network_id = match network_id {
+            bridge_types::GenericNetworkId::EVM(_) => todo!(),
+            bridge_types::GenericNetworkId::Sub(ni) => ni,
+        };
+        Self::verify_signatures(network_id, &hash, proof)?;
         Ok(())
     }
 }

@@ -32,6 +32,8 @@
 //!
 //! Common traits and types
 
+use core::fmt::Debug;
+
 use crate::types::AuxiliaryDigestItem;
 use crate::H256;
 use crate::U256;
@@ -39,31 +41,22 @@ use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
     GenericAccount, GenericNetworkId,
 };
+use codec::FullCodec;
 use ethereum_types::Address;
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
     Parameter,
 };
 use frame_system::{Config, RawOrigin};
+use scale_info::TypeInfo;
 use sp_std::prelude::*;
-
-
-pub trait VerifierOld<NetworkId, Message> {
-    type Result;
-    fn verify(network_id: NetworkId, message: &Message) -> Result<Self::Result, DispatchError>;
-}
 
 /// A trait for verifying messages.
 ///
 /// This trait should be implemented by runtime modules that wish to provide message verification functionality.
-pub trait Verifier<NetworkId> {
-    type Proof: Parameter;
-    
-    fn verify(
-        network_id: NetworkId,
-        hash: &H256,
-        proof: &Self::Proof,
-    ) -> DispatchResult;
+pub trait Verifier {
+    type Proof: FullCodec + TypeInfo + Clone + Debug + PartialEq;
+    fn verify(network_id: GenericNetworkId, message: H256, proof: &Self::Proof) -> DispatchResult;
 }
 
 

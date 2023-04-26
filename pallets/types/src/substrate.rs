@@ -30,14 +30,24 @@
 #![allow(clippy::large_enum_variant)]
 
 use codec::{Decode, Encode};
-use sp_runtime::RuntimeDebug;
+use ethereum_types::H256;
+use sp_core::ecdsa;
+use sp_runtime::{AccountId32, RuntimeDebug};
 use sp_std::prelude::*;
 
-use crate::types::AssetKind;
+use crate::types::{AssetKind, MessageNonce};
 
 pub type ParachainAccountId = xcm::VersionedMultiLocation;
 
 pub type ParachainAssetId = xcm::v3::AssetId;
+
+// Use predefined types to ensure data compatability
+
+pub type MainnetAssetId = H256;
+
+pub type MainnetAccountId = AccountId32;
+
+pub type MainnetBalance = u128;
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
@@ -45,61 +55,94 @@ pub trait SubstrateBridgeMessageEncode {
 
 /// Message to SubstrateApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub enum SubstrateAppMessage<AccountId, AssetId, Balance> {
+pub enum SubstrateAppCall {
     Transfer {
-        asset_id: AssetId,
+        asset_id: MainnetAssetId,
         sender: Option<ParachainAccountId>,
-        recipient: AccountId,
-        amount: Balance,
+        recipient: MainnetAccountId,
+        amount: MainnetBalance,
     },
     FinalizeAssetRegistration {
-        asset_id: AssetId,
+        asset_id: MainnetAssetId,
         asset_kind: AssetKind,
     },
 }
 
-impl<AccountId: Encode, Balance: Encode, AssetId: Encode> SubstrateBridgeMessageEncode
-    for SubstrateAppMessage<AccountId, AssetId, Balance>
-{
+impl SubstrateBridgeMessageEncode for SubstrateAppCall {
     fn prepare_message(self) -> Vec<u8> {
-        SubstrateBridgeMessage::SubstrateApp(self).encode()
+        BridgeCall::SubstrateApp(self).encode()
     }
 }
 
 /// Message to XCMApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub enum XCMAppMessage<AccountId, AssetId, Balance> {
+pub enum XCMAppCall {
     Transfer {
-        asset_id: AssetId,
-        sender: AccountId,
+        asset_id: MainnetAssetId,
+        sender: MainnetAccountId,
         recipient: ParachainAccountId,
-        amount: Balance,
+        amount: MainnetBalance,
     },
     RegisterAsset {
-        asset_id: AssetId,
+        asset_id: MainnetAssetId,
         sidechain_asset: ParachainAssetId,
         asset_kind: AssetKind,
     },
 }
 
-impl<AccountId: Encode, Balance: Encode, AssetId: Encode> SubstrateBridgeMessageEncode
-    for XCMAppMessage<AccountId, AssetId, Balance>
-{
+impl SubstrateBridgeMessageEncode for XCMAppCall {
     fn prepare_message(self) -> Vec<u8> {
-        SubstrateBridgeMessage::XCMApp(self).encode()
+        BridgeCall::XCMApp(self).encode()
     }
 }
 
+/// Message to DataSigner pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub enum SubstrateBridgeMessage<AccountId, AssetId, Balance> {
-    SubstrateApp(SubstrateAppMessage<AccountId, AssetId, Balance>),
-    XCMApp(XCMAppMessage<AccountId, AssetId, Balance>),
+pub enum DataSignerCall {
+    AddPeer { peer: ecdsa::Public },
+    RemovePeer { peer: ecdsa::Public },
 }
 
-impl<AccountId: Encode, Balance: Encode, AssetId: Encode> SubstrateBridgeMessageEncode
-    for SubstrateBridgeMessage<AccountId, AssetId, Balance>
-{
+impl SubstrateBridgeMessageEncode for DataSignerCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::DataSigner(self).encode()
+    }
+}
+
+/// Message to MultisigVerifier pallet
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum MultisigVerifierCall {
+    AddPeer { peer: ecdsa::Public },
+    RemovePeer { peer: ecdsa::Public },
+}
+
+impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::MultisigVerifier(self).encode()
+    }
+}
+
+/// Substrate bridge message payload
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum BridgeCall {
+    SubstrateApp(SubstrateAppCall),
+    XCMApp(XCMAppCall),
+    DataSigner(DataSignerCall),
+    MultisigVerifier(MultisigVerifierCall),
+}
+
+impl SubstrateBridgeMessageEncode for BridgeCall {
     fn prepare_message(self) -> Vec<u8> {
         self.encode()
     }
+}
+
+/// Substrate bridge message.
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub struct BridgeMessage {
+    pub payload: Vec<u8>,
+    pub nonce: MessageNonce,
+    pub timestamp: u64,
+    pub fee: MainnetBalance,
 }

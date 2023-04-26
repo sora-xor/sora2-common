@@ -87,16 +87,6 @@ pub struct Message {
     pub proof: Proof,
 }
 
-/// A message relayed from Parachain.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct ParachainMessage<Balance> {
-    pub payload: Vec<u8>,
-    pub nonce: MessageNonce,
-    pub timestamp: u64,
-    pub fee: Balance,
-}
-
 /// Verification input for the message verifier.
 ///
 /// This data type allows us to support multiple verification schemes. In the near future,

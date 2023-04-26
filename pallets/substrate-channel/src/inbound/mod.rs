@@ -55,12 +55,15 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::types::ParachainMessage;
+    use bridge_types::substrate::BridgeMessage;
     use frame_support::log::{debug, warn};
+    use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
-    use frame_support::{pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::CheckedSub;
+    use sp_runtime::traits::Hash;
+    use sp_runtime::traits::Keccak256;
+    use sp_runtime::traits::UniqueSaturatedInto;
     use sp_std::prelude::*;
 
     pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
@@ -70,16 +73,12 @@ pub mod pallet {
     pub type BalanceOf<T> =
         <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
 
-    pub type ProofOf<T> = <<T as Config>::Verifier as Verifier<SubNetworkId>>::Proof;
-
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Verifier module for message verification.
-        type Verifier: Verifier<
-            SubNetworkId,
-        >;
+        type Verifier: Verifier;
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
@@ -154,16 +153,16 @@ pub mod pallet {
         pub fn submit(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
-            messages: Vec<ParachainMessage<BalanceOf<T>>>,
-            proof: ProofOf<T>,
+            messages: Vec<BridgeMessage>,
+            proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);
-            
+            // submit message to verifier for verification
+            let message_hash = Keccak256::hash_of(&messages);
+            T::Verifier::verify(network_id.into(), message_hash, &proof)?;
+
             for message in messages {
-                // submit message to verifier for verification
-                let message_hash = <sp_runtime::traits::Keccak256 as sp_runtime::traits::Hash>::hash_of(&message);
-                T::Verifier::verify(network_id, &message_hash, &proof)?;
                 // Verify message nonce
                 <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
                     if message.nonce != *nonce + 1 {
@@ -174,7 +173,7 @@ pub mod pallet {
                     }
                 })?;
 
-                Self::handle_fee(message.fee, &relayer);
+                Self::handle_fee(message.fee.unique_saturated_into(), &relayer);
 
                 let message_id = MessageId::inbound(message.nonce);
                 T::MessageDispatch::dispatch(

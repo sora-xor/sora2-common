@@ -189,7 +189,7 @@ parameter_types! {
 // Mock verifier
 pub struct MockVerifier;
 
-impl Verifier<SubNetworkId> for MockVerifier {
+impl Verifier for MockVerifier {
     type Proof = Vec<u8>;
     
     fn verify(

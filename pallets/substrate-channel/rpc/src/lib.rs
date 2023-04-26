@@ -40,7 +40,7 @@ pub use substrate_bridge_channel::outbound::Commitment;
 #[rpc(server, client)]
 pub trait BridgeChannelAPI<Balance> {
     #[method(name = "substrateBridgeChannel_commitment")]
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment<Balance>>>;
+    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>>;
 }
 
 pub struct BridgeChannelClient<S> {
@@ -59,7 +59,7 @@ where
     S: OffchainStorage + 'static,
     Balance: Decode,
 {
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment<Balance>>> {
+    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>> {
         let key = (CHANNEL_INDEXING_PREFIX, commitment_hash).encode();
         Ok(self
             .storage

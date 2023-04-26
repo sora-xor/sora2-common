@@ -30,6 +30,7 @@
 
 //! Channel for passing messages from substrate to ethereum.
 
+use bridge_types::substrate::BridgeMessage;
 use codec::{Decode, Encode};
 use frame_support::ensure;
 use frame_support::traits::Get;
@@ -41,7 +42,7 @@ use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-use bridge_types::types::{MessageNonce, ParachainMessage};
+use bridge_types::types::MessageNonce;
 use bridge_types::SubNetworkId;
 
 pub mod weights;
@@ -56,9 +57,9 @@ mod test;
 /// Wire-format for commitment
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct Commitment<Balance> {
+pub struct Commitment {
     /// Messages passed through the channel in the current commit.
-    pub messages: Vec<ParachainMessage<Balance>>,
+    pub messages: Vec<BridgeMessage>,
 }
 
 pub use pallet::*;
@@ -66,6 +67,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::substrate::MainnetBalance;
     use bridge_types::traits::AuxiliaryDigestHandler;
     use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::traits::OutboundChannel;
@@ -78,6 +80,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
+    use sp_runtime::traits::Convert;
     use sp_runtime::traits::Zero;
 
     pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
@@ -115,6 +118,8 @@ pub mod pallet {
 
         type Currency: MultiCurrency<Self::AccountId>;
 
+        type BalanceConverter: Convert<BalanceOf<Self>, MainnetBalance>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -135,22 +140,7 @@ pub mod pallet {
     /// (to keep correct value in [QueuesTotalGas]).
     #[pallet::storage]
     pub(crate) type MessageQueues<T: Config> =
-        StorageMap<_, Identity, SubNetworkId, Vec<ParachainMessage<BalanceOf<T>>>, ValueQuery>;
-
-    /// Add message to queue and accumulate total maximum gas value    
-    pub(crate) fn append_message_queue<T: Config>(
-        network: SubNetworkId,
-        msg: ParachainMessage<BalanceOf<T>>,
-    ) {
-        MessageQueues::<T>::append(network, msg);
-    }
-
-    /// Take the queue together with accumulated total maximum gas value.
-    pub(crate) fn take_message_queue<T: Config>(
-        network: SubNetworkId,
-    ) -> Vec<ParachainMessage<BalanceOf<T>>> {
-        MessageQueues::<T>::take(network)
-    }
+        StorageMap<_, Identity, SubNetworkId, Vec<BridgeMessage>, ValueQuery>;
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
@@ -231,7 +221,7 @@ pub mod pallet {
 
         fn commit(network_id: SubNetworkId) -> Weight {
             debug!("Commit substrate messages");
-            let messages = take_message_queue::<T>(network_id);
+            let messages = Self::take_message_queue(network_id);
             if messages.is_empty() {
                 return <T as Config>::WeightInfo::on_initialize_no_messages();
             }
@@ -264,7 +254,7 @@ pub mod pallet {
             )
         }
 
-        fn average_payload_size(messages: &[ParachainMessage<BalanceOf<T>>]) -> usize {
+        fn average_payload_size(messages: &[BridgeMessage]) -> usize {
             let sum: usize = messages.iter().fold(0, |acc, x| acc + x.payload.len());
             // We overestimate message payload size rather than underestimate.
             // So add 1 here to account for integer division truncation.
@@ -273,6 +263,16 @@ pub mod pallet {
 
         pub fn make_offchain_key(hash: H256) -> Vec<u8> {
             (T::INDEXING_PREFIX, hash).encode()
+        }
+
+        /// Add message to queue and accumulate total maximum gas value    
+        pub(crate) fn append_message_queue(network: SubNetworkId, msg: BridgeMessage) {
+            MessageQueues::<T>::append(network, msg);
+        }
+
+        /// Take the queue together with accumulated total maximum gas value.
+        pub(crate) fn take_message_queue(network: SubNetworkId) -> Vec<BridgeMessage> {
+            MessageQueues::<T>::take(network)
         }
     }
 
@@ -342,12 +342,12 @@ pub mod pallet {
                 };
 
                 let timestamp = pallet_timestamp::Pallet::<T>::now();
-                append_message_queue::<T>(
+                Self::append_message_queue(
                     network_id,
-                    ParachainMessage {
+                    BridgeMessage {
                         nonce: *nonce,
                         payload: payload.to_vec(),
-                        fee,
+                        fee: T::BalanceConverter::convert(fee),
                         timestamp: timestamp.unique_saturated_into(),
                     },
                 );
