@@ -102,12 +102,6 @@ pub mod pallet {
     pub type PeerKeys<T> =
         StorageMap<_, Twox64Concat, GenericNetworkId, BTreeSet<ecdsa::Public>, OptionQuery>;
 
-    #[pallet::storage]
-    #[pallet::getter(fn get_treshold)]
-    pub type Treshold<T> =
-        StorageMap<_, Twox64Concat, GenericNetworkId, u32, OptionQuery>;
-
-
     #[pallet::type_value]
     pub fn DefaultForThisNetworkId() -> GenericNetworkId {
         GenericNetworkId::Sub(SubNetworkId::Mainnet)
@@ -177,17 +171,13 @@ pub mod pallet {
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
-            keys_treshold: u32,
             keys: Vec<ecdsa::Public>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            ensure!(keys_treshold > 0, Error::<T>::InvalidInitParams);
             ensure!(keys.len() > 0, Error::<T>::InvalidInitParams);
-            ensure!(keys.len() >= keys_treshold as usize, Error::<T>::InvalidInitParams);
 
             let btree_keys = keys.into_iter().collect();
             PeerKeys::<T>::set(network_id, Some(btree_keys));
-            Treshold::<T>::set(network_id, Some(keys_treshold));
             Self::deposit_event(Event::NetworkInitialized(network_id));
             Ok(().into())
         }
@@ -225,7 +215,7 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             frame_support::log::info!(
-                "Call remove_peer{:?} by {:?}",
+                "Call remove_peer {:?} by {:?}",
                 key,
                 output
             );
@@ -248,17 +238,14 @@ pub mod pallet {
         pub fn verify_signatures(
             network_id: GenericNetworkId,
             hash: &H256,
-            // signatures: &Vec<[u8; 65]>,
             signatures: &Vec<ecdsa::Signature>,
         ) -> DispatchResult {
-            let Some(treshold) = Treshold::<T>::get(network_id) else {
-                Self::deposit_event(Event::NetworkNotInitialized(network_id));
-                fail!(Error::<T>::NetworkNotInitialized)
-            };
             let Some(peers) = PeerKeys::<T>::get(network_id) else {
                 Self::deposit_event(Event::NetworkNotInitialized(network_id));
                 fail!(Error::<T>::NetworkNotInitialized)
             };
+  
+            let treshold = Self::threshold(peers.len() as u32);
 
             let len = signatures.len() as u32;
             ensure!(len >= treshold, {
@@ -268,7 +255,6 @@ pub mod pallet {
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
-                // let Some(rec_sign) = recover_signature(&sign, &hash) else {
                 let Some(rec_sign) = sign.recover_prehashed(&hash.0) else {
                     Self::deposit_event(Event::InvalidSignature(network_id, *hash, sign.clone()));
                     fail!(Error::<T>::InvalidSignature)
@@ -281,6 +267,11 @@ pub mod pallet {
             Self::deposit_event(Event::VerificationSuccessful(network_id));
 
             Ok(().into())
+        }
+
+        pub fn threshold(peers: u32) -> u32 {
+            let faulty = peers.saturating_sub(1) / 3;
+            peers - faulty
         }
     }
 }
