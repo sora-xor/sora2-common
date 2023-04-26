@@ -55,12 +55,15 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::types::ParachainMessage;
+    use bridge_types::substrate::BridgeMessage;
     use frame_support::log::{debug, warn};
+    use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
-    use frame_support::{pallet_prelude::*, Parameter};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::CheckedSub;
+    use sp_runtime::traits::Hash;
+    use sp_runtime::traits::Keccak256;
+    use sp_runtime::traits::UniqueSaturatedInto;
     use sp_std::prelude::*;
 
     pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
@@ -75,14 +78,7 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Verifier module for message verification.
-        type Verifier: Verifier<
-            SubNetworkId,
-            Self::ProvedMessage,
-            Result = Vec<ParachainMessage<BalanceOf<Self>>>,
-        >;
-
-        /// Message with proof
-        type ProvedMessage: Parameter;
+        type Verifier: Verifier;
 
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
@@ -157,12 +153,14 @@ pub mod pallet {
         pub fn submit(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
-            message: T::ProvedMessage,
+            messages: Vec<BridgeMessage>,
+            proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
             let relayer = ensure_signed(origin)?;
             debug!("Received message from {:?}", relayer);
             // submit message to verifier for verification
-            let messages = T::Verifier::verify(network_id, &message)?;
+            let message_hash = Keccak256::hash_of(&messages);
+            T::Verifier::verify(network_id.into(), message_hash, &proof)?;
 
             for message in messages {
                 // Verify message nonce
@@ -175,7 +173,7 @@ pub mod pallet {
                     }
                 })?;
 
-                Self::handle_fee(message.fee, &relayer);
+                Self::handle_fee(message.fee.unique_saturated_into(), &relayer);
 
                 let message_id = MessageId::inbound(message.nonce);
                 T::MessageDispatch::dispatch(

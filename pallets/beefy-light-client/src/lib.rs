@@ -50,7 +50,6 @@ use sp_core::{Get, RuntimeDebug};
 use sp_io::hashing::keccak_256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
-use sp_runtime::DispatchError;
 use sp_std::collections::vec_deque::VecDeque;
 
 pub const MMR_ROOT_HISTORY_SIZE: usize = 30;
@@ -73,8 +72,7 @@ mod fixtures;
 mod benchmarking;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub struct ProvedSubstrateBridgeMessage<Message> {
-    pub message: Message,
+pub struct SubstrateBridgeMessageProof {
     pub proof: Proof<H256>,
     pub leaf: BeefyMMRLeaf,
     pub digest: AuxiliaryDigest,
@@ -195,6 +193,7 @@ pub mod pallet {
         InvalidDigestHash,
         CommitmentNotFoundInDigest,
         MMRPayloadNotFound,
+        InvalidNetworkId,
     }
 
     #[pallet::hooks]
@@ -314,24 +313,22 @@ pub mod pallet {
     }
 }
 
-impl<T: Config>
-    bridge_types::traits::Verifier<SubNetworkId, ProvedSubstrateBridgeMessage<T::Message>>
-    for Pallet<T>
-{
-    type Result = T::Message;
+impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
+    type Proof = SubstrateBridgeMessageProof;
     fn verify(
-        network_id: SubNetworkId,
-        message: &ProvedSubstrateBridgeMessage<T::Message>,
-    ) -> Result<Self::Result, DispatchError> {
+        network_id: GenericNetworkId,
+        commitment_hash: H256,
+        proof: &SubstrateBridgeMessageProof,
+    ) -> DispatchResult {
+        let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetworkId)?;
         let this_network_id = ThisNetworkId::<T>::get();
-        Self::verify_mmr_leaf(network_id, &message.leaf, &message.proof)?;
-        let digest_hash = message.digest.using_encoded(keccak_256);
+        Self::verify_mmr_leaf(network_id, &proof.leaf, &proof.proof)?;
+        let digest_hash = proof.digest.using_encoded(keccak_256);
         ensure!(
-            digest_hash == message.leaf.leaf_extra.digest_hash.0,
+            digest_hash == proof.leaf.leaf_extra.digest_hash.0,
             Error::<T>::InvalidMMRProof
         );
-        let commitment_hash = message.message.using_encoded(keccak_256);
-        let count = message
+        let count = proof
             .digest
             .logs
             .iter()
@@ -339,14 +336,14 @@ impl<T: Config>
                 let AuxiliaryDigestItem::Commitment(log_network_id, log_commitment_hash) = x;
                 if let GenericNetworkId::Sub(log_network_id) = log_network_id {
                     return *log_network_id == this_network_id
-                        && commitment_hash == log_commitment_hash.0;
+                        && commitment_hash == *log_commitment_hash;
                 }
                 false
             })
             .count();
         ensure!(count == 1, Error::<T>::CommitmentNotFoundInDigest);
 
-        Ok(message.message.clone())
+        Ok(())
     }
 }
 
