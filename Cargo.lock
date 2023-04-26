@@ -356,6 +356,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bridge-data-signer"
+version = "0.1.1"
+dependencies = [
+ "bridge-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "bridge-types"
 version = "0.1.0"
 dependencies = [
