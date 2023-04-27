@@ -48,7 +48,7 @@ use sp_std::marker::PhantomData;
 
 use bridge_types::traits::MessageDispatch;
 use bridge_types::types::ParachainMessage;
-use bridge_types::{U256, GenericNetworkId};
+use bridge_types::{GenericNetworkId, U256};
 use traits::parameter_type_with_key;
 
 use crate::inbound::Error;
@@ -191,14 +191,12 @@ pub struct MockVerifier;
 
 impl Verifier for MockVerifier {
     type Proof = Vec<u8>;
-    
-    fn verify(
-        network_id: GenericNetworkId,
-        _hash: H256,
-        _proof: &Vec<u8>,
-    ) -> DispatchResult {
+
+    fn verify(network_id: GenericNetworkId, _hash: H256, _proof: &Vec<u8>) -> DispatchResult {
         let network_id = match network_id {
-            bridge_types::GenericNetworkId::EVM(_) => return Err(Error::<Test>::InvalidNetwork.into()),
+            bridge_types::GenericNetworkId::EVM(_) => {
+                return Err(Error::<Test>::InvalidNetwork.into())
+            }
             bridge_types::GenericNetworkId::Sub(ni) => ni,
         };
         if network_id == BASE_NETWORK_ID {
