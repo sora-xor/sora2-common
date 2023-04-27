@@ -36,8 +36,6 @@ use bridge_types::GenericNetworkId;
 // use bridge_types::types::AuxiliaryDigest;
 // use bridge_types::types::AuxiliaryDigestItem;
 // use bridge_types::SubNetworkId;
-use codec::Decode;
-use codec::Encode;
 use frame_support::ensure;
 // use frame_support::fail;
 // use frame_support::log;
@@ -46,7 +44,6 @@ use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
-use sp_core::RuntimeDebug;
 use sp_core::H256;
 // use sp_io::hashing::keccak_256;
 // use sp_runtime::traits::Hash;
@@ -69,12 +66,6 @@ mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-
-#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub struct ProvedSubstrateBridgeMessage<Message, Proof> {
-    pub message: Message,
-    pub proof: Proof,
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -123,14 +114,6 @@ pub mod pallet {
         VerificationSuccessful(GenericNetworkId),
         PeerAdded(ecdsa::Public),
         PeerRemoved(ecdsa::Public),
-
-        // Error events:
-        NetworkNotInitialized(GenericNetworkId),
-        /// NetworkId, Required Number, Current Number
-        InvalidNumberOfSignatures(GenericNetworkId, u32, u32),
-        InvalidSignature(GenericNetworkId, H256, ecdsa::Signature),
-        NotTrustedPeerSignature(GenericNetworkId, H256, ecdsa::Signature, ecdsa::Public),
-        NoSuchPeer(ecdsa::Public),
     }
 
     #[pallet::error]
@@ -218,7 +201,7 @@ pub mod pallet {
                     fail!(Error::<T>::NetworkNotInitialized)
                 };
                 ensure!(keys.remove(&key), {
-                    Self::deposit_event(Event::NoSuchPeer(key));
+                    frame_support::log::error!("Call add_peer: No such peer {:?}", key);
                     Error::<T>::NoSuchPeer
                 });
                 Ok(())
@@ -244,7 +227,7 @@ pub mod pallet {
             signatures: &[ecdsa::Signature],
         ) -> DispatchResult {
             let Some(peers) = PeerKeys::<T>::get(network_id) else {
-                Self::deposit_event(Event::NetworkNotInitialized(network_id));
+                frame_support::log::error!("verify_signatures: Network {:?} not initialized", network_id);
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
@@ -252,23 +235,18 @@ pub mod pallet {
 
             let len = signatures.len() as u32;
             ensure!(len >= treshold, {
-                Self::deposit_event(Event::InvalidNumberOfSignatures(network_id, treshold, len));
+                frame_support::log::error!("verify_signatures: invalid number of signatures: {:?} < {:?}", len, treshold);
                 Error::<T>::InvalidNumberOfSignatures
             });
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
                 let Some(rec_sign) = sign.recover_prehashed(&hash.0) else {
-                    Self::deposit_event(Event::InvalidSignature(network_id, hash, sign.clone()));
+                    frame_support::log::error!("verify_signatures: cannot recover: {:?}", sign);
                     fail!(Error::<T>::InvalidSignature)
                 };
                 ensure!(peers.contains(&rec_sign), {
-                    Self::deposit_event(Event::NotTrustedPeerSignature(
-                        network_id,
-                        hash,
-                        sign.clone(),
-                        rec_sign,
-                    ));
+                    frame_support::log::error!("verify_signatures: not trusted signatures: {:?}", sign);
                     Error::<T>::NotTrustedPeerSignature
                 });
             }
