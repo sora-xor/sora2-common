@@ -31,7 +31,11 @@
 use crate::Log;
 use codec::{Decode, Encode};
 use ethbloom::Bloom;
-use sp_runtime::RuntimeDebug;
+use ethereum_types::H256;
+use sp_runtime::{
+    traits::{Hash, Keccak256},
+    RuntimeDebug,
+};
 use sp_std::prelude::*;
 
 #[derive(Clone, Default, Encode, Decode, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
@@ -45,6 +49,10 @@ pub struct Receipt {
 impl Receipt {
     pub fn contains_log(&self, log: &Log) -> bool {
         self.logs.iter().any(|l| l == log)
+    }
+
+    pub fn contains_hashed_log(&self, log: H256) -> bool {
+        self.logs.iter().any(|l| Keccak256::hash_of(l) == log)
     }
 
     fn decode_list(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {

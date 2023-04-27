@@ -38,7 +38,7 @@ use sp_core::H256;
 pub use substrate_bridge_channel::outbound::Commitment;
 
 #[rpc(server, client)]
-pub trait BridgeChannelAPI<Balance> {
+pub trait BridgeChannelAPI {
     #[method(name = "substrateBridgeChannel_commitment")]
     fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>>;
 }
@@ -54,10 +54,9 @@ impl<S> BridgeChannelClient<S> {
     }
 }
 
-impl<S, Balance> BridgeChannelAPIServer<Balance> for BridgeChannelClient<S>
+impl<S> BridgeChannelAPIServer for BridgeChannelClient<S>
 where
     S: OffchainStorage + 'static,
-    Balance: Decode,
 {
     fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>> {
         let key = (CHANNEL_INDEXING_PREFIX, commitment_hash).encode();
