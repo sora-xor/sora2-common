@@ -51,18 +51,33 @@ pub enum MessageDirection {
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
     direction: MessageDirection,
-    nonce: MessageNonce,
+    batch_nonce: Option<BatchNonce>,
+    message_nonce: MessageNonce,
+}
+
+impl From<(MessageDirection, BatchNonce, MessageNonce)> for MessageId {
+    fn from((direction, batch_nonce, message_nonce): (MessageDirection, BatchNonce, MessageNonce)) -> Self {
+        MessageId {
+            direction,
+            batch_nonce: Some(batch_nonce),
+            message_nonce
+        }
+    }
 }
 
 impl From<(MessageDirection, MessageNonce)> for MessageId {
-    fn from((direction, nonce): (MessageDirection, MessageNonce)) -> Self {
-        MessageId { direction, nonce }
+    fn from((direction, message_nonce): (MessageDirection, MessageNonce)) -> Self {
+        MessageId {
+            direction,
+            batch_nonce: None,
+            message_nonce
+        }
     }
 }
 
 impl From<MessageId> for MessageNonce {
     fn from(id: MessageId) -> Self {
-        id.nonce
+        id.message_nonce
     }
 }
 
@@ -74,8 +89,14 @@ impl MessageId {
     pub fn outbound(nonce: MessageNonce) -> Self {
         MessageId::from((MessageDirection::Outbound, nonce))
     }
+
+    /// Creates MessageId for Outbound message in batch.
+    pub fn outbound_batched(batch_nonce: BatchNonce, nonce: MessageNonce) -> Self {
+        MessageId::from((MessageDirection::Outbound, batch_nonce, nonce))
+    }
 }
 
+pub type BatchNonce = u64;
 pub type MessageNonce = u64;
 
 /// A message relayed from Ethereum.
