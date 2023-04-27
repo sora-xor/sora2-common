@@ -191,7 +191,7 @@ impl bridge_outbound_channel::Config for Test {
     type AuxiliaryDigestHandler = ();
     type WeightInfo = ();
     type Currency = Currencies;
-    type BalanceConverter = ();
+    type BalanceConverter = sp_runtime::traits::ConvertInto;
 }
 
 impl pallet_timestamp::Config for Test {

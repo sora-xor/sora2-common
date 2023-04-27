@@ -31,10 +31,10 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
+use bridge_types::substrate::BridgeMessage;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
-use bridge_types::substrate::BridgeMessage;
 
 const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 

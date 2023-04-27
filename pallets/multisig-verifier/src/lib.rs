@@ -235,7 +235,11 @@ pub mod pallet {
 
             let len = signatures.len() as u32;
             ensure!(len >= treshold, {
-                frame_support::log::error!("verify_signatures: invalid number of signatures: {:?} < {:?}", len, treshold);
+                frame_support::log::error!(
+                    "verify_signatures: invalid number of signatures: {:?} < {:?}",
+                    len,
+                    treshold
+                );
                 Error::<T>::InvalidNumberOfSignatures
             });
 
@@ -246,7 +250,10 @@ pub mod pallet {
                     fail!(Error::<T>::InvalidSignature)
                 };
                 ensure!(peers.contains(&rec_sign), {
-                    frame_support::log::error!("verify_signatures: not trusted signatures: {:?}", sign);
+                    frame_support::log::error!(
+                        "verify_signatures: not trusted signatures: {:?}",
+                        sign
+                    );
                     Error::<T>::NotTrustedPeerSignature
                 });
             }

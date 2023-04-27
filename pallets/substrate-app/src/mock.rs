@@ -262,16 +262,9 @@ impl substrate_app::Config for Test {
     type AssetRegistry = AssetRegistryImpl;
     type Currency = Currencies;
     type WeightInfo = ();
-    type AccountIdConverter = TestAccountIdConverter;
+    type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
     type BalanceConverter = ();
-}
-
-pub struct TestAccountIdConverter;
-impl sp_runtime::traits::Convert<AccountId, AccountId> for TestAccountIdConverter{
-    fn convert(a: AccountId) -> AccountId {
-        a
-    }
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
