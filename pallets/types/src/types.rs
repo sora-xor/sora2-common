@@ -78,15 +78,6 @@ impl MessageId {
 
 pub type MessageNonce = u64;
 
-/// A message relayed from Ethereum.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-pub struct Message {
-    /// The raw message data.
-    pub data: Vec<u8>,
-    /// Input to the message verifier
-    pub proof: Proof,
-}
-
 /// Verification input for the message verifier.
 ///
 /// This data type allows us to support multiple verification schemes. In the near future,
