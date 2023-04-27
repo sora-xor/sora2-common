@@ -48,7 +48,7 @@ use sp_std::marker::PhantomData;
 
 use bridge_types::traits::MessageDispatch;
 use bridge_types::types::ParachainMessage;
-use bridge_types::U256;
+use bridge_types::{U256, GenericNetworkId};
 use traits::parameter_type_with_key;
 
 use crate::inbound::Error;
@@ -189,15 +189,20 @@ parameter_types! {
 // Mock verifier
 pub struct MockVerifier;
 
-impl Verifier<SubNetworkId, ParachainMessage<Balance>> for MockVerifier {
-    type Result = Vec<ParachainMessage<Balance>>;
-
+impl Verifier for MockVerifier {
+    type Proof = Vec<u8>;
+    
     fn verify(
-        network_id: SubNetworkId,
-        message: &ParachainMessage<Balance>,
-    ) -> Result<Self::Result, DispatchError> {
+        network_id: GenericNetworkId,
+        _hash: H256,
+        _proof: &Vec<u8>,
+    ) -> DispatchResult {
+        let network_id = match network_id {
+            bridge_types::GenericNetworkId::EVM(_) => return Err(Error::<Test>::InvalidNetwork.into()),
+            bridge_types::GenericNetworkId::Sub(ni) => ni,
+        };
         if network_id == BASE_NETWORK_ID {
-            Ok(vec![message.clone()])
+            Ok(())
         } else {
             Err(Error::<Test>::InvalidNetwork.into())
         }
@@ -240,7 +245,8 @@ impl pallet_timestamp::Config for Test {
 impl bridge_inbound_channel::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
-    type ProvedMessage = ParachainMessage<Balance>;
+    // type ProvedMessage = ParachainMessage<Balance>;
+    // type Proof = Vec<u8>;
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = GetBaseAssetId;
@@ -293,7 +299,8 @@ fn test_submit() {
         assert_ok!(BridgeInboundChannel::submit(
             origin.clone(),
             BASE_NETWORK_ID,
-            message_1
+            vec![message_1],
+            Vec::new(),
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -308,7 +315,8 @@ fn test_submit() {
         assert_ok!(BridgeInboundChannel::submit(
             origin,
             BASE_NETWORK_ID,
-            message_2
+            vec![message_2],
+            Vec::new(),
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
@@ -331,14 +339,15 @@ fn test_submit_with_invalid_nonce() {
         assert_ok!(BridgeInboundChannel::submit(
             origin.clone(),
             BASE_NETWORK_ID,
-            message.clone()
+            vec![message.clone()],
+            Vec::new(),
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit the same again
         assert_noop!(
-            BridgeInboundChannel::submit(origin, BASE_NETWORK_ID, message),
+            BridgeInboundChannel::submit(origin, BASE_NETWORK_ID, vec![message], Vec::new()),
             Error::<Test>::InvalidNonce
         );
     });
@@ -391,7 +400,7 @@ fn test_submit_with_invalid_network_id() {
             payload: Default::default(),
         };
         assert_noop!(
-            BridgeInboundChannel::submit(origin, SubNetworkId::Kusama, message),
+            BridgeInboundChannel::submit(origin, SubNetworkId::Kusama, vec![message], Vec::new()),
             Error::<Test>::InvalidNetwork
         );
     });

@@ -1988,6 +1988,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "multisig-verifier"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bridge-common",
+ "bridge-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-beefy",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "test-case",
+]
+
+[[package]]
 name = "nalgebra"
 version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
