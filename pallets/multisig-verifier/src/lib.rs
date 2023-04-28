@@ -54,6 +54,7 @@ use bridge_types::substrate::SubstrateBridgeMessageEncode;
 use bridge_types::traits::OutboundChannel;
 use sp_core::ecdsa;
 use sp_std::collections::btree_set::BTreeSet;
+use bridge_types::substrate::MultisigVerifierCall;
 
 #[cfg(test)]
 mod mock;
@@ -61,11 +62,28 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// #[cfg(any(test, feature = "runtime-benchmarks"))]
-// mod fixtures;
-
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+
+pub use pallet::*;
+
+impl<T: Config> From<MultisigVerifierCall> for Call<T>
+{
+    fn from(value: MultisigVerifierCall) -> Self {
+        match value {
+            MultisigVerifierCall::AddPeer {
+                peer
+            } => Call::add_peer {
+                key: peer,
+            },
+            MultisigVerifierCall::RemovePeer {
+                peer
+            } => Call::remove_peer {
+                key: peer,
+            },
+        }
+    }
+}
 
 #[frame_support::pallet]
 pub mod pallet {
