@@ -296,7 +296,6 @@ pub mod pallet {
 impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
     type Proof = Proof;
 
-    #[inline]
     fn verify(
         network_id: GenericNetworkId,
         commitment_hash: H256,
