@@ -104,7 +104,7 @@ pub mod pallet {
             Success = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
         >;
 
-        type OutboundChannel: OutboundChannel<GenericNetworkId, Self::AccountId, ()>;
+        type OutboundChannel: OutboundChannel<SubNetworkId, Self::AccountId, ()>;
     }
 
     #[pallet::pallet]
@@ -207,7 +207,7 @@ pub mod pallet {
                 },
             )?;
             T::OutboundChannel::submit(
-                GenericNetworkId::from(output.network_id),
+                output.network_id,
                 &frame_system::RawOrigin::Root,
                 &bridge_types::substrate::DataSignerCall::AddPeer { peer: key }.prepare_message(),
                 (),
