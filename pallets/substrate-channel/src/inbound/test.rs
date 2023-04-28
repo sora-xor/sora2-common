@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::*;
+use bridge_types::substrate::BridgeMessage;
 use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 
@@ -47,8 +48,8 @@ use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
 use bridge_types::traits::MessageDispatch;
-use bridge_types::types::ParachainMessage;
-use bridge_types::{U256, GenericNetworkId};
+// use bridge_types::types::ParachainMessage;
+use bridge_types::{GenericNetworkId, U256};
 use traits::parameter_type_with_key;
 
 use crate::inbound::Error;
@@ -191,14 +192,12 @@ pub struct MockVerifier;
 
 impl Verifier for MockVerifier {
     type Proof = Vec<u8>;
-    
-    fn verify(
-        network_id: GenericNetworkId,
-        _hash: H256,
-        _proof: &Vec<u8>,
-    ) -> DispatchResult {
+
+    fn verify(network_id: GenericNetworkId, _hash: H256, _proof: &Vec<u8>) -> DispatchResult {
         let network_id = match network_id {
-            bridge_types::GenericNetworkId::EVM(_) => return Err(Error::<Test>::InvalidNetwork.into()),
+            bridge_types::GenericNetworkId::EVM(_) => {
+                return Err(Error::<Test>::InvalidNetwork.into())
+            }
             bridge_types::GenericNetworkId::Sub(ni) => ni,
         };
         if network_id == BASE_NETWORK_ID {
@@ -290,7 +289,7 @@ fn test_submit() {
         let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message 1
-        let message_1 = ParachainMessage {
+        let message_1 = BridgeMessage {
             nonce: 1,
             timestamp: 0,
             fee: 0,
@@ -306,7 +305,7 @@ fn test_submit() {
         assert_eq!(nonce, 1);
 
         // Submit message 2
-        let message_2 = ParachainMessage {
+        let message_2 = BridgeMessage {
             nonce: 2,
             timestamp: 0,
             fee: 0,
@@ -330,7 +329,7 @@ fn test_submit_with_invalid_nonce() {
         let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
-        let message = ParachainMessage {
+        let message = BridgeMessage {
             nonce: 1,
             timestamp: 0,
             fee: 0,
@@ -393,7 +392,7 @@ fn test_submit_with_invalid_network_id() {
         let origin = RuntimeOrigin::signed(relayer);
 
         // Submit message
-        let message = ParachainMessage {
+        let message = BridgeMessage {
             nonce: 1,
             timestamp: 0,
             fee: 0,

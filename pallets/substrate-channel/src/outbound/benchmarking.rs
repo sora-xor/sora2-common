@@ -31,6 +31,7 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
+use bridge_types::substrate::BridgeMessage;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
 use frame_system::RawOrigin;
@@ -49,7 +50,7 @@ benchmarks! {
 
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
-            append_message_queue::<T>(BASE_NETWORK_ID, ParachainMessage {
+            Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
                 nonce: 0u64,
                 fee: Default::default(),
                 payload,
@@ -67,9 +68,9 @@ benchmarks! {
     // Benchmark 'on_initialize` for the best case, i.e. nothing is done
     // because it's not a commitment interval.
     on_initialize_non_interval {
-        take_message_queue::<T>(BASE_NETWORK_ID);
+        Pallet::<T>::take_message_queue(BASE_NETWORK_ID);
         let payload: Vec<u8> = (0..).take(10).collect();
-        append_message_queue::<T>(BASE_NETWORK_ID, ParachainMessage {
+        Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
             nonce: 0u64,
             fee: Default::default(),
             payload,
@@ -88,7 +89,7 @@ benchmarks! {
     // Benchmark 'on_initialize` for the case where it is a commitment interval
     // but there are no messages in the queue.
     on_initialize_no_messages {
-        take_message_queue::<T>(BASE_NETWORK_ID);
+        Pallet::<T>::take_message_queue(BASE_NETWORK_ID);
 
         let block_number = Interval::<T>::get();
 

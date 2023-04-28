@@ -38,8 +38,6 @@ use bridge_types::GenericNetworkId;
 // use bridge_types::types::AuxiliaryDigest;
 // use bridge_types::types::AuxiliaryDigestItem;
 // use bridge_types::SubNetworkId;
-use codec::Decode;
-use codec::Encode;
 use frame_support::ensure;
 // use frame_support::fail;
 // use frame_support::log;
@@ -55,6 +53,9 @@ use sp_core::H256;
 // use sp_runtime::traits::Keccak256;
 // use sp_runtime::DispatchError;
 // use sp_std::collections::vec_deque::VecDeque;
+use bridge_types::substrate::MultisigVerifierCall;
+use bridge_types::substrate::SubstrateBridgeMessageEncode;
+use bridge_types::traits::OutboundChannel;
 use sp_core::ecdsa;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
@@ -66,16 +67,24 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-// #[cfg(any(test, feature = "runtime-benchmarks"))]
-// mod fixtures;
-
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+
+pub use pallet::*;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct Proof {
     pub digest: AuxiliaryDigest,
     pub proof: Vec<ecdsa::Signature>,
+}
+
+impl<T: Config> From<MultisigVerifierCall> for Call<T> {
+    fn from(value: MultisigVerifierCall) -> Self {
+        match value {
+            MultisigVerifierCall::AddPeer { peer } => Call::add_peer { key: peer },
+            MultisigVerifierCall::RemovePeer { peer } => Call::remove_peer { key: peer },
+        }
+    }
 }
 
 #[frame_support::pallet]
@@ -94,6 +103,8 @@ pub mod pallet {
             Self::RuntimeOrigin,
             Success = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
         >;
+
+        type OutboundChannel: OutboundChannel<GenericNetworkId, Self::AccountId, ()>;
     }
 
     #[pallet::pallet]
@@ -123,14 +134,6 @@ pub mod pallet {
         VerificationSuccessful(GenericNetworkId),
         PeerAdded(ecdsa::Public),
         PeerRemoved(ecdsa::Public),
-
-        // Error events:
-        NetworkNotInitialized(GenericNetworkId),
-        /// NetworkId, Required Number, Current Number
-        InvalidNumberOfSignatures(GenericNetworkId, u32, u32),
-        InvalidSignature(GenericNetworkId, H256, ecdsa::Signature),
-        NotTrustedPeerSignature(GenericNetworkId, H256, ecdsa::Signature, ecdsa::Public),
-        NoSuchPeer(ecdsa::Public),
     }
 
     #[pallet::error]
@@ -190,43 +193,56 @@ pub mod pallet {
 
         #[pallet::call_index(1)]
         #[pallet::weight(0)]
-        pub fn add_peer(
-            origin: OriginFor<T>,
-            network_id: GenericNetworkId,
-            key: ecdsa::Public,
-        ) -> DispatchResultWithPostInfo {
+        pub fn add_peer(origin: OriginFor<T>, key: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             frame_support::log::info!("Call add_peer {:?} by {:?}", key, output);
-            PeerKeys::<T>::try_mutate(network_id, |x| -> DispatchResult {
-                let Some(keys) = x else {
+            PeerKeys::<T>::try_mutate(
+                GenericNetworkId::from(output.network_id),
+                |x| -> DispatchResult {
+                    let Some(keys) = x else {
                     fail!(Error::<T>::NetworkNotInitialized)
                 };
-                keys.insert(key);
-                Ok(())
-            })?;
+                    keys.insert(key);
+                    Ok(())
+                },
+            )?;
+            T::OutboundChannel::submit(
+                GenericNetworkId::from(output.network_id),
+                &frame_system::RawOrigin::Root,
+                &bridge_types::substrate::DataSignerCall::AddPeer { peer: key }.prepare_message(),
+                (),
+            )?;
             Self::deposit_event(Event::PeerAdded(key));
             Ok(().into())
         }
 
         #[pallet::call_index(2)]
         #[pallet::weight(0)]
-        pub fn remove_peer(
-            origin: OriginFor<T>,
-            network_id: GenericNetworkId,
-            key: ecdsa::Public,
-        ) -> DispatchResultWithPostInfo {
+        pub fn remove_peer(origin: OriginFor<T>, key: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             frame_support::log::info!("Call remove_peer {:?} by {:?}", key, output);
-            PeerKeys::<T>::try_mutate(network_id, |x| -> DispatchResult {
-                let Some(keys) = x else {
+            PeerKeys::<T>::try_mutate(
+                GenericNetworkId::from(output.network_id),
+                |x| -> DispatchResult {
+                    let Some(keys) = x else {
                     fail!(Error::<T>::NetworkNotInitialized)
                 };
-                ensure!(keys.remove(&key), {
-                    Self::deposit_event(Event::NoSuchPeer(key));
-                    Error::<T>::NoSuchPeer
-                });
-                Ok(())
-            })?;
+                    ensure!(keys.remove(&key), {
+                        frame_support::log::error!("Call add_peer: No such peer {:?}", key);
+                        Error::<T>::NoSuchPeer
+                    });
+                    Ok(())
+                },
+            )?;
+
+            T::OutboundChannel::submit(
+                output.network_id.into(),
+                &frame_system::RawOrigin::Root,
+                &bridge_types::substrate::DataSignerCall::RemovePeer { peer: key }
+                    .prepare_message(),
+                (),
+            )?;
+
             Self::deposit_event(Event::PeerRemoved(key));
             Ok(().into())
         }
@@ -235,11 +251,11 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         pub fn verify_signatures(
             network_id: GenericNetworkId,
-            hash: &H256,
-            signatures: &Vec<ecdsa::Signature>,
+            hash: H256,
+            signatures: &[ecdsa::Signature],
         ) -> DispatchResult {
             let Some(peers) = PeerKeys::<T>::get(network_id) else {
-                Self::deposit_event(Event::NetworkNotInitialized(network_id));
+                frame_support::log::error!("verify_signatures: Network {:?} not initialized", network_id);
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
@@ -247,24 +263,26 @@ pub mod pallet {
 
             let len = signatures.len() as u32;
             ensure!(len >= treshold, {
-                Self::deposit_event(Event::InvalidNumberOfSignatures(network_id, treshold, len));
+                frame_support::log::error!(
+                    "verify_signatures: invalid number of signatures: {:?} < {:?}",
+                    len,
+                    treshold
+                );
                 Error::<T>::InvalidNumberOfSignatures
             });
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
                 let Ok(rec_sign) = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign.0, &hash.0) else {
-                    Self::deposit_event(Event::InvalidSignature(network_id, *hash, sign.clone()));
+                    frame_support::log::error!("verify_signatures: cannot recover: {:?}", sign);
                     fail!(Error::<T>::InvalidSignature)
                 };
                 let rec_sign = ecdsa::Public::from_raw(rec_sign);
                 ensure!(peers.contains(&rec_sign), {
-                    Self::deposit_event(Event::NotTrustedPeerSignature(
-                        network_id,
-                        *hash,
-                        sign.clone(),
-                        rec_sign,
-                    ));
+                    frame_support::log::error!(
+                        "verify_signatures: not trusted signatures: {:?}",
+                        sign
+                    );
                     Error::<T>::NotTrustedPeerSignature
                 });
             }
@@ -286,7 +304,7 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
     ) -> DispatchResult {
         let this_network_id = ThisNetworkId::<T>::get();
         let digest_hash = Keccak256::hash_of(&proof.digest);
-        Self::verify_signatures(network_id, &digest_hash, &proof.proof)?;
+        Self::verify_signatures(network_id, digest_hash, &proof.proof)?;
         let count = proof
             .digest
             .logs

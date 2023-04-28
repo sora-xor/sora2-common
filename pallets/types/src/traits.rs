@@ -59,7 +59,6 @@ pub trait Verifier {
     fn verify(network_id: GenericNetworkId, message: H256, proof: &Self::Proof) -> DispatchResult;
 }
 
-
 /// Outbound submission for applications
 pub trait OutboundChannel<NetworkId, AccountId, Additional> {
     fn submit(
