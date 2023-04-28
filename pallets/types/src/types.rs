@@ -91,8 +91,8 @@ impl MessageId {
     }
 
     /// Creates MessageId for Outbound message in batch.
-    pub fn outbound_batched(batch_nonce: BatchNonce, nonce: MessageNonce) -> Self {
-        MessageId::from((MessageDirection::Outbound, batch_nonce, nonce))
+    pub fn outbound_batched(batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
+        MessageId::from((MessageDirection::Outbound, batch_nonce, message_nonce))
     }
 }
 
