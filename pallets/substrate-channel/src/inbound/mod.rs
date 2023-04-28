@@ -184,7 +184,7 @@ pub mod pallet {
                     (),
                 );
             }
-            Ok(().into())
+            Ok(Pays::No.into())
         }
 
         #[pallet::call_index(1)]

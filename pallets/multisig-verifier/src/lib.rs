@@ -32,6 +32,8 @@
 
 // use bridge_common::simplified_proof::*;
 // use bridge_common::beefy_types::*;
+use bridge_types::types::AuxiliaryDigest;
+use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::GenericNetworkId;
 // use bridge_types::types::AuxiliaryDigest;
 // use bridge_types::types::AuxiliaryDigestItem;
@@ -46,15 +48,17 @@ use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
-use sp_core::H256;
 use sp_core::RuntimeDebug;
+use sp_core::H256;
 // use sp_io::hashing::keccak_256;
 // use sp_runtime::traits::Hash;
 // use sp_runtime::traits::Keccak256;
 // use sp_runtime::DispatchError;
 // use sp_std::collections::vec_deque::VecDeque;
-use sp_std::collections::btree_set::BTreeSet;
 use sp_core::ecdsa;
+use sp_runtime::traits::Hash;
+use sp_runtime::traits::Keccak256;
+use sp_std::collections::btree_set::BTreeSet;
 
 #[cfg(test)]
 mod mock;
@@ -69,9 +73,9 @@ mod tests;
 mod benchmarking;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub struct ProvedSubstrateBridgeMessage<Message, Proof> {
-    pub message: Message,
-    pub proof: Proof,
+pub struct Proof {
+    pub digest: AuxiliaryDigest,
+    pub proof: Vec<ecdsa::Signature>,
 }
 
 #[frame_support::pallet]
@@ -89,7 +93,7 @@ pub mod pallet {
         type CallOrigin: EnsureOrigin<
             Self::RuntimeOrigin,
             Success = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-         >;
+        >;
     }
 
     #[pallet::pallet]
@@ -109,7 +113,8 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn this_network_id)]
-    pub type ThisNetworkId<T> = StorageValue<_, GenericNetworkId, ValueQuery, DefaultForThisNetworkId>;
+    pub type ThisNetworkId<T> =
+        StorageValue<_, GenericNetworkId, ValueQuery, DefaultForThisNetworkId>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -120,7 +125,6 @@ pub mod pallet {
         PeerRemoved(ecdsa::Public),
 
         // Error events:
-
         NetworkNotInitialized(GenericNetworkId),
         /// NetworkId, Required Number, Current Number
         InvalidNumberOfSignatures(GenericNetworkId, u32, u32),
@@ -137,6 +141,8 @@ pub mod pallet {
         InvalidSignature,
         NotTrustedPeerSignature,
         NoSuchPeer,
+        InvalidNetworkId,
+        CommitmentNotFoundInDigest,
     }
 
     #[pallet::hooks]
@@ -190,12 +196,8 @@ pub mod pallet {
             key: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
-            frame_support::log::info!(
-                "Call add_peer {:?} by {:?}",
-                key,
-                output
-            );
-            PeerKeys::<T>::try_mutate(network_id,|x| -> DispatchResult {
+            frame_support::log::info!("Call add_peer {:?} by {:?}", key, output);
+            PeerKeys::<T>::try_mutate(network_id, |x| -> DispatchResult {
                 let Some(keys) = x else {
                     fail!(Error::<T>::NetworkNotInitialized)
                 };
@@ -214,12 +216,8 @@ pub mod pallet {
             key: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
-            frame_support::log::info!(
-                "Call remove_peer {:?} by {:?}",
-                key,
-                output
-            );
-            PeerKeys::<T>::try_mutate(network_id,|x| -> DispatchResult {
+            frame_support::log::info!("Call remove_peer {:?} by {:?}", key, output);
+            PeerKeys::<T>::try_mutate(network_id, |x| -> DispatchResult {
                 let Some(keys) = x else {
                     fail!(Error::<T>::NetworkNotInitialized)
                 };
@@ -244,8 +242,8 @@ pub mod pallet {
                 Self::deposit_event(Event::NetworkNotInitialized(network_id));
                 fail!(Error::<T>::NetworkNotInitialized)
             };
-  
-            let treshold = Self::threshold(peers.len() as u32);
+
+            let treshold = bridge_types::utils::threshold(peers.len() as u32);
 
             let len = signatures.len() as u32;
             ensure!(len >= treshold, {
@@ -255,12 +253,18 @@ pub mod pallet {
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
-                let Some(rec_sign) = sign.recover_prehashed(&hash.0) else {
+                let Ok(rec_sign) = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign.0, &hash.0) else {
                     Self::deposit_event(Event::InvalidSignature(network_id, *hash, sign.clone()));
                     fail!(Error::<T>::InvalidSignature)
                 };
+                let rec_sign = ecdsa::Public::from_raw(rec_sign);
                 ensure!(peers.contains(&rec_sign), {
-                    Self::deposit_event(Event::NotTrustedPeerSignature(network_id, *hash, sign.clone(), rec_sign));
+                    Self::deposit_event(Event::NotTrustedPeerSignature(
+                        network_id,
+                        *hash,
+                        sign.clone(),
+                        rec_sign,
+                    ));
                     Error::<T>::NotTrustedPeerSignature
                 });
             }
@@ -268,27 +272,37 @@ pub mod pallet {
 
             Ok(().into())
         }
-
-        pub fn threshold(peers: u32) -> u32 {
-            let faulty = peers.saturating_sub(1) / 3;
-            peers - faulty
-        }
     }
 }
 
-impl<T: Config>
-    bridge_types::traits::Verifier
-    for Pallet<T>
-{
-    type Proof = Vec<ecdsa::Signature>;
-    
+impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
+    type Proof = Proof;
+
     #[inline]
     fn verify(
         network_id: GenericNetworkId,
-        hash: H256,
-        proof: &Vec<ecdsa::Signature>,
+        commitment_hash: H256,
+        proof: &Self::Proof,
     ) -> DispatchResult {
-        Self::verify_signatures(network_id, &hash, proof)?;
+        let this_network_id = ThisNetworkId::<T>::get();
+        let digest_hash = Keccak256::hash_of(&proof.digest);
+        Self::verify_signatures(network_id, &digest_hash, &proof.proof)?;
+        let count = proof
+            .digest
+            .logs
+            .iter()
+            .filter(|x| {
+                let AuxiliaryDigestItem::Commitment(log_network_id, log_commitment_hash) = x;
+                // Digest proofs should only come from substrate networks
+                if matches!(log_network_id, GenericNetworkId::Sub(_)) {
+                    return *log_network_id == this_network_id
+                        && commitment_hash == *log_commitment_hash;
+                }
+                false
+            })
+            .count();
+        ensure!(count == 1, Error::<T>::CommitmentNotFoundInDigest);
+
         Ok(())
     }
 }

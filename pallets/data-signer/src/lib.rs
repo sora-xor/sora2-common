@@ -194,9 +194,9 @@ pub mod pallet {
             signature: ecdsa::Signature,
         ) -> DispatchResultWithPostInfo {
             let _who = ensure_signed(origin)?;
-            let public = signature
-                .recover_prehashed(&data.0)
-                .ok_or(Error::<T>::FailedToVerifySignature)?;
+            let public = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&signature.0, &data.0)
+                .map_err(|_| Error::<T>::FailedToVerifySignature)?;
+            let public = ecdsa::Public::from_raw(public);
             let peers = Peers::<T>::get(network_id).ok_or(Error::<T>::PalletNotInitialized)?;
             ensure!(peers.contains(&public), Error::<T>::PeerNotFound);
             Approvals::<T>::try_append(network_id, data, &signature)
@@ -209,7 +209,7 @@ pub mod pallet {
                 data,
                 signature,
             });
-            if approvals_len >= Self::threshold(peers_len) {
+            if approvals_len >= bridge_types::utils::threshold(peers_len) {
                 let signatures = Approvals::<T>::get(network_id, data);
                 Self::deposit_event(Event::<T>::Approved {
                     network_id,
@@ -324,13 +324,6 @@ pub mod pallet {
             );
             PendingPeerUpdate::<T>::insert(network_id, false);
             Ok(().into())
-        }
-    }
-
-    impl<T: Config> Pallet<T> {
-        pub fn threshold(peers: u32) -> u32 {
-            let faulty = peers.saturating_sub(1) / 3;
-            peers - faulty
         }
     }
 }

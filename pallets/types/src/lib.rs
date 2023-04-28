@@ -45,6 +45,7 @@ pub mod types;
 
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
+pub mod utils;
 
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
