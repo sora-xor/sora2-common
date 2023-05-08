@@ -28,13 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, Error};
-use bridge_types::SubNetworkId;
+use crate::{mock::*, Error, Proof};
+use bridge_types::{SubNetworkId, types::AuxiliaryDigest};
 
 use codec::Decode;
 use frame_support::{assert_noop, assert_ok};
 // use hex_literal::hex;
 use sp_core::ecdsa;
+use sp_runtime::traits::{Keccak256, Hash};
 // use test_case::test_case;
 
 fn alice<T: crate::Config>() -> T::AccountId {
@@ -208,5 +209,34 @@ fn it_fails_delete_peer_not_existing() {
             .expect("it_works_add_peer: error reading pallet storage")
             .contains(&key)
         );
+    });
+}
+
+#[test]
+fn it_works_verify() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                test_peers(),
+            ),
+            ().into()
+        );
+        let proof = crate::Proof {
+            digest: AuxiliaryDigest {
+                logs: Vec::new()
+            },
+            proof: Vec::new(),
+        };
+        let mes = bridge_types::substrate::BridgeMessage {
+            payload: Vec::new(),
+            nonce: 0,
+            timestamp: 0,
+            fee: 0,
+        };
+        let messages = vec![mes];
+        let hash = Keccak256::hash_of(&messages);
+        assert_ok!(<TrustedVerifier as bridge_types::traits::Verifier>::verify(bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet), hash, &proof));
     });
 }
