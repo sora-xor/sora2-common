@@ -30,6 +30,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bridge_types::substrate::MultisigVerifierCall;
+use bridge_types::substrate::SubstrateBridgeMessageEncode;
+use bridge_types::traits::OutboundChannel;
 use bridge_types::types::AuxiliaryDigest;
 use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::GenericNetworkId;
@@ -38,12 +41,9 @@ use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
+use sp_core::ecdsa;
 use sp_core::RuntimeDebug;
 use sp_core::H256;
-use bridge_types::substrate::MultisigVerifierCall;
-use bridge_types::substrate::SubstrateBridgeMessageEncode;
-use bridge_types::traits::OutboundChannel;
-use sp_core::ecdsa;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
 use sp_std::collections::btree_set::BTreeSet;

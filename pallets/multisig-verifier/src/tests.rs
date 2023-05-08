@@ -32,7 +32,7 @@ use crate::{mock::*, Error};
 use bridge_types::SubNetworkId;
 
 use codec::Decode;
-use frame_support::{assert_ok, assert_noop};
+use frame_support::{assert_noop, assert_ok};
 // use hex_literal::hex;
 use sp_core::ecdsa;
 // use test_case::test_case;
@@ -41,13 +41,28 @@ fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
 }
 
-fn test_signatures() -> Vec<ecdsa::Public>{
+fn test_peers() -> Vec<ecdsa::Public> {
     vec![
-        ecdsa::Public::from_raw([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]),
-        ecdsa::Public::from_raw([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2]),
-        ecdsa::Public::from_raw([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3]),
-        ecdsa::Public::from_raw([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4]),
-        ecdsa::Public::from_raw([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5]),
+        ecdsa::Public::from_raw([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1,
+        ]),
+        ecdsa::Public::from_raw([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 2,
+        ]),
+        ecdsa::Public::from_raw([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 3,
+        ]),
+        ecdsa::Public::from_raw([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 4,
+        ]),
+        ecdsa::Public::from_raw([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 5,
+        ]),
     ]
 }
 
@@ -58,7 +73,7 @@ fn it_works_initialize_pallet() {
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
                 bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                test_signatures(),
+                test_peers(),
             ),
             ().into()
         )
@@ -75,6 +90,123 @@ fn it_fails_initialize_pallet_empty_signatures() {
                 vec![],
             ),
             Error::<Test>::InvalidInitParams
+        );
+    });
+}
+
+#[test]
+fn it_works_add_peer() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                test_peers(),
+            ),
+            ().into()
+        );
+
+        let key = ecdsa::Public::from_raw([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 6,
+        ]);
+
+        assert_ok!(
+            TrustedVerifier::add_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
+            ().into()
+        );
+
+        assert!(
+            TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(
+                SubNetworkId::Mainnet,
+            ))
+            .expect("it_works_add_peer: error reading pallet storage")
+            .contains(&key)
+        );
+    });
+}
+
+#[test]
+fn it_fails_add_peer_not_initialized() {
+    new_test_ext().execute_with(|| {
+        let key = ecdsa::Public::from_raw([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 6,
+        ]);
+
+        assert_noop!(
+            TrustedVerifier::add_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
+            Error::<Test>::NetworkNotInitialized
+        );
+    });
+}
+
+#[test]
+fn it_works_delete_peer() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                test_peers(),
+            ),
+            ().into()
+        );
+
+        let key = test_peers().last().unwrap().clone();
+
+        assert_ok!(
+            TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
+            ().into()
+        );
+
+        assert!(
+            !TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(
+                SubNetworkId::Mainnet,
+            ))
+            .expect("it_works_add_peer: error reading pallet storage")
+            .contains(&key)
+        );
+    });
+}
+
+#[test]
+fn it_fails_delete_peer_not_initialized() {
+    new_test_ext().execute_with(|| {
+        let key = test_peers().last().unwrap().clone();
+
+        assert_noop!(
+            TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
+            Error::<Test>::NetworkNotInitialized
+        );
+    });
+}
+
+#[test]
+fn it_fails_delete_peer_not_existing() {
+    new_test_ext().execute_with(|| {
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                test_peers(),
+            ),
+            ().into()
+        );
+
+        let key = test_peers().last().unwrap().clone();
+
+        assert_ok!(
+            TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
+            ().into()
+        );
+
+        assert!(
+            !TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(
+                SubNetworkId::Mainnet,
+            ))
+            .expect("it_works_add_peer: error reading pallet storage")
+            .contains(&key)
         );
     });
 }

@@ -29,7 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as trusted_verifier;
-use bridge_types::{SubNetworkId, traits::OutboundChannel};
+use bridge_types::{traits::OutboundChannel, SubNetworkId};
 use frame_support::{parameter_types, traits::Everything};
 use frame_system as system;
 use sp_core::H256;
