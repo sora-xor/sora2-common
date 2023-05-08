@@ -29,13 +29,13 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{mock::*, Error, Proof};
-use bridge_types::{SubNetworkId, types::AuxiliaryDigest};
+use bridge_types::{types::AuxiliaryDigest, SubNetworkId};
 
 use codec::Decode;
 use frame_support::{assert_noop, assert_ok};
 // use hex_literal::hex;
-use sp_core::ecdsa;
-use sp_runtime::traits::{Keccak256, Hash};
+use sp_core::{ecdsa, Pair};
+use sp_runtime::traits::{Hash, Keccak256};
 // use test_case::test_case;
 
 fn alice<T: crate::Config>() -> T::AccountId {
@@ -44,27 +44,16 @@ fn alice<T: crate::Config>() -> T::AccountId {
 
 fn test_peers() -> Vec<ecdsa::Public> {
     vec![
-        ecdsa::Public::from_raw([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1,
-        ]),
-        ecdsa::Public::from_raw([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 2,
-        ]),
-        ecdsa::Public::from_raw([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 3,
-        ]),
-        ecdsa::Public::from_raw([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 4,
-        ]),
-        ecdsa::Public::from_raw([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 5,
-        ]),
+        ecdsa::Pair::generate_with_phrase(Some("password")),
+        ecdsa::Pair::generate_with_phrase(Some("password1")),
+        ecdsa::Pair::generate_with_phrase(Some("password2")),
+        ecdsa::Pair::generate_with_phrase(Some("password3")),
+        ecdsa::Pair::generate_with_phrase(Some("password4")),
+        ecdsa::Pair::generate_with_phrase(Some("password5")),
     ]
+    .into_iter()
+    .map(|(x, _, _)| x.public())
+    .collect()
 }
 
 #[test]
@@ -145,16 +134,17 @@ fn it_fails_add_peer_not_initialized() {
 #[test]
 fn it_works_delete_peer() {
     new_test_ext().execute_with(|| {
+        let peers = test_peers();
         assert_ok!(
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
                 bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                test_peers(),
+                peers.clone(),
             ),
             ().into()
         );
 
-        let key = test_peers().last().unwrap().clone();
+        let key = peers.last().unwrap().clone();
 
         assert_ok!(
             TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
@@ -186,16 +176,17 @@ fn it_fails_delete_peer_not_initialized() {
 #[test]
 fn it_fails_delete_peer_not_existing() {
     new_test_ext().execute_with(|| {
+        let peers = test_peers();
         assert_ok!(
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
                 bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                test_peers(),
+                peers.clone(),
             ),
             ().into()
         );
 
-        let key = test_peers().last().unwrap().clone();
+        let key = peers.last().unwrap().clone();
 
         assert_ok!(
             TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
@@ -215,18 +206,17 @@ fn it_fails_delete_peer_not_existing() {
 #[test]
 fn it_works_verify() {
     new_test_ext().execute_with(|| {
+        let peers = test_peers();
         assert_ok!(
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
                 bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                test_peers(),
+                peers,
             ),
             ().into()
         );
-        let proof = crate::Proof {
-            digest: AuxiliaryDigest {
-                logs: Vec::new()
-            },
+        let proof = Proof {
+            digest: AuxiliaryDigest { logs: Vec::new() },
             proof: Vec::new(),
         };
         let mes = bridge_types::substrate::BridgeMessage {
@@ -235,8 +225,14 @@ fn it_works_verify() {
             timestamp: 0,
             fee: 0,
         };
+
+
         let messages = vec![mes];
         let hash = Keccak256::hash_of(&messages);
-        assert_ok!(<TrustedVerifier as bridge_types::traits::Verifier>::verify(bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet), hash, &proof));
+        assert_ok!(<TrustedVerifier as bridge_types::traits::Verifier>::verify(
+            bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+            hash,
+            &proof
+        ));
     });
 }
