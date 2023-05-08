@@ -30,29 +30,16 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// use bridge_common::simplified_proof::*;
-// use bridge_common::beefy_types::*;
 use bridge_types::types::AuxiliaryDigest;
 use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::GenericNetworkId;
-// use bridge_types::types::AuxiliaryDigest;
-// use bridge_types::types::AuxiliaryDigestItem;
-// use bridge_types::SubNetworkId;
 use frame_support::ensure;
-// use frame_support::fail;
-// use frame_support::log;
 use frame_support::pallet_prelude::*;
-// use frame_support::traits::Randomness;
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::RuntimeDebug;
 use sp_core::H256;
-// use sp_io::hashing::keccak_256;
-// use sp_runtime::traits::Hash;
-// use sp_runtime::traits::Keccak256;
-// use sp_runtime::DispatchError;
-// use sp_std::collections::vec_deque::VecDeque;
 use bridge_types::substrate::MultisigVerifierCall;
 use bridge_types::substrate::SubstrateBridgeMessageEncode;
 use bridge_types::traits::OutboundChannel;
