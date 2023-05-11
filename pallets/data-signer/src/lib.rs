@@ -33,7 +33,7 @@
 use bridge_types::substrate::DataSignerCall;
 pub use pallet::*;
 
-pub(crate) const LOG_TARGET: &str = "runtime::staking";
+pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 
 // syntactic sugar for logging.
 #[macro_export]
