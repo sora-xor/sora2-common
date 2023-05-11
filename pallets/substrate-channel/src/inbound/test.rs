@@ -48,7 +48,6 @@ use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
 use bridge_types::traits::MessageDispatch;
-// use bridge_types::types::ParachainMessage;
 use bridge_types::{GenericNetworkId, U256};
 use traits::parameter_type_with_key;
 
@@ -244,8 +243,6 @@ impl pallet_timestamp::Config for Test {
 impl bridge_inbound_channel::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
-    // type ProvedMessage = ParachainMessage<Balance>;
-    // type Proof = Vec<u8>;
     type MessageDispatch = MockMessageDispatch;
     type FeeConverter = FeeConverter<Self>;
     type FeeAssetId = GetBaseAssetId;
