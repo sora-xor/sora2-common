@@ -41,13 +41,13 @@ use frame_support::pallet_prelude::*;
 use frame_support::{BoundedBTreeSet, BoundedVec};
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
+use scale_info::prelude::vec::Vec;
 use sp_core::ecdsa;
 use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
 use sp_std::collections::btree_set::BTreeSet;
-use sp_std::vec::Vec;
 
 #[cfg(test)]
 mod mock;
