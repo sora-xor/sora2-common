@@ -33,6 +33,19 @@
 use bridge_types::substrate::DataSignerCall;
 pub use pallet::*;
 
+pub(crate) const LOG_TARGET: &str = "runtime::staking";
+
+// syntactic sugar for logging.
+#[macro_export]
+macro_rules! log {
+	($level:tt, $patter:expr $(, $values:expr)* $(,)?) => {
+		frame_support::log::$level!(
+			target: crate::LOG_TARGET,
+			concat!("[{:?}] 💸 ", $patter), <frame_system::Pallet<T>>::block_number() $(, $values)*
+		)
+	};
+}
+
 impl<T: Config> From<DataSignerCall> for Call<T> {
     fn from(value: DataSignerCall) -> Self {
         match value {
@@ -52,12 +65,15 @@ pub mod pallet {
     use bridge_types::types::CallOriginOutput;
     use bridge_types::{GenericNetworkId, SubNetworkId, H256};
     use frame_support::dispatch::Pays;
+    use frame_support::fail;
+    use frame_support::BoundedBTreeMap;
     use frame_support::{pallet_prelude::*, BoundedBTreeSet, BoundedVec};
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use sp_core::ecdsa;
     use sp_core::Get;
+    use sp_core::TryCollect;
     use sp_std::collections::btree_set::BTreeSet;
 
     /// BEEFY-MMR pallet.
@@ -77,6 +93,14 @@ pub mod pallet {
             Self::RuntimeOrigin,
             Success = CallOriginOutput<SubNetworkId, H256, ()>,
         >;
+
+        /// A configuration for base priority of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedPriority: Get<TransactionPriority>;
+
+        /// A configuration for longevity of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedLongevity: Get<u64>;
 
         #[pallet::constant]
         type MaxPeers: Get<u32>;
@@ -124,6 +148,7 @@ pub mod pallet {
         HasPendingPeerUpdate,
         DontHavePendingPeerUpdates,
         NetworkNotSupported,
+        SignatureAlreadyExists,
     }
 
     /// Peers
@@ -152,7 +177,7 @@ pub mod pallet {
         GenericNetworkId,
         Identity,
         H256,
-        BoundedVec<ecdsa::Signature, T::MaxPeers>,
+        BoundedBTreeMap<ecdsa::Public, ecdsa::Signature, T::MaxPeers>,
         ValueQuery,
     >;
 
@@ -193,24 +218,32 @@ pub mod pallet {
             data: H256,
             signature: ecdsa::Signature,
         ) -> DispatchResultWithPostInfo {
-            let _who = ensure_signed(origin)?;
+            let _who = ensure_none(origin)?;
             let public = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&signature.0, &data.0)
                 .map_err(|_| Error::<T>::FailedToVerifySignature)?;
             let public = ecdsa::Public::from_raw(public);
             let peers = Peers::<T>::get(network_id).ok_or(Error::<T>::PalletNotInitialized)?;
             ensure!(peers.contains(&public), Error::<T>::PeerNotFound);
-            Approvals::<T>::try_append(network_id, data, &signature)
+            let mut approvals = Approvals::<T>::get(network_id, data);
+            if approvals.contains_key(&public) {
+                fail!(Error::<T>::SignatureAlreadyExists);
+            }
+            approvals
+                .try_insert(public, signature.clone())
                 .map_err(|_| Error::<T>::TooMuchApprovals)?;
-            let approvals_len =
-                Approvals::<T>::decode_len(network_id, data).unwrap_or_default() as u32;
+            Approvals::<T>::insert(network_id, data, &approvals);
             let peers_len = peers.len() as u32;
             Self::deposit_event(Event::<T>::ApprovalAccepted {
                 network_id,
                 data,
                 signature,
             });
-            if approvals_len >= bridge_types::utils::threshold(peers_len) {
-                let signatures = Approvals::<T>::get(network_id, data);
+            if (approvals.len() as u32) >= bridge_types::utils::threshold(peers_len) {
+                let signatures = approvals
+                    .values()
+                    .cloned()
+                    .try_collect()
+                    .map_err(|_| Error::<T>::TooMuchApprovals)?;
                 Self::deposit_event(Event::<T>::Approved {
                     network_id,
                     data,
@@ -324,6 +357,40 @@ pub mod pallet {
             );
             PendingPeerUpdate::<T>::insert(network_id, false);
             Ok(().into())
+        }
+    }
+
+    #[pallet::validate_unsigned]
+    impl<T: Config> ValidateUnsigned for Pallet<T> {
+        type Call = Call<T>;
+        // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
+        fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if let Call::approve {
+                network_id,
+                data,
+                signature,
+            } = call
+            {
+                let peers = Peers::<T>::get(network_id).ok_or(InvalidTransaction::BadSigner)?;
+                let public =
+                    sp_io::crypto::secp256k1_ecdsa_recover_compressed(&signature.0, &data.0)
+                        .map_err(|_| InvalidTransaction::BadProof)?;
+                let public = ecdsa::Public::from_raw(public);
+                ensure!(peers.contains(&public), InvalidTransaction::BadSigner);
+                let approvals = Approvals::<T>::get(network_id, data);
+                if approvals.contains_key(&public) {
+                    fail!(InvalidTransaction::Stale);
+                }
+                ValidTransaction::with_tag_prefix("DataSignerApprove")
+                    .priority(T::UnsignedPriority::get())
+                    .longevity(T::UnsignedLongevity::get())
+                    .and_provides((data, public))
+                    .propagate(true)
+                    .build()
+            } else {
+                log!(warn, "Unknown unsigned call, can't validate");
+                InvalidTransaction::Call.into()
+            }
         }
     }
 }
