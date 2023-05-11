@@ -126,6 +126,11 @@ impl<OuterOrigin> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallO
             additional: (),
         })
     }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn try_successful_origin() -> Result<OuterOrigin, ()> {
+        todo!()
+    }
 }
 
 // Build genesis storage according to the mock runtime.
