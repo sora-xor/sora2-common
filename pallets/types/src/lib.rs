@@ -45,6 +45,7 @@ pub mod types;
 
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
+pub mod utils;
 
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
@@ -115,6 +116,22 @@ pub enum SubNetworkId {
 pub enum GenericNetworkId {
     EVM(EVMChainId),
     Sub(SubNetworkId),
+}
+
+impl GenericNetworkId {
+    pub fn evm(self) -> Option<EVMChainId> {
+        match self {
+            Self::EVM(chain_id) => Some(chain_id),
+            _ => None,
+        }
+    }
+
+    pub fn sub(self) -> Option<SubNetworkId> {
+        match self {
+            Self::Sub(network_id) => Some(network_id),
+            _ => None,
+        }
+    }
 }
 
 impl From<EVMChainId> for GenericNetworkId {

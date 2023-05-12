@@ -222,6 +222,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
     type WeightInfo = ();
+    type BalanceConverter = ();
 }
 
 impl pallet_timestamp::Config for Test {
@@ -261,6 +262,9 @@ impl substrate_app::Config for Test {
     type AssetRegistry = AssetRegistryImpl;
     type Currency = Currencies;
     type WeightInfo = ();
+    type AccountIdConverter = sp_runtime::traits::ConvertInto;
+    type AssetIdConverter = ();
+    type BalanceConverter = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

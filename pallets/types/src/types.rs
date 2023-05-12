@@ -99,25 +99,6 @@ impl MessageId {
 pub type BatchNonce = u64;
 pub type MessageNonce = u64;
 
-/// A message relayed from Ethereum.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-pub struct Message {
-    /// The raw message data.
-    pub data: Vec<u8>,
-    /// Input to the message verifier
-    pub proof: Proof,
-}
-
-/// A message relayed from Parachain.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct ParachainMessage<Balance> {
-    pub payload: Vec<u8>,
-    pub nonce: MessageNonce,
-    pub timestamp: u64,
-    pub fee: Balance,
-}
-
 /// Verification input for the message verifier.
 ///
 /// This data type allows us to support multiple verification schemes. In the near future,

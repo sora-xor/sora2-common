@@ -33,8 +33,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-
-use bridge_types::types::ParachainMessage;
+use bridge_types::substrate::BridgeMessage;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_system::{self, EventRecord, RawOrigin};
 use sp_std::prelude::*;
@@ -61,20 +60,19 @@ fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::Runti
 // We rely on configuration via chain spec of the app pallets because
 // we don't have access to their storage here.
 benchmarks! {
-    where_clause { where T::ProvedMessage: From<ParachainMessage<BalanceOf<T>>> }
+    where_clause { where <<T as Config>::Verifier as Verifier>::Proof: Default }
     // Benchmark `submit` extrinsic under worst case conditions:
     // * `submit` dispatches the DotApp::unlock call
     // * `unlock` call successfully unlocks DOT
     submit {
         let caller: T::AccountId = whitelisted_caller();
-        let fee = BalanceOf::<T>::zero();
-        let message = ParachainMessage {
+        let message = vec![BridgeMessage {
             nonce: 1,
             timestamp: 0,
-            fee,
+            fee: 0,
             payload: Default::default(),
-        };
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message.into())
+        }];
+    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message, Default::default())
     verify {
         assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 

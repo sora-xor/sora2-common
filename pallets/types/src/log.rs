@@ -75,6 +75,15 @@ impl From<Log> for RawLog {
     }
 }
 
+impl rlp::Encodable for Log {
+    fn rlp_append(&self, s: &mut rlp::RlpStream) {
+        s.begin_list(3);
+        s.append(&self.address);
+        s.append_list(&self.topics);
+        s.append(&self.data);
+    }
+}
+
 #[cfg(test)]
 mod tests {
 

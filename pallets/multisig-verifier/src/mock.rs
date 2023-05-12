@@ -28,8 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate as beefy_light_client;
-use bridge_types::SubNetworkId;
+use crate as trusted_verifier;
+use bridge_types::{traits::OutboundChannel, SubNetworkId};
 use frame_support::{parameter_types, traits::Everything};
 use frame_system as system;
 use sp_core::H256;
@@ -49,7 +49,7 @@ frame_support::construct_runtime!(
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        BeefyLightClient: beefy_light_client::{Pallet, Call, Storage, Event<T>},
+        TrustedVerifier: trusted_verifier::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -57,7 +57,10 @@ parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const SS58Prefix: u8 = 42;
     pub const SidechainRandomnessNetwork: SubNetworkId = SubNetworkId::Mainnet;
+    pub const BridgeMaxPeers: u32 = 50;
 }
+
+pub type AccountId = u64;
 
 impl system::Config for Test {
     type BaseCallFilter = Everything;
@@ -86,9 +89,50 @@ impl system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl beefy_light_client::Config for Test {
+impl trusted_verifier::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type Randomness = beefy_light_client::SidechainRandomness<Test, SidechainRandomnessNetwork>;
+    type CallOrigin = TestCallOrigin;
+    type OutboundChannel = TestOutboundChannel;
+    type MaxPeers = BridgeMaxPeers;
+}
+
+pub struct TestOutboundChannel;
+impl OutboundChannel<SubNetworkId, AccountId, ()> for TestOutboundChannel {
+    fn submit(
+        _network_id: SubNetworkId,
+        _who: &system::RawOrigin<AccountId>,
+        _payload: &[u8],
+        _additional: (),
+    ) -> Result<H256, sp_runtime::DispatchError> {
+        Ok([
+            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1,
+        ]
+        .into())
+    }
+}
+
+pub struct TestCallOrigin;
+impl<OuterOrigin> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallOrigin {
+    type Success = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
+
+    fn try_origin(_o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
+        Ok(bridge_types::types::CallOriginOutput {
+            network_id: SubNetworkId::Mainnet,
+            message_id: [
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                1, 1, 1, 1,
+            ]
+            .into(),
+            timestamp: 0,
+            additional: (),
+        })
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn try_successful_origin() -> Result<OuterOrigin, ()> {
+        todo!()
+    }
 }
 
 // Build genesis storage according to the mock runtime.

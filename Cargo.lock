@@ -356,6 +356,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "bridge-data-signer"
+version = "0.1.1"
+dependencies = [
+ "bridge-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "bridge-types"
 version = "0.1.0"
 dependencies = [
@@ -1966,6 +1985,30 @@ dependencies = [
  "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.45.0",
+]
+
+[[package]]
+name = "multisig-verifier"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bridge-common",
+ "bridge-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "serde_json",
+ "sp-beefy",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+ "test-case",
 ]
 
 [[package]]

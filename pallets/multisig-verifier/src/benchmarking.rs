@@ -28,43 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bridge_types::CHANNEL_INDEXING_PREFIX;
-use codec::{Decode, Encode};
+use super::*;
 
-use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
-use sp_api::offchain::OffchainStorage;
-
-use sp_core::H256;
-pub use substrate_bridge_channel::outbound::Commitment;
-
-#[rpc(server, client)]
-pub trait BridgeChannelAPI {
-    #[method(name = "substrateBridgeChannel_commitment")]
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>>;
-}
-
-pub struct BridgeChannelClient<S> {
-    storage: S,
-}
-
-impl<S> BridgeChannelClient<S> {
-    /// Construct default `Template`.
-    pub fn new(storage: S) -> Self {
-        Self { storage }
-    }
-}
-
-impl<S> BridgeChannelAPIServer for BridgeChannelClient<S>
-where
-    S: OffchainStorage + 'static,
-{
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>> {
-        let key = (CHANNEL_INDEXING_PREFIX, commitment_hash).encode();
-        Ok(self
-            .storage
-            .get(sp_offchain::STORAGE_PREFIX, &key)
-            .map(|value| Decode::decode(&mut &*value))
-            .transpose()
-            .map_err(anyhow::Error::from)?)
-    }
-}
+// #[allow(unused)]
+// use crate::Pallet as BeefyLightClient;
+// use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+// use frame_system::RawOrigin;

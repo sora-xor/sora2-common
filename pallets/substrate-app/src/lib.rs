@@ -54,7 +54,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use bridge_types::substrate::SubstrateAppMessage;
+use bridge_types::substrate::{MainnetAccountId, MainnetAssetId, MainnetBalance, SubstrateAppCall};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
@@ -65,25 +65,30 @@ pub use weights::WeightInfo;
 
 pub use pallet::*;
 
-impl<T: Config> From<SubstrateAppMessage<T::AccountId, AssetIdOf<T>, BalanceOf<T>>> for Call<T> {
-    fn from(value: SubstrateAppMessage<T::AccountId, AssetIdOf<T>, BalanceOf<T>>) -> Self {
+impl<T: Config> From<SubstrateAppCall> for Call<T>
+where
+    T::AccountId: From<MainnetAccountId>,
+    AssetIdOf<T>: From<MainnetAssetId>,
+    BalanceOf<T>: From<MainnetBalance>,
+{
+    fn from(value: SubstrateAppCall) -> Self {
         match value {
-            SubstrateAppMessage::Transfer {
+            SubstrateAppCall::Transfer {
                 sender,
                 recipient,
                 amount,
                 asset_id,
             } => Call::mint {
                 sender,
-                recipient,
-                amount,
-                asset_id,
+                recipient: recipient.into(),
+                amount: amount.into(),
+                asset_id: asset_id.into(),
             },
-            SubstrateAppMessage::FinalizeAssetRegistration {
+            SubstrateAppCall::FinalizeAssetRegistration {
                 asset_id,
                 asset_kind,
             } => Call::finalize_asset_registration {
-                asset_id,
+                asset_id: asset_id.into(),
                 asset_kind,
             },
         }
@@ -96,7 +101,8 @@ pub mod pallet {
     use super::*;
 
     use bridge_types::substrate::{
-        ParachainAccountId, ParachainAssetId, SubstrateBridgeMessageEncode, XCMAppMessage,
+        MainnetAccountId, MainnetAssetId, MainnetBalance, ParachainAccountId, ParachainAssetId,
+        SubstrateBridgeMessageEncode, XCMAppCall,
     };
     use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::{AssetKind, CallOriginOutput};
@@ -104,7 +110,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
-    use sp_runtime::traits::Zero;
+    use sp_runtime::traits::{Convert, Zero};
     use traits::currency::MultiCurrency;
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -156,6 +162,12 @@ pub mod pallet {
         type BridgeAccountId: Get<Self::AccountId>;
 
         type Currency: MultiCurrency<Self::AccountId>;
+
+        type AccountIdConverter: Convert<Self::AccountId, MainnetAccountId>;
+
+        type AssetIdConverter: Convert<AssetIdOf<Self>, MainnetAssetId>;
+
+        type BalanceConverter: Convert<BalanceOf<Self>, MainnetBalance>;
 
         type WeightInfo: WeightInfo;
     }
@@ -351,8 +363,8 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                &XCMAppMessage::<T::AccountId, AssetIdOf<T>, BalanceOf<T>>::RegisterAsset {
-                    asset_id,
+                &XCMAppCall::RegisterAsset {
+                    asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset,
                     asset_kind,
                 }
@@ -390,11 +402,11 @@ pub mod pallet {
             let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
-                &XCMAppMessage::Transfer {
+                &XCMAppCall::Transfer {
                     recipient: recipient.clone(),
-                    amount,
-                    asset_id,
-                    sender: who.clone(),
+                    amount: T::BalanceConverter::convert(amount),
+                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    sender: T::AccountIdConverter::convert(who.clone()),
                 }
                 .prepare_message(),
                 (),
