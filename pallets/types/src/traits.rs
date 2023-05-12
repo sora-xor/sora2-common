@@ -78,6 +78,7 @@ pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
         payload: &[u8],
         additional: Additional,
     );
+
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::RuntimeEvent>;
 }
@@ -186,16 +187,14 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
 pub trait GasTracker<Balance> {
     /// Records fee paid.
     /// `network_id`: Ethereum-like network ID
-    /// `message_id`: relayed message ID
-    /// `ethereum_tx_hash`: tx hash on Ethereum-based side
+    /// `batch_nonce`: relayed batch nonce
     /// `ethereum_relayer_address`: address of relayer on Ethereum-based network (who paid fee)
-    /// `gas_used`: gas used for relay tx
-    /// `gas_price`: gas price of relay tx
+    /// `gas_used`: gas used for batch relaying
+    /// `gas_price`: base fee on Ethereum-based network for batch relaying
     /// fee is `gas_used` * `gas_price`
     fn record_tx_fee(
         network_id: GenericNetworkId,
-        message_id: H256,
-        ethereum_tx_hash: H256,
+        message_id: u64,
         ethereum_relayer_address: Address,
         gas_used: U256,
         gas_price: U256,
@@ -205,8 +204,7 @@ pub trait GasTracker<Balance> {
 impl<Balance> GasTracker<Balance> for () {
     fn record_tx_fee(
         _network_id: GenericNetworkId,
-        _message_id: H256,
-        _ethereum_tx_hash: H256,
+        _batch_nonce: u64,
         _ethereum_relayer_address: Address,
         _gas_used: U256,
         _gas_price: U256,
