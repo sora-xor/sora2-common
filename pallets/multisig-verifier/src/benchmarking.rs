@@ -60,7 +60,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 benchmarks! {
     // todo: do bench according to number of keys
     initialize {
-        let n in 1 .. 10;
+        let n in 1 .. <T as Config>::MaxPeers::get();
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
         let keys = initial_keys::<T>(n as usize);
     }: _(RawOrigin::Root, network_id, keys.into())
@@ -82,11 +82,10 @@ benchmarks! {
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
         initialize_network::<T>(network_id, 3);
-        let key = ecdsa::Pair::generate_with_phrase(Some("key0")).0.into();
-        
+        let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
+        MultisigVerifier::<T>::add_peer(RawOrigin::Root.into(), key).expect("remove_peer: Error adding peer");
     }: _(RawOrigin::Root, key)
     verify {
-        // assert_last_event::<T>(Event::PeerRemoved(key).into())
         assert!(!MultisigVerifier::<T>::get_peer_keys(GenericNetworkId::Sub(SubNetworkId::Mainnet)).expect("add_peer: No key found").contains(&key));
     }
 

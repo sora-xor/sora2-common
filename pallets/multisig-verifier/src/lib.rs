@@ -75,6 +75,10 @@ impl<T: Config> From<MultisigVerifierCall> for Call<T> {
     }
 }
 
+fn initialize_get_weight(len: usize) -> Weight {
+    Weight::zero()
+}
+
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -173,7 +177,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(0)]
+        #[pallet::weight(initialize_get_weight(peers.len()))]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
