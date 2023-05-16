@@ -94,6 +94,7 @@ impl trusted_verifier::Config for Test {
     type CallOrigin = TestCallOrigin;
     type OutboundChannel = TestOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
+    type WeightInfo = ();
 }
 
 pub struct TestOutboundChannel;

@@ -31,18 +31,22 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use frame_benchmarking::{benchmarks};
-use frame_system::{RawOrigin, self};
-use frame_support::assert_ok;
-use sp_core::{ecdsa, Pair};
 use crate::Pallet as MultisigVerifier;
 use bridge_types::EVMChainId;
-use bridge_types::{SubNetworkId, GenericNetworkId};
+use bridge_types::{GenericNetworkId, SubNetworkId};
+use frame_benchmarking::benchmarks;
+use frame_support::assert_ok;
+use frame_system::{self, RawOrigin};
+use sp_core::{ecdsa, Pair};
 
 fn initial_keys<T: Config>(n: usize) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers> {
     let mut keys = Vec::new();
     for i in 0..n {
-        keys.push(ecdsa::Pair::generate_with_phrase(Some(format!("key{}", i).as_str())).0.into());
+        keys.push(
+            ecdsa::Pair::generate_with_phrase(Some(format!("key{}", i).as_str()))
+                .0
+                .into(),
+        );
     }
 
     keys.try_into().unwrap()
@@ -50,11 +54,15 @@ fn initial_keys<T: Config>(n: usize) -> BoundedVec<ecdsa::Public, <T as Config>:
 
 fn initialize_network<T: Config>(network_id: GenericNetworkId, n: usize) {
     let keys = initial_keys::<T>(n);
-    assert_ok!(MultisigVerifier::<T>::initialize(RawOrigin::Root.into(), network_id, keys));
+    assert_ok!(MultisigVerifier::<T>::initialize(
+        RawOrigin::Root.into(),
+        network_id,
+        keys
+    ));
 }
 
 fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+    frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
 benchmarks! {
@@ -71,7 +79,7 @@ benchmarks! {
     add_peer {
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
-        initialize_network::<T>(network_id, 3); 
+        initialize_network::<T>(network_id, 3);
         let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
     }: _(RawOrigin::Root, key)
     verify {

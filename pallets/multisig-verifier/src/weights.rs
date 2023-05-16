@@ -28,18 +28,47 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![cfg_attr(rustfmt, rustfmt_skip)]
+#![allow(unused_parens)]
+#![allow(unused_imports)]
 
-pub mod beefy_types;
-pub mod bitfield;
-pub mod simplified_proof;
+use frame_support::{traits::Get, weights::Weight};
+use core::marker::PhantomData;
+use bridge_common::{EXTRINSIC_FIXED_WEIGHT, FIXED_TIME};
 
-use frame_support::weights::Weight;
-use scale_info::prelude::vec::Vec;
+/// Weight functions
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
+    fn initialize(len: usize) -> Weight {
+        crate::initialize_calculate_weight(len, 25_000_000, 10_000_000, 1)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+    }
 
-pub fn concat_u8(slice: &[&[u8]]) -> Vec<u8> {
-    slice.concat()
+    fn add_peer() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+    }
+
+    fn remove_peer() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+    }
 }
 
-pub const FIXED_TIME: u64 = 100_000_000;
-pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_ref_time(FIXED_TIME);
+
+impl crate::WeightInfo for () {
+    fn initialize(len: usize) -> Weight {
+        Weight::from_ref_time(FIXED_TIME*(len as u64))
+    }
+
+    fn add_peer() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn remove_peer() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+}

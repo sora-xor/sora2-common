@@ -58,6 +58,8 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+mod weights;
+
 pub use pallet::*;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
@@ -75,8 +77,8 @@ impl<T: Config> From<MultisigVerifierCall> for Call<T> {
     }
 }
 
-fn initialize_get_weight(len: usize) -> Weight {
-    Weight::zero()
+pub fn initialize_calculate_weight(len: usize, base_time: u64, mul_time: u64, coef: u64) -> Weight {
+    Weight::from_ref_time(base_time + ((len as u64) * coef * mul_time))
 }
 
 #[frame_support::pallet]
@@ -100,6 +102,8 @@ pub mod pallet {
 
         #[pallet::constant]
         type MaxPeers: Get<u32>;
+
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -177,7 +181,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(initialize_get_weight(peers.len()))]
+        #[pallet::weight(<T as Config>::WeightInfo::initialize(peers.len()))]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -229,7 +233,10 @@ pub mod pallet {
 
         #[pallet::call_index(2)]
         #[pallet::weight(0)]
-        pub fn remove_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
+        pub fn remove_peer(
+            origin: OriginFor<T>,
+            peer: ecdsa::Public,
+        ) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             frame_support::log::info!("Call remove_peer {:?} by {:?}", peer, output);
             PeerKeys::<T>::try_mutate(
@@ -249,8 +256,7 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 output.network_id.into(),
                 &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }
-                    .prepare_message(),
+                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }.prepare_message(),
                 (),
             )?;
 
@@ -333,4 +339,12 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
 
         Ok(())
     }
+}
+
+pub trait WeightInfo {
+    fn initialize(len: usize) -> Weight;
+
+    fn add_peer() -> Weight;
+
+    fn remove_peer() -> Weight;
 }
