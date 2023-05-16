@@ -28,19 +28,18 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, Error, Event};
-use bridge_types::{SubNetworkId};
+use crate::{mock::*, Error, };
+use bridge_types::{SubNetworkId, H256, U256};
 use frame_support::{assert_noop, assert_ok};
 use codec::Decode;
 use sp_core::{ecdsa, Pair, bounded::{BoundedVec}};
-use frame_system::Config;
 
 fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
 }
 
-fn test_peers() -> Vec<ecdsa::Public> {
-    vec![
+fn test_peers() -> (Vec<ecdsa::Public>, Vec<ecdsa::Pair>) {
+    let pairs: Vec<ecdsa::Pair> = vec![
         ecdsa::Pair::generate_with_phrase(Some("password")),
         ecdsa::Pair::generate_with_phrase(Some("password1")),
         ecdsa::Pair::generate_with_phrase(Some("password2")),
@@ -49,15 +48,20 @@ fn test_peers() -> Vec<ecdsa::Public> {
         ecdsa::Pair::generate_with_phrase(Some("password5")),
     ]
     .into_iter()
-    .map(|(x, _, _)| x.public())
-    .collect()
+    .map(|(x, _, _)| x)
+    .collect();
+    (pairs.clone().iter().map(|x| x.public()).collect(), pairs)
+}
+
+fn test_signer() -> ecdsa::Pair {
+    ecdsa::Pair::generate_with_phrase(Some("something")).0
 }
 
 #[test]
 fn it_works_register_network() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
-        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = test_peers().try_into().unwrap();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = test_peers().0.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(), 
@@ -95,16 +99,426 @@ fn it_fails_register_network_alredy_initialized() {
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(), 
             network_id,
-            test_peers().try_into().unwrap(),
+            test_peers().0.try_into().unwrap(),
         ));
 
         assert_noop!(
             DataSigner::register_network(
                 RuntimeOrigin::root(), 
                 network_id,
-                test_peers().try_into().unwrap(),
+                test_peers().0.try_into().unwrap(),
             ),
             Error::<Test>::PalletInitialized
         );
     });
+}
+
+#[test]
+fn it_works_approve() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, pairs) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let data = [1u8; 32];
+        let signature = pairs[0].sign(&data);
+        assert!(DataSigner::peers(network_id).unwrap().contains(&peers[0]));
+        assert!(DataSigner::peers(network_id).unwrap().contains(&pairs[0].public()));
+        assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
+
+        assert_ok!(DataSigner::approve(
+            RuntimeOrigin::none(), 
+            network_id,
+            H256::from(data),
+            signature,
+        ));
+
+        assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
+    });
+}
+
+#[test]
+fn it_fails_approve_nonexisted_peer() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers,
+        ));
+
+        let data = [1u8; 32];
+        let signature = test_signer().sign(&data);
+        assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
+
+        assert_noop!(DataSigner::approve(
+            RuntimeOrigin::none(), 
+            network_id,
+            H256::from(data),
+            signature,
+        ), Error::<Test>::PeerNotFound);
+
+        assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
+    });
+}
+
+#[test]
+fn it_fails_approve_sign_already_exist() {
+    new_test_ext().execute_with(|| {
+        todo!("implement")
+    });
+}
+
+#[test]
+fn it_works_add_peer() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers,
+        ));
+
+        let new_peer = test_signer().public();
+        assert_ok!(DataSigner::add_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            new_peer,
+        ));
+
+        assert!(DataSigner::pending_peer_update(network_id));
+        todo!("check OutboundChannel")
+    });
+}
+
+#[test]
+fn it_fails_add_peer_pending_update() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers,
+        ));
+
+        let new_peer = test_signer().public();
+        assert_ok!(DataSigner::add_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            new_peer,
+        ));
+
+        // cannot add another peer while pending peer update
+        let new_peer = test_signer().public();
+        assert_noop!(DataSigner::add_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            new_peer,
+        ), Error::<Test>::HasPendingPeerUpdate);
+
+        assert!(DataSigner::pending_peer_update(network_id));
+    });
+}
+
+#[test]
+fn it_fails_add_peer_already_exists() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let peer = peers[0];
+        assert_noop!(DataSigner::add_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peer,
+        ), Error::<Test>::PeerExists);
+
+        assert!(!DataSigner::pending_peer_update(network_id));
+    });
+}
+
+#[test]
+fn it_fails_add_peer_evm_network_not_supported(){
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::EVM(U256::from(1));
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers,
+        ));
+
+        let new_peer = test_signer().public();
+        assert_noop!(DataSigner::add_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            new_peer,
+        ), Error::<Test>::NetworkNotSupported);
+    });
+}
+
+#[test]
+fn it_works_remove_peer() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let peer = peers[0];
+        assert_ok!(DataSigner::remove_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peer,
+        ));
+
+        assert!(DataSigner::pending_peer_update(network_id));
+        todo!("check OutboundChannel");
+    });
+}
+
+#[test]
+fn it_fails_remove_peer_pending_update() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let peer = peers[0];
+        assert_ok!(DataSigner::remove_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peer,
+        ));
+
+        // cannot remove another peer while pending peer update
+        let peer = peers[1];
+        assert_noop!(DataSigner::remove_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peer,
+        ), Error::<Test>::HasPendingPeerUpdate);
+
+        assert!(DataSigner::pending_peer_update(network_id));
+    });
+}
+
+#[test]
+fn it_fails_remove_peer_evm_network_not_supported() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::EVM(U256::from(1));
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let peer = peers[0];
+        assert_noop!(DataSigner::remove_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peer,
+        ), Error::<Test>::NetworkNotSupported);
+    })
+}
+
+#[test]
+fn it_works_finish_remove_peer() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let peer = peers[0];
+        assert_ok!(DataSigner::remove_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peer,
+        ));
+
+        assert!(DataSigner::pending_peer_update(network_id));
+
+        assert_ok!(DataSigner::finish_remove_peer(
+            RuntimeOrigin::root(), 
+            peer
+        ));
+
+        assert!(!DataSigner::pending_peer_update(network_id));
+        assert!(!DataSigner::peers(network_id).unwrap().contains(&peer));
+    });
+}
+
+#[test]
+fn it_fails_finish_remove_peer_no_updates() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let peer = peers[0];
+        assert!(!DataSigner::pending_peer_update(network_id));
+
+        assert_noop!(DataSigner::finish_remove_peer(
+            RuntimeOrigin::root(), 
+            peer
+        ), Error::<Test>::DontHavePendingPeerUpdates);
+    })
+}
+
+#[test]
+fn it_fails_finish_remove_not_initialized() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let peer = test_signer().public();
+
+        assert_ok!(DataSigner::remove_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peer,
+        ));
+
+        assert_noop!(DataSigner::finish_remove_peer(
+            RuntimeOrigin::root(), 
+            peer
+        ), Error::<Test>::PalletNotInitialized);
+    })
+}
+
+#[test]
+fn it_fails_finish_remove_peer_not_exist() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        assert_ok!(DataSigner::remove_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers[0],
+        ));
+        
+        assert!(DataSigner::pending_peer_update(network_id));
+        let peer = test_signer().public();
+
+        assert_noop!(DataSigner::finish_remove_peer(
+            RuntimeOrigin::root(), 
+            peer
+        ), Error::<Test>::PeerNotExists);
+    })
+}
+
+#[test]
+fn it_works_finish_add_peer() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let new_peer = test_signer().public();
+        assert_ok!(DataSigner::add_peer(
+            RuntimeOrigin::root(), 
+            network_id,
+            new_peer,
+        ));
+
+        assert!(DataSigner::pending_peer_update(network_id));
+
+        assert_ok!(DataSigner::finish_add_peer(
+            RuntimeOrigin::root(), 
+            new_peer
+        ));
+
+        assert!(!DataSigner::pending_peer_update(network_id));
+        assert!(DataSigner::peers(network_id).unwrap().contains(&new_peer));
+    });
+}
+
+#[test]
+fn it_fails_add_peer_no_pending_update(){
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let new_peer = test_signer().public();
+        assert_noop!(DataSigner::finish_add_peer(
+            RuntimeOrigin::root(), 
+            new_peer
+        ), Error::<Test>::DontHavePendingPeerUpdates);
+    });
+}
+
+#[test]
+fn testing_signer() {
+    let (peers, pairs) = test_peers();
+
+    assert_eq!(peers[0], pairs[0].public());
 }
