@@ -31,8 +31,12 @@
 use crate::{mock::*, Error, };
 use bridge_types::{SubNetworkId, H256, U256};
 use frame_support::{assert_noop, assert_ok};
-use codec::Decode;
-use sp_core::{ecdsa, Pair, bounded::{BoundedVec}};
+use codec::{Decode};
+use sp_core::{ecdsa::{self, Signature}, Pair, bounded::{BoundedVec}};
+use super::{Call};
+use sp_runtime::transaction_validity::{
+    InvalidTransaction,  TransactionSource, TransactionValidity, ValidTransaction
+};
 
 fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
@@ -112,7 +116,7 @@ fn it_fails_register_network_alredy_initialized() {
         );
     });
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_works_approve() {
     new_test_ext().execute_with(|| {
@@ -127,7 +131,7 @@ fn it_works_approve() {
         ));
 
         let data = [1u8; 32];
-        let signature = pairs[0].sign(&data);
+        let signature = pairs[0].sign_prehashed(&data);
         assert!(DataSigner::peers(network_id).unwrap().contains(&peers[0]));
         assert!(DataSigner::peers(network_id).unwrap().contains(&pairs[0].public()));
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
@@ -157,7 +161,7 @@ fn it_fails_approve_nonexisted_peer() {
         ));
 
         let data = [1u8; 32];
-        let signature = test_signer().sign(&data);
+        let signature = test_signer().sign_prehashed(&data);
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
 
         assert_noop!(DataSigner::approve(
@@ -170,14 +174,44 @@ fn it_fails_approve_nonexisted_peer() {
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
     });
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_fails_approve_sign_already_exist() {
     new_test_ext().execute_with(|| {
-        todo!("implement")
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, pairs) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers,
+        ));
+
+        let data = [1u8; 32];
+        let signature = pairs[0].sign_prehashed(&data);
+        assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
+        
+        assert_ok!(DataSigner::approve(
+            RuntimeOrigin::none(), 
+            network_id,
+            H256::from(data),
+            signature.clone(),
+        ));
+        
+        assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
+
+        assert_noop!(DataSigner::approve(
+            RuntimeOrigin::none(), 
+            network_id,
+            H256::from(data),
+            signature,
+        ), Error::<Test>::SignatureAlreadyExists);
+
+        assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
     });
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_works_add_peer() {
     new_test_ext().execute_with(|| {
@@ -199,7 +233,6 @@ fn it_works_add_peer() {
         ));
 
         assert!(DataSigner::pending_peer_update(network_id));
-        todo!("check OutboundChannel")
     });
 }
 
@@ -280,7 +313,7 @@ fn it_fails_add_peer_evm_network_not_supported(){
         ), Error::<Test>::NetworkNotSupported);
     });
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_works_remove_peer() {
     new_test_ext().execute_with(|| {
@@ -302,7 +335,6 @@ fn it_works_remove_peer() {
         ));
 
         assert!(DataSigner::pending_peer_update(network_id));
-        todo!("check OutboundChannel");
     });
 }
 
@@ -516,30 +548,215 @@ fn it_fails_add_peer_no_pending_update(){
     });
 }
 
-#[ignore = "todo"]
+#[test]
+fn it_works_validate_unsigned() {
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, pairs) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let data = [1u8; 32];
+        let signature = pairs[0].sign_prehashed(&data);
+
+        let call = Call::approve {
+            network_id,
+            data: H256::from(data),
+            signature,
+        };
+        
+        assert_eq!( 
+            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+            TransactionSource::External,
+            &call.into(),
+        ), 
+        TransactionValidity::Ok(ValidTransaction::with_tag_prefix("DataSignerApprove")
+            .priority(TestUnsignedPriority::get())
+            .longevity(TestUnsignedLongevity::get())
+            .and_provides((data, peers[0]))
+            .propagate(true)
+            .build().unwrap()
+    ));
+    });
+}
+
 #[test]
 fn it_fails_validate_unsigned_no_network() {
-    todo!()
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, pairs) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+
+        let different_network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Kusama);
+
+        let data = [1u8; 32];
+        let signature = pairs[0].sign_prehashed(&data);
+
+        let call = Call::approve {
+            network_id: different_network_id,
+            data: H256::from(data),
+            signature,
+        };
+        
+        assert_eq!(
+            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::External,
+                &call.into(),
+            ),
+            InvalidTransaction::BadSigner.into()
+        );
+    })
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_fails_validate_unsigned_bad_proof() {
-    todo!()
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+        
+        let data = [1u8; 32];
+        let signature = Signature([3u8; 65]);
+
+        let call = Call::approve {
+            network_id,
+            data: H256::from(data),
+            signature,
+        };
+        
+        assert_eq!(
+            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::External,
+                &call.into(),
+            ),
+            InvalidTransaction::BadProof.into()
+        );
+        
+    })
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_fails_validate_unsigned_bad_signer() {
-    todo!()
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, _) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+        
+        let data = [1u8; 32];
+        let signature = test_signer().sign_prehashed(&data);
+
+        let call = Call::approve {
+            network_id,
+            data: H256::from(data),
+            signature,
+        };
+        
+        assert_eq!(
+            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::External,
+                &call.into(),
+            ),
+            InvalidTransaction::BadSigner.into()
+        );
+        
+    })
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_fails_validate_unsigned_transaction_stale() {
-    todo!()
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, pairs) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+        
+        let data = [1u8; 32];
+        let signature = pairs[0].sign_prehashed(&data);
+
+        assert_ok!(DataSigner::approve(
+            RuntimeOrigin::none(), 
+            network_id,
+            H256::from(data),
+            signature.clone(),
+        ));
+
+        assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
+
+        let call = Call::approve {
+            network_id,
+            data: H256::from(data),
+            signature,
+        };
+        
+        assert_eq!(
+            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::InBlock,
+                &call.into(),
+            ),
+            InvalidTransaction::Stale.into()
+        );
+        
+    })
 }
-#[ignore = "todo"]
+
 #[test]
 fn it_fails_validate_unsigned_invalid_call() {
-    todo!()
+    new_test_ext().execute_with(|| {
+        let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
+        let (peers, pairs) = test_peers();
+        let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
+
+        assert_ok!(DataSigner::register_network(
+            RuntimeOrigin::root(), 
+            network_id,
+            peers.clone(),
+        ));
+        
+        let data = [1u8; 32];
+        let signature = pairs[0].sign_prehashed(&data);
+
+        let call = Call::register_network {
+            network_id,
+            peers: peers.clone(),
+        };
+        
+        assert_eq!(
+            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::External,
+                &call.into(),
+            ),
+            InvalidTransaction::Call.into()
+        );
+        
+    })
 }
 
 #[test]
