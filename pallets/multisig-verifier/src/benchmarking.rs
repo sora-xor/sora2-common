@@ -32,7 +32,6 @@
 
 use super::*;
 use crate::Pallet as MultisigVerifier;
-use bridge_types::EVMChainId;
 use bridge_types::{GenericNetworkId, SubNetworkId};
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;

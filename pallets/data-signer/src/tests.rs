@@ -31,16 +31,11 @@
 use crate::{mock::*, Error, };
 use bridge_types::{SubNetworkId, H256, U256};
 use frame_support::{assert_noop, assert_ok};
-use codec::{Decode};
 use sp_core::{ecdsa::{self, Signature}, Pair, bounded::{BoundedVec}};
-use super::{Call};
+use super::Call;
 use sp_runtime::transaction_validity::{
     InvalidTransaction,  TransactionSource, TransactionValidity, ValidTransaction
 };
-
-fn alice<T: crate::Config>() -> T::AccountId {
-    T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
-}
 
 fn test_peers() -> (Vec<ecdsa::Public>, Vec<ecdsa::Pair>) {
     let pairs: Vec<ecdsa::Pair> = vec![
@@ -731,7 +726,7 @@ fn it_fails_validate_unsigned_transaction_stale() {
 fn it_fails_validate_unsigned_invalid_call() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
-        let (peers, pairs) = test_peers();
+        let (peers, _) = test_peers();
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
@@ -739,9 +734,6 @@ fn it_fails_validate_unsigned_invalid_call() {
             network_id,
             peers.clone(),
         ));
-        
-        let data = [1u8; 32];
-        let signature = pairs[0].sign_prehashed(&data);
 
         let call = Call::register_network {
             network_id,
