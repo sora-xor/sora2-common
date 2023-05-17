@@ -1,3 +1,8 @@
+[package]
+name = "sora2-common"
+version = "1.0.1"
+repository = "https://github.com/sora-xor/sora2-common"
+
 [profile.release]
 panic = "unwind"
 
