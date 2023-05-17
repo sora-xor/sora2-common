@@ -39,6 +39,11 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+mod weights;
+
 pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 
 // syntactic sugar for logging.
@@ -399,4 +404,12 @@ pub mod pallet {
             }
         }
     }
+}
+
+pub trait WeightInfo {
+    // fn initialize(len: usize) -> Weight;
+
+    // fn add_peer() -> Weight;
+
+    // fn remove_peer() -> Weight;
 }

@@ -359,6 +359,7 @@ dependencies = [
 name = "bridge-data-signer"
 version = "0.1.1"
 dependencies = [
+ "bridge-common",
  "bridge-types",
  "frame-benchmarking",
  "frame-support",
