@@ -112,7 +112,7 @@ fn it_fails_register_network_alredy_initialized() {
         );
     });
 }
-
+#[ignore = "todo"]
 #[test]
 fn it_works_approve() {
     new_test_ext().execute_with(|| {
@@ -170,14 +170,14 @@ fn it_fails_approve_nonexisted_peer() {
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
     });
 }
-
+#[ignore = "todo"]
 #[test]
 fn it_fails_approve_sign_already_exist() {
     new_test_ext().execute_with(|| {
         todo!("implement")
     });
 }
-
+#[ignore = "todo"]
 #[test]
 fn it_works_add_peer() {
     new_test_ext().execute_with(|| {
@@ -280,7 +280,7 @@ fn it_fails_add_peer_evm_network_not_supported(){
         ), Error::<Test>::NetworkNotSupported);
     });
 }
-
+#[ignore = "todo"]
 #[test]
 fn it_works_remove_peer() {
     new_test_ext().execute_with(|| {
@@ -514,6 +514,32 @@ fn it_fails_add_peer_no_pending_update(){
             new_peer
         ), Error::<Test>::DontHavePendingPeerUpdates);
     });
+}
+
+#[ignore = "todo"]
+#[test]
+fn it_fails_validate_unsigned_no_network() {
+    todo!()
+}
+#[ignore = "todo"]
+#[test]
+fn it_fails_validate_unsigned_bad_proof() {
+    todo!()
+}
+#[ignore = "todo"]
+#[test]
+fn it_fails_validate_unsigned_bad_signer() {
+    todo!()
+}
+#[ignore = "todo"]
+#[test]
+fn it_fails_validate_unsigned_transaction_stale() {
+    todo!()
+}
+#[ignore = "todo"]
+#[test]
+fn it_fails_validate_unsigned_invalid_call() {
+    todo!()
 }
 
 #[test]
