@@ -39,36 +39,56 @@ use bridge_common::{EXTRINSIC_FIXED_WEIGHT, FIXED_TIME};
 /// Weight functions
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
-    // fn initialize(len: usize) -> Weight {
-    //     crate::initialize_calculate_weight(len, 25_000_000, 10_000_000, 1)
-	// 		.saturating_add(T::DbWeight::get().reads(1))
-	// 		.saturating_add(T::DbWeight::get().writes(1))
-    // }
+    fn register_network(len: usize) -> Weight {
+        crate::register_network_calculate_weight(len, 25_000_000, 10_000_000, 1)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+    }
 
-    // fn add_peer() -> Weight {
-	// 	Weight::from_ref_time(22_000_000)
-	// 		.saturating_add(T::DbWeight::get().reads(1))
-	// 		.saturating_add(T::DbWeight::get().writes(1))
-    // }
+    fn add_peer() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+    }
 
-    // fn remove_peer() -> Weight {
-	// 	Weight::from_ref_time(22_000_000)
-	// 		.saturating_add(T::DbWeight::get().reads(1))
-	// 		.saturating_add(T::DbWeight::get().writes(1))
-    // }
+    fn remove_peer() -> Weight {
+		Weight::from_ref_time(22_000_000)
+			.saturating_add(T::DbWeight::get().reads(1))
+			.saturating_add(T::DbWeight::get().writes(1))
+    }
+
+    fn finish_remove_peer() -> Weight {
+        Weight::from_ref_time(22_000_000)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
+
+    fn finish_add_peer() -> Weight {
+        Weight::from_ref_time(22_000_000)
+            .saturating_add(T::DbWeight::get().reads(1))
+            .saturating_add(T::DbWeight::get().writes(1))
+    }
 }
 
 
 impl crate::WeightInfo for () {
-    // fn initialize(len: usize) -> Weight {
-    //     Weight::from_ref_time(FIXED_TIME*(len as u64))
-    // }
+    fn register_network(len: usize) -> Weight {
+        Weight::from_ref_time(FIXED_TIME*(len as u64))
+    }
 
-    // fn add_peer() -> Weight {
-    //     EXTRINSIC_FIXED_WEIGHT
-    // }
+    fn add_peer() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
 
-    // fn remove_peer() -> Weight {
-    //     EXTRINSIC_FIXED_WEIGHT
-    // }
+    fn remove_peer() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn finish_remove_peer() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
+
+    fn finish_add_peer() -> Weight {
+        EXTRINSIC_FIXED_WEIGHT
+    }
 }

@@ -31,6 +31,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use bridge_types::substrate::DataSignerCall;
+use frame_support::weights::Weight;
 pub use pallet::*;
 
 #[cfg(test)]
@@ -66,6 +67,11 @@ impl<T: Config> From<DataSignerCall> for Call<T> {
     }
 }
 
+pub fn register_network_calculate_weight(len: usize, base_time: u64, mul_time: u64, coef: u64) -> Weight {
+    Weight::from_ref_time(base_time + ((len as u64) * coef * mul_time))
+}
+
+
 #[frame_support::pallet]
 pub mod pallet {
     #![allow(missing_docs)]
@@ -86,6 +92,7 @@ pub mod pallet {
     use sp_core::Get;
     use sp_core::TryCollect;
     use sp_std::collections::btree_set::BTreeSet;
+    use super::WeightInfo;
 
     /// BEEFY-MMR pallet.
     #[pallet::pallet]
@@ -115,6 +122,8 @@ pub mod pallet {
 
         #[pallet::constant]
         type MaxPeers: Get<u32>;
+
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::event]
@@ -195,7 +204,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_network(peers.len()))]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -265,7 +274,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(2)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -302,7 +311,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -327,7 +336,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::finish_remove_peer())]
         pub fn finish_remove_peer(
             origin: OriginFor<T>,
             peer: ecdsa::Public,
@@ -355,7 +364,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::finish_add_peer())]
         pub fn finish_add_peer(
             origin: OriginFor<T>,
             _peer: ecdsa::Public,
@@ -407,9 +416,13 @@ pub mod pallet {
 }
 
 pub trait WeightInfo {
-    // fn initialize(len: usize) -> Weight;
+    fn register_network(len: usize) -> Weight;
 
-    // fn add_peer() -> Weight;
+    fn add_peer() -> Weight;
 
-    // fn remove_peer() -> Weight;
+    fn remove_peer() -> Weight;
+
+    fn finish_remove_peer() -> Weight;
+
+    fn finish_add_peer() -> Weight;
 }

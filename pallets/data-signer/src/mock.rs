@@ -97,6 +97,7 @@ impl data_signer::Config for Test {
     type UnsignedPriority = TestUnsignedPriority;
     type UnsignedLongevity = TestUnsignedLongevity;
     type MaxPeers = BridgeMaxPeers;
+    type WeightInfo = ();
 }
 
 pub struct TestOutboundChannel;

@@ -31,7 +31,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use crate::Pallet as MultisigVerifier;
+use crate::Pallet as BridgeDataSighner;
 use bridge_types::EVMChainId;
 use bridge_types::{GenericNetworkId, SubNetworkId};
 use frame_benchmarking::benchmarks;
@@ -52,18 +52,18 @@ use sp_core::{ecdsa, Pair};
 //     keys.try_into().unwrap()
 // }
 
-fn initialize_network<T: Config>(network_id: GenericNetworkId, n: usize) {
-    let keys = initial_keys::<T>(n);
-    assert_ok!(MultisigVerifier::<T>::initialize(
-        RawOrigin::Root.into(),
-        network_id,
-        keys
-    ));
-}
+// fn initialize_network<T: Config>(network_id: GenericNetworkId, n: usize) {
+//     let keys = initial_keys::<T>(n);
+//     assert_ok!(MultisigVerifier::<T>::initialize(
+//         RawOrigin::Root.into(),
+//         network_id,
+//         keys
+//     ));
+// }
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-    frame_system::Pallet::<T>::assert_last_event(generic_event.into());
-}
+// fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+//     frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+// }
 
 // benchmarks! {
 //     // todo: do bench according to number of keys
