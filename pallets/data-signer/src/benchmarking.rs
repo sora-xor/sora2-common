@@ -32,70 +32,92 @@
 
 use super::*;
 use crate::Pallet as BridgeDataSighner;
-use bridge_types::EVMChainId;
-use bridge_types::{GenericNetworkId, SubNetworkId};
+use bridge_types::GenericNetworkId;
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_system::{self, RawOrigin};
-use sp_core::{ecdsa, Pair};
+use sp_core::{ecdsa, Pair, bounded::BoundedVec, Get};
 
-// fn initial_keys<T: Config>(n: usize) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers> {
-//     let mut keys = Vec::new();
-//     for i in 0..n {
-//         keys.push(
-//             ecdsa::Pair::generate_with_phrase(Some(format!("key{}", i).as_str()))
-//                 .0
-//                 .into(),
-//         );
-//     } 
+fn initial_peers<T: Config>(n: usize) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers> {
+    let mut keys = Vec::new();
+    for i in 0..n {
+        keys.push(
+            ecdsa::Pair::generate_with_phrase(Some(format!("key{}", i).as_str()))
+                .0
+                .into(),
+        );
+    } 
 
-//     keys.try_into().unwrap()
-// }
+    keys.try_into().unwrap()
+}
 
-// fn initialize_network<T: Config>(network_id: GenericNetworkId, n: usize) {
-//     let keys = initial_keys::<T>(n);
-//     assert_ok!(MultisigVerifier::<T>::initialize(
-//         RawOrigin::Root.into(),
-//         network_id,
-//         keys
-//     ));
-// }
+fn initialize_network<T: Config>(network_id: GenericNetworkId, n: usize) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers>  {
+    let keys = initial_peers::<T>(n);
+    assert_ok!(BridgeDataSighner::<T>::register_network(
+        RawOrigin::Root.into(),
+        network_id,
+        keys.clone()
+    ));
+    keys
+}
 
-// fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
-//     frame_system::Pallet::<T>::assert_last_event(generic_event.into());
-// }
+fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+    frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+}
 
-// benchmarks! {
-//     // todo: do bench according to number of keys
-//     initialize {
-//         let n in 1 .. <T as Config>::MaxPeers::get();
-//         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
-//         let keys = initial_keys::<T>(n as usize);
-//     }: _(RawOrigin::Root, network_id, keys.into())
-//     verify {
-//         assert_last_event::<T>(Event::NetworkInitialized(network_id).into())
-//     }
+benchmarks! {
+    register_network {
+        let n in 1 .. <T as Config>::MaxPeers::get();
+        let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+        let peers = initial_peers::<T>(n as usize);
+    }: _(RawOrigin::Root, network_id, peers.clone())
+    verify {
+        assert_last_event::<T>(Event::Initialized{network_id, peers}.into());
+    }
 
-//     add_peer {
-//         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+    add_peer {
+        let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
-//         initialize_network::<T>(network_id, 3);
-//         let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
-//     }: _(RawOrigin::Root, key)
-//     verify {
-//         assert!(MultisigVerifier::<T>::get_peer_keys(GenericNetworkId::Sub(SubNetworkId::Mainnet)).expect("add_peer: No key found").contains(&key));
-//     }
+        initialize_network::<T>(network_id, 3);
+        let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
+    }: _(RawOrigin::Root, network_id, key)
+    verify {
+        assert!(PendingPeerUpdate::<T>::get(network_id));
+    }
 
-//     remove_peer {
-//         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+    remove_peer {
+        let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
-//         initialize_network::<T>(network_id, 3);
-//         let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
-//         MultisigVerifier::<T>::add_peer(RawOrigin::Root.into(), key).expect("remove_peer: Error adding peer");
-//     }: _(RawOrigin::Root, key)
-//     verify {
-//         assert!(!MultisigVerifier::<T>::get_peer_keys(GenericNetworkId::Sub(SubNetworkId::Mainnet)).expect("add_peer: No key found").contains(&key));
-//     }
+        let peers = initialize_network::<T>(network_id, 3);
+        let key = peers[0];
+    }: _(RawOrigin::Root, network_id, key)
+    verify {
+        assert!(PendingPeerUpdate::<T>::get(network_id));
+    }
 
-//     impl_benchmark_test_suite!(MultisigVerifier, crate::mock::new_test_ext(), mock::Test)
-// }
+    finish_add_peer {
+        let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+
+        let peers = initialize_network::<T>(network_id, 3);
+        let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
+        BridgeDataSighner::<T>::add_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error adding peer");
+    }: _(RawOrigin::Root, key) 
+    verify {
+        assert!(!PendingPeerUpdate::<T>::get(network_id));
+        assert!(BridgeDataSighner::<T>::peers(network_id).expect("add_peer: key found").contains(&key));
+    }
+
+    finish_remove_peer {
+        let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+
+        let peers = initialize_network::<T>(network_id, 3);
+        let key = peers[0];
+        BridgeDataSighner::<T>::remove_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error removing peer");
+    }: _(RawOrigin::Root, key) 
+    verify {
+        assert!(!PendingPeerUpdate::<T>::get(network_id));
+        assert!(!BridgeDataSighner::<T>::peers(network_id).expect("remove_peer: No key found").contains(&key));
+    }
+
+    impl_benchmark_test_suite!(BridgeDataSighner, crate::mock::new_test_ext(), mock::Test)
+}
