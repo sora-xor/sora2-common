@@ -33,6 +33,12 @@
 use bridge_types::substrate::DataSignerCall;
 pub use pallet::*;
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 
 // syntactic sugar for logging.
