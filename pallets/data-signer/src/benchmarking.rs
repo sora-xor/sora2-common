@@ -36,7 +36,7 @@ use bridge_types::GenericNetworkId;
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
 use frame_system::{self, RawOrigin};
-use sp_core::{ecdsa, Pair, bounded::BoundedVec, Get};
+use sp_core::{bounded::BoundedVec, ecdsa, Get, Pair};
 
 fn initial_peers<T: Config>(n: usize) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers> {
     let mut keys = Vec::new();
@@ -46,12 +46,15 @@ fn initial_peers<T: Config>(n: usize) -> BoundedVec<ecdsa::Public, <T as Config>
                 .0
                 .into(),
         );
-    } 
+    }
 
     keys.try_into().unwrap()
 }
 
-fn initialize_network<T: Config>(network_id: GenericNetworkId, n: usize) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers>  {
+fn initialize_network<T: Config>(
+    network_id: GenericNetworkId,
+    n: usize,
+) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers> {
     let keys = initial_peers::<T>(n);
     assert_ok!(BridgeDataSighner::<T>::register_network(
         RawOrigin::Root.into(),
@@ -101,7 +104,7 @@ benchmarks! {
         let peers = initialize_network::<T>(network_id, 3);
         let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
         BridgeDataSighner::<T>::add_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error adding peer");
-    }: _(RawOrigin::Root, key) 
+    }: _(RawOrigin::Root, key)
     verify {
         assert!(!PendingPeerUpdate::<T>::get(network_id));
         assert!(BridgeDataSighner::<T>::peers(network_id).expect("add_peer: key found").contains(&key));
@@ -113,7 +116,7 @@ benchmarks! {
         let peers = initialize_network::<T>(network_id, 3);
         let key = peers[0];
         BridgeDataSighner::<T>::remove_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error removing peer");
-    }: _(RawOrigin::Root, key) 
+    }: _(RawOrigin::Root, key)
     verify {
         assert!(!PendingPeerUpdate::<T>::get(network_id));
         assert!(!BridgeDataSighner::<T>::peers(network_id).expect("remove_peer: No key found").contains(&key));

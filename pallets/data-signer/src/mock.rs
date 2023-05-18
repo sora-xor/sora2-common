@@ -35,7 +35,8 @@ use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
-    traits::{BlakeTwo256, IdentityLookup}, transaction_validity::TransactionPriority,
+    traits::{BlakeTwo256, IdentityLookup},
+    transaction_validity::TransactionPriority,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;

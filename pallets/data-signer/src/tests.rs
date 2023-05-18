@@ -28,13 +28,17 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, Error, };
+use super::Call;
+use crate::{mock::*, Error};
 use bridge_types::{SubNetworkId, H256, U256};
 use frame_support::{assert_noop, assert_ok};
-use sp_core::{ecdsa::{self, Signature}, Pair, bounded::{BoundedVec}};
-use super::Call;
+use sp_core::{
+    bounded::BoundedVec,
+    ecdsa::{self, Signature},
+    Pair,
+};
 use sp_runtime::transaction_validity::{
-    InvalidTransaction,  TransactionSource, TransactionValidity, ValidTransaction
+    InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
 };
 
 fn test_peers() -> (Vec<ecdsa::Public>, Vec<ecdsa::Pair>) {
@@ -63,7 +67,7 @@ fn it_works_register_network() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = test_peers().0.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
@@ -80,7 +84,7 @@ fn it_works_register_network_with_empty_peers() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = vec![].try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers,
         ));
@@ -96,14 +100,14 @@ fn it_fails_register_network_alredy_initialized() {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             test_peers().0.try_into().unwrap(),
         ));
 
         assert_noop!(
             DataSigner::register_network(
-                RuntimeOrigin::root(), 
+                RuntimeOrigin::root(),
                 network_id,
                 test_peers().0.try_into().unwrap(),
             ),
@@ -120,7 +124,7 @@ fn it_works_approve() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
@@ -128,11 +132,13 @@ fn it_works_approve() {
         let data = [1u8; 32];
         let signature = pairs[0].sign_prehashed(&data);
         assert!(DataSigner::peers(network_id).unwrap().contains(&peers[0]));
-        assert!(DataSigner::peers(network_id).unwrap().contains(&pairs[0].public()));
+        assert!(DataSigner::peers(network_id)
+            .unwrap()
+            .contains(&pairs[0].public()));
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
 
         assert_ok!(DataSigner::approve(
-            RuntimeOrigin::none(), 
+            RuntimeOrigin::none(),
             network_id,
             H256::from(data),
             signature,
@@ -150,7 +156,7 @@ fn it_fails_approve_nonexisted_peer() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers,
         ));
@@ -159,12 +165,15 @@ fn it_fails_approve_nonexisted_peer() {
         let signature = test_signer().sign_prehashed(&data);
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
 
-        assert_noop!(DataSigner::approve(
-            RuntimeOrigin::none(), 
-            network_id,
-            H256::from(data),
-            signature,
-        ), Error::<Test>::PeerNotFound);
+        assert_noop!(
+            DataSigner::approve(
+                RuntimeOrigin::none(),
+                network_id,
+                H256::from(data),
+                signature,
+            ),
+            Error::<Test>::PeerNotFound
+        );
 
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
     });
@@ -178,7 +187,7 @@ fn it_fails_approve_sign_already_exist() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers,
         ));
@@ -186,22 +195,25 @@ fn it_fails_approve_sign_already_exist() {
         let data = [1u8; 32];
         let signature = pairs[0].sign_prehashed(&data);
         assert!(DataSigner::approvals(network_id, H256::from(data)).is_empty());
-        
+
         assert_ok!(DataSigner::approve(
-            RuntimeOrigin::none(), 
+            RuntimeOrigin::none(),
             network_id,
             H256::from(data),
             signature.clone(),
         ));
-        
+
         assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
 
-        assert_noop!(DataSigner::approve(
-            RuntimeOrigin::none(), 
-            network_id,
-            H256::from(data),
-            signature,
-        ), Error::<Test>::SignatureAlreadyExists);
+        assert_noop!(
+            DataSigner::approve(
+                RuntimeOrigin::none(),
+                network_id,
+                H256::from(data),
+                signature,
+            ),
+            Error::<Test>::SignatureAlreadyExists
+        );
 
         assert!(DataSigner::approvals(network_id, H256::from(data)).len() == 1);
     });
@@ -215,14 +227,14 @@ fn it_works_add_peer() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers,
         ));
 
         let new_peer = test_signer().public();
         assert_ok!(DataSigner::add_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             new_peer,
         ));
@@ -239,25 +251,24 @@ fn it_fails_add_peer_pending_update() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers,
         ));
 
         let new_peer = test_signer().public();
         assert_ok!(DataSigner::add_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             new_peer,
         ));
 
         // cannot add another peer while pending peer update
         let new_peer = test_signer().public();
-        assert_noop!(DataSigner::add_peer(
-            RuntimeOrigin::root(), 
-            network_id,
-            new_peer,
-        ), Error::<Test>::HasPendingPeerUpdate);
+        assert_noop!(
+            DataSigner::add_peer(RuntimeOrigin::root(), network_id, new_peer,),
+            Error::<Test>::HasPendingPeerUpdate
+        );
 
         assert!(DataSigner::pending_peer_update(network_id));
     });
@@ -271,41 +282,39 @@ fn it_fails_add_peer_already_exists() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         let peer = peers[0];
-        assert_noop!(DataSigner::add_peer(
-            RuntimeOrigin::root(), 
-            network_id,
-            peer,
-        ), Error::<Test>::PeerExists);
+        assert_noop!(
+            DataSigner::add_peer(RuntimeOrigin::root(), network_id, peer,),
+            Error::<Test>::PeerExists
+        );
 
         assert!(!DataSigner::pending_peer_update(network_id));
     });
 }
 
 #[test]
-fn it_fails_add_peer_evm_network_not_supported(){
+fn it_fails_add_peer_evm_network_not_supported() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::EVM(U256::from(1));
         let (peers, _) = test_peers();
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers,
         ));
 
         let new_peer = test_signer().public();
-        assert_noop!(DataSigner::add_peer(
-            RuntimeOrigin::root(), 
-            network_id,
-            new_peer,
-        ), Error::<Test>::NetworkNotSupported);
+        assert_noop!(
+            DataSigner::add_peer(RuntimeOrigin::root(), network_id, new_peer,),
+            Error::<Test>::NetworkNotSupported
+        );
     });
 }
 
@@ -317,14 +326,14 @@ fn it_works_remove_peer() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         let peer = peers[0];
         assert_ok!(DataSigner::remove_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peer,
         ));
@@ -341,25 +350,24 @@ fn it_fails_remove_peer_pending_update() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         let peer = peers[0];
         assert_ok!(DataSigner::remove_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peer,
         ));
 
         // cannot remove another peer while pending peer update
         let peer = peers[1];
-        assert_noop!(DataSigner::remove_peer(
-            RuntimeOrigin::root(), 
-            network_id,
-            peer,
-        ), Error::<Test>::HasPendingPeerUpdate);
+        assert_noop!(
+            DataSigner::remove_peer(RuntimeOrigin::root(), network_id, peer,),
+            Error::<Test>::HasPendingPeerUpdate
+        );
 
         assert!(DataSigner::pending_peer_update(network_id));
     });
@@ -373,17 +381,16 @@ fn it_fails_remove_peer_evm_network_not_supported() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         let peer = peers[0];
-        assert_noop!(DataSigner::remove_peer(
-            RuntimeOrigin::root(), 
-            network_id,
-            peer,
-        ), Error::<Test>::NetworkNotSupported);
+        assert_noop!(
+            DataSigner::remove_peer(RuntimeOrigin::root(), network_id, peer,),
+            Error::<Test>::NetworkNotSupported
+        );
     })
 }
 
@@ -395,24 +402,21 @@ fn it_works_finish_remove_peer() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         let peer = peers[0];
         assert_ok!(DataSigner::remove_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peer,
         ));
 
         assert!(DataSigner::pending_peer_update(network_id));
 
-        assert_ok!(DataSigner::finish_remove_peer(
-            RuntimeOrigin::root(), 
-            peer
-        ));
+        assert_ok!(DataSigner::finish_remove_peer(RuntimeOrigin::root(), peer));
 
         assert!(!DataSigner::pending_peer_update(network_id));
         assert!(!DataSigner::peers(network_id).unwrap().contains(&peer));
@@ -427,7 +431,7 @@ fn it_fails_finish_remove_peer_no_updates() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
@@ -435,10 +439,10 @@ fn it_fails_finish_remove_peer_no_updates() {
         let peer = peers[0];
         assert!(!DataSigner::pending_peer_update(network_id));
 
-        assert_noop!(DataSigner::finish_remove_peer(
-            RuntimeOrigin::root(), 
-            peer
-        ), Error::<Test>::DontHavePendingPeerUpdates);
+        assert_noop!(
+            DataSigner::finish_remove_peer(RuntimeOrigin::root(), peer),
+            Error::<Test>::DontHavePendingPeerUpdates
+        );
     })
 }
 
@@ -449,15 +453,15 @@ fn it_fails_finish_remove_not_initialized() {
         let peer = test_signer().public();
 
         assert_ok!(DataSigner::remove_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peer,
         ));
 
-        assert_noop!(DataSigner::finish_remove_peer(
-            RuntimeOrigin::root(), 
-            peer
-        ), Error::<Test>::PalletNotInitialized);
+        assert_noop!(
+            DataSigner::finish_remove_peer(RuntimeOrigin::root(), peer),
+            Error::<Test>::PalletNotInitialized
+        );
     })
 }
 
@@ -469,24 +473,24 @@ fn it_fails_finish_remove_peer_not_exist() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         assert_ok!(DataSigner::remove_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers[0],
         ));
-        
+
         assert!(DataSigner::pending_peer_update(network_id));
         let peer = test_signer().public();
 
-        assert_noop!(DataSigner::finish_remove_peer(
-            RuntimeOrigin::root(), 
-            peer
-        ), Error::<Test>::PeerNotExists);
+        assert_noop!(
+            DataSigner::finish_remove_peer(RuntimeOrigin::root(), peer),
+            Error::<Test>::PeerNotExists
+        );
     })
 }
 
@@ -498,24 +502,21 @@ fn it_works_finish_add_peer() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         let new_peer = test_signer().public();
         assert_ok!(DataSigner::add_peer(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             new_peer,
         ));
 
         assert!(DataSigner::pending_peer_update(network_id));
 
-        assert_ok!(DataSigner::finish_add_peer(
-            RuntimeOrigin::root(), 
-            new_peer
-        ));
+        assert_ok!(DataSigner::finish_add_peer(RuntimeOrigin::root(), new_peer));
 
         assert!(!DataSigner::pending_peer_update(network_id));
         assert!(DataSigner::peers(network_id).unwrap().contains(&new_peer));
@@ -523,23 +524,23 @@ fn it_works_finish_add_peer() {
 }
 
 #[test]
-fn it_fails_add_peer_no_pending_update(){
+fn it_fails_add_peer_no_pending_update() {
     new_test_ext().execute_with(|| {
         let network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet);
         let (peers, _) = test_peers();
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
 
         let new_peer = test_signer().public();
-        assert_noop!(DataSigner::finish_add_peer(
-            RuntimeOrigin::root(), 
-            new_peer
-        ), Error::<Test>::DontHavePendingPeerUpdates);
+        assert_noop!(
+            DataSigner::finish_add_peer(RuntimeOrigin::root(), new_peer),
+            Error::<Test>::DontHavePendingPeerUpdates
+        );
     });
 }
 
@@ -551,7 +552,7 @@ fn it_works_validate_unsigned() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
@@ -564,19 +565,22 @@ fn it_works_validate_unsigned() {
             data: H256::from(data),
             signature,
         };
-        
-        assert_eq!( 
-            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
-            TransactionSource::External,
-            &call.into(),
-        ), 
-        TransactionValidity::Ok(ValidTransaction::with_tag_prefix("DataSignerApprove")
-            .priority(TestUnsignedPriority::get())
-            .longevity(TestUnsignedLongevity::get())
-            .and_provides((data, peers[0]))
-            .propagate(true)
-            .build().unwrap()
-    ));
+
+        assert_eq!(
+            <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+                TransactionSource::External,
+                &call.into(),
+            ),
+            TransactionValidity::Ok(
+                ValidTransaction::with_tag_prefix("DataSignerApprove")
+                    .priority(TestUnsignedPriority::get())
+                    .longevity(TestUnsignedLongevity::get())
+                    .and_provides((data, peers[0]))
+                    .propagate(true)
+                    .build()
+                    .unwrap()
+            )
+        );
     });
 }
 
@@ -588,7 +592,7 @@ fn it_fails_validate_unsigned_no_network() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
@@ -603,9 +607,9 @@ fn it_fails_validate_unsigned_no_network() {
             data: H256::from(data),
             signature,
         };
-        
+
         assert_eq!(
-            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+            <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
                 &call.into(),
             ),
@@ -622,11 +626,11 @@ fn it_fails_validate_unsigned_bad_proof() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
-        
+
         let data = [1u8; 32];
         let signature = Signature([3u8; 65]);
 
@@ -635,15 +639,14 @@ fn it_fails_validate_unsigned_bad_proof() {
             data: H256::from(data),
             signature,
         };
-        
+
         assert_eq!(
-            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+            <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
                 &call.into(),
             ),
             InvalidTransaction::BadProof.into()
         );
-        
     })
 }
 
@@ -655,11 +658,11 @@ fn it_fails_validate_unsigned_bad_signer() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
-        
+
         let data = [1u8; 32];
         let signature = test_signer().sign_prehashed(&data);
 
@@ -668,15 +671,14 @@ fn it_fails_validate_unsigned_bad_signer() {
             data: H256::from(data),
             signature,
         };
-        
+
         assert_eq!(
-            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+            <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
                 &call.into(),
             ),
             InvalidTransaction::BadSigner.into()
         );
-        
     })
 }
 
@@ -688,16 +690,16 @@ fn it_fails_validate_unsigned_transaction_stale() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
-        
+
         let data = [1u8; 32];
         let signature = pairs[0].sign_prehashed(&data);
 
         assert_ok!(DataSigner::approve(
-            RuntimeOrigin::none(), 
+            RuntimeOrigin::none(),
             network_id,
             H256::from(data),
             signature.clone(),
@@ -710,15 +712,14 @@ fn it_fails_validate_unsigned_transaction_stale() {
             data: H256::from(data),
             signature,
         };
-        
+
         assert_eq!(
-            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+            <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::InBlock,
                 &call.into(),
             ),
             InvalidTransaction::Stale.into()
         );
-        
     })
 }
 
@@ -730,7 +731,7 @@ fn it_fails_validate_unsigned_invalid_call() {
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
         assert_ok!(DataSigner::register_network(
-            RuntimeOrigin::root(), 
+            RuntimeOrigin::root(),
             network_id,
             peers.clone(),
         ));
@@ -739,15 +740,14 @@ fn it_fails_validate_unsigned_invalid_call() {
             network_id,
             peers: peers.clone(),
         };
-        
+
         assert_eq!(
-            <DataSigner as  sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
+            <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
                 &call.into(),
             ),
             InvalidTransaction::Call.into()
         );
-        
     })
 }
 
