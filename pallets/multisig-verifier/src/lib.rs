@@ -77,10 +77,6 @@ impl<T: Config> From<MultisigVerifierCall> for Call<T> {
     }
 }
 
-pub fn initialize_calculate_weight(len: usize, base_time: u64, mul_time: u64, coef: u64) -> Weight {
-    Weight::from_ref_time(base_time + ((len as u64) * coef * mul_time))
-}
-
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
