@@ -66,9 +66,9 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     initialize {
-        let n in [0, 20, 40, 60, 80, 100];
+        let a = <T as Config>::MaxPeers::get();
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
-        let keys = initial_keys::<T>(n as usize);
+        let keys = initial_keys::<T>(a as usize);
     }: _(RawOrigin::Root, network_id, keys.into())
     verify {
         assert_last_event::<T>(Event::NetworkInitialized(network_id).into())

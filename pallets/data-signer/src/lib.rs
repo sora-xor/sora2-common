@@ -204,7 +204,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_network(peers.len()))]
+        #[pallet::weight(<T as Config>::WeightInfo::register_network())]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -416,7 +416,7 @@ pub mod pallet {
 }
 
 pub trait WeightInfo {
-    fn register_network(len: usize) -> Weight;
+    fn register_network() -> Weight;
 
     fn add_peer() -> Weight;
 

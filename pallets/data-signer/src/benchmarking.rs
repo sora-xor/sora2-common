@@ -67,7 +67,7 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 
 benchmarks! {
     register_network {
-        let n in [0, 20, 40, 60, 80, 100];
+        let n = <T as Config>::MaxPeers::get();
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
         let peers = initial_peers::<T>(n as usize);
     }: _(RawOrigin::Root, network_id, peers.clone())

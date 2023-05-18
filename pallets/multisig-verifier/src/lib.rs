@@ -181,7 +181,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::initialize(peers.len()))]
+        #[pallet::weight(<T as Config>::WeightInfo::initialize())]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -342,7 +342,7 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
 }
 
 pub trait WeightInfo {
-    fn initialize(len: usize) -> Weight;
+    fn initialize() -> Weight;
 
     fn add_peer() -> Weight;
 
