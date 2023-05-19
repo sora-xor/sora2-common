@@ -30,33 +30,21 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// use bridge_common::simplified_proof::*;
-// use bridge_common::beefy_types::*;
-use bridge_types::types::AuxiliaryDigest;
-use bridge_types::types::AuxiliaryDigestItem;
-use bridge_types::GenericNetworkId;
-// use bridge_types::types::AuxiliaryDigest;
-// use bridge_types::types::AuxiliaryDigestItem;
-// use bridge_types::SubNetworkId;
-use frame_support::ensure;
-// use frame_support::fail;
-// use frame_support::log;
-use frame_support::pallet_prelude::*;
-// use frame_support::traits::Randomness;
-use frame_system::pallet_prelude::*;
-pub use pallet::*;
-use scale_info::prelude::vec::Vec;
-use sp_core::RuntimeDebug;
-use sp_core::H256;
-// use sp_io::hashing::keccak_256;
-// use sp_runtime::traits::Hash;
-// use sp_runtime::traits::Keccak256;
-// use sp_runtime::DispatchError;
-// use sp_std::collections::vec_deque::VecDeque;
 use bridge_types::substrate::MultisigVerifierCall;
 use bridge_types::substrate::SubstrateBridgeMessageEncode;
 use bridge_types::traits::OutboundChannel;
+use bridge_types::types::AuxiliaryDigest;
+use bridge_types::types::AuxiliaryDigestItem;
+use bridge_types::GenericNetworkId;
+use frame_support::ensure;
+use frame_support::pallet_prelude::*;
+use frame_support::{BoundedBTreeSet, BoundedVec};
+use frame_system::pallet_prelude::*;
+pub use pallet::*;
+use scale_info::prelude::vec::Vec;
 use sp_core::ecdsa;
+use sp_core::RuntimeDebug;
+use sp_core::H256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
 use sp_std::collections::btree_set::BTreeSet;
@@ -81,8 +69,8 @@ pub struct Proof {
 impl<T: Config> From<MultisigVerifierCall> for Call<T> {
     fn from(value: MultisigVerifierCall) -> Self {
         match value {
-            MultisigVerifierCall::AddPeer { peer } => Call::add_peer { key: peer },
-            MultisigVerifierCall::RemovePeer { peer } => Call::remove_peer { key: peer },
+            MultisigVerifierCall::AddPeer { peer } => Call::add_peer { peer },
+            MultisigVerifierCall::RemovePeer { peer } => Call::remove_peer { peer },
         }
     }
 }
@@ -105,17 +93,24 @@ pub mod pallet {
         >;
 
         type OutboundChannel: OutboundChannel<SubNetworkId, Self::AccountId, ()>;
+
+        #[pallet::constant]
+        type MaxPeers: Get<u32>;
     }
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
     #[pallet::storage]
     #[pallet::getter(fn get_peer_keys)]
-    pub type PeerKeys<T> =
-        StorageMap<_, Twox64Concat, GenericNetworkId, BTreeSet<ecdsa::Public>, OptionQuery>;
+    pub type PeerKeys<T> = StorageMap<
+        _,
+        Twox64Concat,
+        GenericNetworkId,
+        BoundedBTreeSet<ecdsa::Public, <T as Config>::MaxPeers>,
+        OptionQuery,
+    >;
 
     #[pallet::type_value]
     pub fn DefaultForThisNetworkId() -> GenericNetworkId {
@@ -139,10 +134,12 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         InvalidInitParams,
+        TooMuchPeers,
         NetworkNotInitialized,
         InvalidNumberOfSignatures,
         InvalidSignature,
         NotTrustedPeerSignature,
+        PeerExists,
         NoSuchPeer,
         InvalidNetworkId,
         CommitmentNotFoundInDigest,
@@ -180,55 +177,65 @@ pub mod pallet {
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
-            keys: Vec<ecdsa::Public>,
+            peers: BoundedVec<ecdsa::Public, T::MaxPeers>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
-            ensure!(keys.len() > 0, Error::<T>::InvalidInitParams);
+            ensure!(peers.len() > 0, Error::<T>::InvalidInitParams);
 
-            let btree_keys = keys.into_iter().collect();
-            PeerKeys::<T>::set(network_id, Some(btree_keys));
+            let btree_peers = peers
+                .into_iter()
+                .collect::<BTreeSet<_>>()
+                .try_into()
+                .map_err(|_| Error::<T>::TooMuchPeers)?;
+            PeerKeys::<T>::set(network_id, Some(btree_peers));
             Self::deposit_event(Event::NetworkInitialized(network_id));
             Ok(().into())
         }
 
         #[pallet::call_index(1)]
         #[pallet::weight(0)]
-        pub fn add_peer(origin: OriginFor<T>, key: ecdsa::Public) -> DispatchResultWithPostInfo {
+        pub fn add_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
-            frame_support::log::info!("Call add_peer {:?} by {:?}", key, output);
+            frame_support::log::info!("Call add_peer {:?} by {:?}", peer, output);
             PeerKeys::<T>::try_mutate(
                 GenericNetworkId::from(output.network_id),
                 |x| -> DispatchResult {
-                    let Some(keys) = x else {
+                    let Some(peers) = x else {
                     fail!(Error::<T>::NetworkNotInitialized)
                 };
-                    keys.insert(key);
+                    if peers.contains(&peer) {
+                        fail!(Error::<T>::PeerExists);
+                    } else {
+                        peers
+                            .try_insert(peer)
+                            .map_err(|_| Error::<T>::TooMuchPeers)?;
+                    }
                     Ok(())
                 },
             )?;
             T::OutboundChannel::submit(
                 output.network_id,
                 &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::AddPeer { peer: key }.prepare_message(),
+                &bridge_types::substrate::DataSignerCall::AddPeer { peer }.prepare_message(),
                 (),
             )?;
-            Self::deposit_event(Event::PeerAdded(key));
+            Self::deposit_event(Event::PeerAdded(peer));
             Ok(().into())
         }
 
         #[pallet::call_index(2)]
         #[pallet::weight(0)]
-        pub fn remove_peer(origin: OriginFor<T>, key: ecdsa::Public) -> DispatchResultWithPostInfo {
+        pub fn remove_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
-            frame_support::log::info!("Call remove_peer {:?} by {:?}", key, output);
+            frame_support::log::info!("Call remove_peer {:?} by {:?}", peer, output);
             PeerKeys::<T>::try_mutate(
                 GenericNetworkId::from(output.network_id),
                 |x| -> DispatchResult {
                     let Some(keys) = x else {
                     fail!(Error::<T>::NetworkNotInitialized)
                 };
-                    ensure!(keys.remove(&key), {
-                        frame_support::log::error!("Call add_peer: No such peer {:?}", key);
+                    ensure!(keys.remove(&peer), {
+                        frame_support::log::error!("Call add_peer: No such peer {:?}", peer);
                         Error::<T>::NoSuchPeer
                     });
                     Ok(())
@@ -238,12 +245,12 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 output.network_id.into(),
                 &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::RemovePeer { peer: key }
+                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }
                     .prepare_message(),
                 (),
             )?;
 
-            Self::deposit_event(Event::PeerRemoved(key));
+            Self::deposit_event(Event::PeerRemoved(peer));
             Ok(().into())
         }
     }

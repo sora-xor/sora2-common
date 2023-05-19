@@ -66,7 +66,6 @@ benchmarks! {
     // * `unlock` call successfully unlocks DOT
     submit {
         let caller: T::AccountId = whitelisted_caller();
-        // let fee = BalanceOf::<T>::zero();
         let message = vec![BridgeMessage {
             nonce: 1,
             timestamp: 0,
