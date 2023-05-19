@@ -41,7 +41,7 @@ use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::{AccountId32, DispatchError, MultiSignature};
+use sp_runtime::{AccountId32, MultiSignature};
 use sp_std::convert::From;
 use traits::parameter_type_with_key;
 
@@ -63,7 +63,7 @@ frame_support::construct_runtime!(
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Call, Config<T>, Storage, Event<T>},
+        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -185,13 +185,10 @@ impl bridge_outbound_channel::Config for Test {
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type FeeCurrency = GetBaseAssetId;
-    type FeeAccountId = GetFeeAccountId;
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
+    type AssetId = ();
     type WeightInfo = ();
-    type Currency = Currencies;
-    type BalanceConverter = sp_runtime::traits::ConvertInto;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -209,7 +206,6 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let config: bridge_outbound_channel::GenesisConfig<Test> =
         bridge_outbound_channel::GenesisConfig {
             interval: 10u32.into(),
-            fee: 100u32.into(),
         };
     config.assimilate_storage(&mut storage).unwrap();
 
@@ -232,9 +228,6 @@ fn test_submit() {
     new_tester().execute_with(|| {
         let who: AccountId = Keyring::Bob.into();
 
-        // Deposit enough money to cover fees
-        Currencies::deposit(AssetId::XOR, &who, 300u32.into()).unwrap();
-
         assert_ok!(BridgeOutboundChannel::submit(
             BASE_NETWORK_ID,
             &RawOrigin::Signed(who.clone()),
@@ -254,50 +247,9 @@ fn test_submit() {
 }
 
 #[test]
-#[ignore]
-fn test_submit_fees_burned() {
-    new_tester().execute_with(|| {
-        let who: AccountId = Keyring::Bob.into();
-
-        // Deposit enough money to cover fees
-        Currencies::deposit(AssetId::XOR, &who, 300u32.into()).unwrap();
-        let old_balance = Currencies::free_balance(AssetId::XOR, &who);
-
-        assert_ok!(BridgeOutboundChannel::submit(
-            BASE_NETWORK_ID,
-            &RawOrigin::Signed(who.clone()),
-            &[0, 1, 2],
-            ()
-        ));
-        assert_eq!(
-            Currencies::free_balance(AssetId::XOR, &who),
-            old_balance - 100
-        );
-    })
-}
-
-#[test]
-#[ignore]
-fn test_submit_not_enough_funds() {
-    new_tester().execute_with(|| {
-        let who: AccountId = Keyring::Bob.into();
-
-        Currencies::deposit(AssetId::XOR, &who, 50u32.into()).unwrap();
-
-        assert_noop!(
-            BridgeOutboundChannel::submit(BASE_NETWORK_ID, &RawOrigin::Signed(who), &[0, 1, 2], ()),
-            pallet_balances::Error::<Test>::InsufficientBalance
-        );
-    })
-}
-
-#[test]
 fn test_submit_exceeds_queue_limit() {
     new_tester().execute_with(|| {
         let who: AccountId = Keyring::Bob.into();
-
-        // Deposit enough money to cover fees
-        Currencies::deposit(AssetId::XOR, &who, 1000u32.into()).unwrap();
 
         let max_messages = MaxMessagesPerCommit::get();
         (0..max_messages).for_each(|_| {
@@ -315,17 +267,6 @@ fn test_submit_exceeds_queue_limit() {
             Error::<Test>::QueueSizeLimitReached,
         );
     })
-}
-
-#[test]
-fn test_set_fee_not_authorized() {
-    new_tester().execute_with(|| {
-        let bob: AccountId = Keyring::Bob.into();
-        assert_noop!(
-            BridgeOutboundChannel::set_fee(RuntimeOrigin::signed(bob), 1000u32.into()),
-            DispatchError::BadOrigin
-        );
-    });
 }
 
 #[test]

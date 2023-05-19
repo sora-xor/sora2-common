@@ -40,7 +40,6 @@ use sp_io::offchain_index;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
-use traits::MultiCurrency;
 
 use bridge_types::types::MessageNonce;
 use bridge_types::SubNetworkId;
@@ -67,7 +66,6 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::substrate::MainnetBalance;
     use bridge_types::traits::AuxiliaryDigestHandler;
     use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::traits::OutboundChannel;
@@ -78,17 +76,11 @@ pub mod pallet {
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
+    use frame_support::Parameter;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
-    use sp_runtime::traits::Convert;
     use sp_runtime::traits::Zero;
 
-    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
-        <T as frame_system::Config>::AccountId,
-    >>::CurrencyId;
-
-    pub type BalanceOf<T> =
-        <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
@@ -104,21 +96,15 @@ pub mod pallet {
         /// Max number of messages that can be queued and committed in one go for a given channel.
         type MaxMessagesPerCommit: Get<u64>;
 
-        type FeeCurrency: Get<AssetIdOf<Self>>;
-
-        type FeeAccountId: Get<Self::AccountId>;
+        type AssetId: Parameter;
 
         type MessageStatusNotifier: MessageStatusNotifier<
-            AssetIdOf<Self>,
+            Self::AssetId,
             Self::AccountId,
-            BalanceOf<Self>,
+            Self::AssetId,
         >;
 
         type AuxiliaryDigestHandler: AuxiliaryDigestHandler;
-
-        type Currency: MultiCurrency<Self::AccountId>;
-
-        type BalanceConverter: Convert<BalanceOf<Self>, MainnetBalance>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -144,16 +130,6 @@ pub mod pallet {
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn fee)]
-    pub type Fee<T: Config> = StorageValue<_, BalanceOf<T>, ValueQuery, DefaultFee<T>>;
-
-    #[pallet::type_value]
-    pub fn DefaultFee<T: Config>() -> BalanceOf<T> {
-        // TODO: Select fee value
-        10000u32.into()
-    }
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -204,16 +180,6 @@ pub mod pallet {
         ChannelExists,
     }
 
-    #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::set_fee())]
-        pub fn set_fee(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            Fee::<T>::set(amount);
-            Ok(().into())
-        }
-    }
     impl<T: Config> Pallet<T> {
         pub fn make_message_id(nonce: u64) -> H256 {
             MessageId::outbound(nonce).using_encoded(|v| <T as Config>::Hashing::hash(v))
@@ -278,7 +244,6 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub fee: BalanceOf<T>,
         pub interval: T::BlockNumber,
     }
 
@@ -286,7 +251,6 @@ pub mod pallet {
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
-                fee: Default::default(),
                 interval: 10u32.into(),
             }
         }
@@ -295,7 +259,6 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            Fee::<T>::set(self.fee);
             Interval::<T>::set(self.interval);
         }
     }
@@ -326,28 +289,12 @@ pub mod pallet {
                     return Err(Error::<T>::Overflow.into());
                 }
 
-                // Attempt to charge a fee for message submission
-                let fee = match who {
-                    RawOrigin::Signed(who) => {
-                        let fee = Self::fee();
-                        <T as Config>::Currency::transfer(
-                            T::FeeCurrency::get(),
-                            who,
-                            &T::FeeAccountId::get(),
-                            fee,
-                        )?;
-                        fee
-                    }
-                    _ => 0u32.into(),
-                };
-
                 let timestamp = pallet_timestamp::Pallet::<T>::now();
                 Self::append_message_queue(
                     network_id,
                     BridgeMessage {
                         nonce: *nonce,
                         payload: payload.to_vec(),
-                        fee: T::BalanceConverter::convert(fee),
                         timestamp: timestamp.unique_saturated_into(),
                     },
                 );
