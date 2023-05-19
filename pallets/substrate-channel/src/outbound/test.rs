@@ -188,6 +188,7 @@ impl bridge_outbound_channel::Config for Test {
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
     type AssetId = ();
+    type Balance = u128;
     type WeightInfo = ();
 }
 

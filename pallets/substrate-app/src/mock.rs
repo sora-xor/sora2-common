@@ -219,6 +219,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
     type AssetId = ();
+    type Balance = u128;
     type WeightInfo = ();
 }
 

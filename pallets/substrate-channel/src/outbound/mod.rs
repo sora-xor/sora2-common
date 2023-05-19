@@ -98,10 +98,12 @@ pub mod pallet {
 
         type AssetId: Parameter;
 
+        type Balance: Parameter;
+
         type MessageStatusNotifier: MessageStatusNotifier<
             Self::AssetId,
             Self::AccountId,
-            Self::AssetId,
+            Self::Balance,
         >;
 
         type AuxiliaryDigestHandler: AuxiliaryDigestHandler;
