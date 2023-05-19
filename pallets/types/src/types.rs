@@ -30,7 +30,8 @@
 
 //! Types for representing messages
 
-use crate::H256;
+use crate::substrate::MainnetAssetId;
+use crate::{GenericTimepoint, H256};
 use crate::{H160, U256};
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
@@ -56,11 +57,13 @@ pub struct MessageId {
 }
 
 impl From<(MessageDirection, BatchNonce, MessageNonce)> for MessageId {
-    fn from((direction, batch_nonce, message_nonce): (MessageDirection, BatchNonce, MessageNonce)) -> Self {
+    fn from(
+        (direction, batch_nonce, message_nonce): (MessageDirection, BatchNonce, MessageNonce),
+    ) -> Self {
         MessageId {
             direction,
             batch_nonce: Some(batch_nonce),
-            message_nonce
+            message_nonce,
         }
     }
 }
@@ -70,7 +73,7 @@ impl From<(MessageDirection, MessageNonce)> for MessageId {
         MessageId {
             direction,
             batch_nonce: None,
-            message_nonce
+            message_nonce,
         }
     }
 }
@@ -210,6 +213,7 @@ pub enum MessageStatus {
     Done,
     Failed,
     Refunded,
+    Approved,
 }
 
 #[derive(
@@ -224,11 +228,20 @@ pub enum MessageStatus {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub enum AppKind {
+/// EVM contract kind
+pub enum EVMAppKind {
+    /// Used for native token transfers
     EthApp,
+    /// Used for ERC20 tokens
     ERC20App,
+    /// Used for this chain native tokens
     SidechainApp,
-    SubstrateApp,
+    /// Legacy HASHI bridge contract
+    HashiBridge,
+    /// Legacy XOR master contract
+    XorMaster,
+    /// Legacy VAL master contract
+    ValMaster,
 }
 
 #[derive(
@@ -242,8 +255,11 @@ pub enum AppKind {
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
+/// Additional leaf data for MMR
 pub struct LeafExtraData<Hash, RandomSeed> {
+    /// This chain randomness which could be used in sidechain
     pub random_seed: RandomSeed,
+    /// Commitments digest hash
     pub digest_hash: Hash,
 }
 
@@ -259,10 +275,14 @@ pub struct LeafExtraData<Hash, RandomSeed> {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct BridgeAssetInfo<AssetId> {
-    pub asset_id: AssetId,
-    pub evm_address: Option<H160>,
-    pub app_kind: AppKind,
+/// Information about bridge asset which could be used by client applications
+pub enum BridgeAssetInfo {
+    /// Legacy HASHI bridge token
+    EVMLegacy(EVMLegacyAssetInfo),
+    /// EVM network asset info
+    EVM(EVMAssetInfo),
+    /// Substrate network asset info
+    Sub(SubAssetInfo),
 }
 
 #[derive(
@@ -277,9 +297,96 @@ pub struct BridgeAssetInfo<AssetId> {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct BridgeAppInfo {
+/// Information about asset in EVM network
+pub struct EVMAssetInfo {
+    /// Thischain asset id
+    pub asset_id: MainnetAssetId,
+    /// Contract address
     pub evm_address: H160,
-    pub app_kind: AppKind,
+    /// Kind of contract
+    pub app_kind: EVMAppKind,
+    /// Sidechain asset precision
+    pub precision: u8,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+/// HASHI bridge asset info
+/// Some data could not be provided by design
+pub struct EVMLegacyAssetInfo {
+    /// Thischain asset id
+    pub asset_id: MainnetAssetId,
+    /// Contract address
+    pub evm_address: Option<H160>,
+    /// Kind of contract
+    pub app_kind: EVMAppKind,
+    /// Sidechain asset precision
+    pub precision: Option<u8>,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+/// Substrate bridge asset info
+pub struct SubAssetInfo {
+    /// Thischain asset info
+    pub asset_id: MainnetAssetId,
+    pub asset_kind: AssetKind,
+    pub precision: u8,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum BridgeAppInfo {
+    EVM(GenericNetworkId, EVMAppInfo),
+    /// There's only one app supported for substrate bridge
+    Sub(GenericNetworkId),
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct EVMAppInfo {
+    pub evm_address: H160,
+    pub app_kind: EVMAppKind,
 }
 
 #[derive(
@@ -333,7 +440,7 @@ pub struct AdditionalEVMInboundData {
 pub struct CallOriginOutput<NetworkId, MessageId, Additional> {
     pub network_id: NetworkId,
     pub message_id: MessageId,
-    pub timestamp: u64,
+    pub timepoint: GenericTimepoint,
     pub additional: Additional,
 }
 
@@ -343,13 +450,13 @@ impl<NetworkId, Additional> crate::traits::OriginOutput<NetworkId, Additional>
     fn new(
         network_id: NetworkId,
         message_id: H256,
-        timestamp: u64,
+        timepoint: GenericTimepoint,
         additional: Additional,
     ) -> Self {
         Self {
             network_id,
             message_id,
-            timestamp,
+            timepoint,
             additional,
         }
     }

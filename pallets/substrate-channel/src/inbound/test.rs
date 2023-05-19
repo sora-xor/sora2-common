@@ -48,7 +48,7 @@ use sp_std::convert::From;
 use sp_std::marker::PhantomData;
 
 use bridge_types::traits::MessageDispatch;
-use bridge_types::{GenericNetworkId, U256};
+use bridge_types::{GenericNetworkId, GenericTimepoint, U256};
 use traits::parameter_type_with_key;
 
 use crate::inbound::Error;
@@ -194,7 +194,8 @@ impl Verifier for MockVerifier {
 
     fn verify(network_id: GenericNetworkId, _hash: H256, _proof: &Vec<u8>) -> DispatchResult {
         let network_id = match network_id {
-            bridge_types::GenericNetworkId::EVM(_) => {
+            bridge_types::GenericNetworkId::EVM(_)
+            | bridge_types::GenericNetworkId::EVMLegacy(_) => {
                 return Err(Error::<Test>::InvalidNetwork.into())
             }
             bridge_types::GenericNetworkId::Sub(ni) => ni,
@@ -211,7 +212,7 @@ impl Verifier for MockVerifier {
 pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch {
-    fn dispatch(_: SubNetworkId, _: MessageId, _: u64, _: &[u8], _: ()) {}
+    fn dispatch(_: SubNetworkId, _: MessageId, _: GenericTimepoint, _: &[u8], _: ()) {}
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(
@@ -288,7 +289,7 @@ fn test_submit() {
         // Submit message 1
         let message_1 = BridgeMessage {
             nonce: 1,
-            timestamp: 0,
+            timepoint: Default::default(),
             fee: 0,
             payload: Default::default(),
         };
@@ -304,7 +305,7 @@ fn test_submit() {
         // Submit message 2
         let message_2 = BridgeMessage {
             nonce: 2,
-            timestamp: 0,
+            timepoint: Default::default(),
             fee: 0,
             payload: Default::default(),
         };
@@ -328,7 +329,7 @@ fn test_submit_with_invalid_nonce() {
         // Submit message
         let message = BridgeMessage {
             nonce: 1,
-            timestamp: 0,
+            timepoint: Default::default(),
             fee: 0,
             payload: Default::default(),
         };
@@ -391,7 +392,7 @@ fn test_submit_with_invalid_network_id() {
         // Submit message
         let message = BridgeMessage {
             nonce: 1,
-            timestamp: 0,
+            timepoint: Default::default(),
             fee: 0,
             payload: Default::default(),
         };

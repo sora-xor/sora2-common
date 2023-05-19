@@ -179,7 +179,7 @@ pub mod pallet {
                 T::MessageDispatch::dispatch(
                     network_id,
                     message_id,
-                    message.timestamp,
+                    message.timepoint,
                     &message.payload,
                     (),
                 );

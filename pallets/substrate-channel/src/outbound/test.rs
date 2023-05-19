@@ -32,7 +32,7 @@ use super::*;
 use codec::MaxEncodedLen;
 use currencies::BasicCurrencyAdapter;
 
-use bridge_types::traits::OutboundChannel;
+use bridge_types::traits::{OutboundChannel, TimepointProvider};
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::{assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use frame_system::RawOrigin;
@@ -179,6 +179,14 @@ parameter_types! {
     pub const MaxMessagesPerCommit: u64 = 5;
 }
 
+pub struct GenericTimepointProvider;
+
+impl TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number() as u32)
+    }
+}
+
 impl bridge_outbound_channel::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = b"commitment";
     type RuntimeEvent = RuntimeEvent;
@@ -192,6 +200,7 @@ impl bridge_outbound_channel::Config for Test {
     type WeightInfo = ();
     type Currency = Currencies;
     type BalanceConverter = sp_runtime::traits::ConvertInto;
+    type TimepointProvider = GenericTimepointProvider;
 }
 
 impl pallet_timestamp::Config for Test {

@@ -54,7 +54,7 @@ benchmarks! {
                 nonce: 0u64,
                 fee: Default::default(),
                 payload,
-                timestamp: Default::default(),
+                timepoint: Default::default(),
             });
         }
 
@@ -74,7 +74,7 @@ benchmarks! {
             nonce: 0u64,
             fee: Default::default(),
             payload,
-            timestamp: Default::default(),
+            timepoint: Default::default(),
         });
 
         let interval: T::BlockNumber = 10u32.into();
