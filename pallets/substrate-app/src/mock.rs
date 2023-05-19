@@ -246,6 +246,13 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     ) -> Result<AssetId, sp_runtime::DispatchError> {
         Ok(AssetId::Custom)
     }
+
+    fn manage_asset(
+        _manager: AccountId,
+        _asset_id: AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        Ok(())
+    }
 }
 
 pub struct BalancePrecisionConverterImpl;

@@ -228,6 +228,8 @@ pub trait BridgeAssetRegistry<AccountId, AssetId> {
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
     ) -> Result<AssetId, DispatchError>;
+
+    fn manage_asset(manager: AccountId, asset_id: AssetId) -> DispatchResult;
 }
 
 pub trait AuxiliaryDigestHandler {
