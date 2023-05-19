@@ -237,13 +237,11 @@ pub struct AssetRegistryImpl;
 impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     type AssetName = String;
     type AssetSymbol = String;
-    type Decimals = u8;
 
     fn register_asset(
         _owner: AccountId,
         _name: Self::AssetName,
         _symbol: Self::AssetSymbol,
-        _decimals: Self::Decimals,
     ) -> Result<AssetId, sp_runtime::DispatchError> {
         Ok(AssetId::Custom)
     }
@@ -265,6 +263,7 @@ impl substrate_app::Config for Test {
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
     type BalanceConverter = ();
+    type BalancePrecisionConverter = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

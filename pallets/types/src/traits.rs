@@ -222,13 +222,11 @@ pub trait OriginOutput<NetworkId, Additional> {
 pub trait BridgeAssetRegistry<AccountId, AssetId> {
     type AssetName: Parameter;
     type AssetSymbol: Parameter;
-    type Decimals: Parameter;
 
     fn register_asset(
         owner: AccountId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
-        decimals: Self::Decimals,
     ) -> Result<AssetId, DispatchError>;
 }
 
@@ -238,4 +236,19 @@ pub trait AuxiliaryDigestHandler {
 
 impl AuxiliaryDigestHandler for () {
     fn add_item(_item: AuxiliaryDigestItem) {}
+}
+
+pub trait BalancePrecisionConverter<AssetId, Balance> {
+    fn to_sidechain(asset_id: &AssetId, sidechain_precision: u8, amount: Balance) -> Balance;
+    fn from_sidechain(asset_id: &AssetId, sidechain_precision: u8, amount: Balance) -> Balance;
+}
+
+impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance> for () {
+    fn to_sidechain(_asset_id: &AssetId, _sidechain_precision: u8, amount: Balance) -> Balance {
+        amount
+    }
+
+    fn from_sidechain(_asset_id: &AssetId, _sidechain_precision: u8, amount: Balance) -> Balance {
+        amount
+    }
 }

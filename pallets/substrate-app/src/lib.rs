@@ -104,7 +104,9 @@ pub mod pallet {
         MainnetAccountId, MainnetAssetId, MainnetBalance, ParachainAccountId, ParachainAssetId,
         SubstrateBridgeMessageEncode, XCMAppCall,
     };
-    use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel};
+    use bridge_types::traits::{
+        BalancePrecisionConverter, BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel,
+    };
     use bridge_types::types::{AssetKind, CallOriginOutput};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
     use frame_support::pallet_prelude::*;
@@ -130,10 +132,6 @@ pub mod pallet {
         AccountIdOf<T>,
         AssetIdOf<T>,
     >>::AssetSymbol;
-    pub type DecimalsOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
-        AccountIdOf<T>,
-        AssetIdOf<T>,
-    >>::Decimals;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -169,6 +167,8 @@ pub mod pallet {
 
         type BalanceConverter: Convert<BalanceOf<Self>, MainnetBalance>;
 
+        type BalancePrecisionConverter: BalancePrecisionConverter<AssetIdOf<Self>, BalanceOf<Self>>;
+
         type WeightInfo: WeightInfo;
     }
 
@@ -201,6 +201,11 @@ pub mod pallet {
     pub(super) type AssetKinds<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn sidechain_precision)]
+    pub(super) type SidechainPrecision<T: Config> =
+        StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, u8, OptionQuery>;
+
     #[pallet::error]
     pub enum Error<T> {
         TokenIsNotRegistered,
@@ -213,6 +218,7 @@ pub mod pallet {
         CallEncodeFailed,
         /// Amount must be > 0
         WrongAmount,
+        UnknownPrecision,
     }
 
     #[pallet::call]
@@ -240,18 +246,33 @@ pub mod pallet {
 
             let bridge_account = Self::bridge_account()?;
 
-            ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
+            let thischain_amount = match asset_kind {
+                AssetKind::Thischain => amount,
+                AssetKind::Sidechain => {
+                    let precision = SidechainPrecision::<T>::get(network_id, asset_id)
+                        .ok_or(Error::<T>::UnknownPrecision)?;
+                    let amount =
+                        T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount);
+                    amount
+                }
+            };
+
+            ensure!(
+                thischain_amount > BalanceOf::<T>::zero(),
+                Error::<T>::WrongAmount
+            );
+
             match asset_kind {
                 AssetKind::Thischain => {
                     <T as Config>::Currency::transfer(
                         asset_id,
                         &bridge_account,
                         &recipient,
-                        amount,
+                        thischain_amount,
                     )?;
                 }
                 AssetKind::Sidechain => {
-                    <T as Config>::Currency::deposit(asset_id, &recipient, amount)?;
+                    <T as Config>::Currency::deposit(asset_id, &recipient, thischain_amount)?;
                 }
             }
             T::MessageStatusNotifier::inbound_request(
@@ -263,11 +284,15 @@ pub mod pallet {
                     .unwrap_or(GenericAccount::Unknown),
                 recipient.clone(),
                 asset_id,
-                amount,
+                thischain_amount,
                 timestamp,
             );
             Self::deposit_event(Event::Minted(
-                network_id, asset_id, sender, recipient, amount,
+                network_id,
+                asset_id,
+                sender,
+                recipient,
+                thischain_amount,
             ));
             Ok(())
         }
@@ -334,14 +359,15 @@ pub mod pallet {
             sidechain_asset: ParachainAssetId,
             symbol: AssetSymbolOf<T>,
             name: AssetNameOf<T>,
-            decimals: DecimalsOf<T>,
+            decimals: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
             let bridge_account = Self::bridge_account()?;
 
-            let asset_id =
-                T::AssetRegistry::register_asset(bridge_account, name, symbol, decimals)?;
+            let asset_id = T::AssetRegistry::register_asset(bridge_account, name, symbol)?;
+
+            SidechainPrecision::<T>::insert(network_id, asset_id, decimals);
 
             Self::register_asset_inner(
                 network_id,
@@ -385,10 +411,24 @@ pub mod pallet {
             recipient: ParachainAccountId,
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
-            ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let bridge_account = Self::bridge_account()?;
+
+            let sidechain_amount = match asset_kind {
+                AssetKind::Thischain => amount,
+                AssetKind::Sidechain => {
+                    let precision = SidechainPrecision::<T>::get(network_id, asset_id)
+                        .ok_or(Error::<T>::UnknownPrecision)?;
+                    let amount =
+                        T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount);
+                    amount
+                }
+            };
+            ensure!(
+                sidechain_amount > BalanceOf::<T>::zero(),
+                Error::<T>::WrongAmount
+            );
 
             match asset_kind {
                 AssetKind::Sidechain => {
@@ -404,7 +444,7 @@ pub mod pallet {
                 &RawOrigin::Signed(who.clone()),
                 &XCMAppCall::Transfer {
                     recipient: recipient.clone(),
-                    amount: T::BalanceConverter::convert(amount),
+                    amount: T::BalanceConverter::convert(sidechain_amount),
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sender: T::AccountIdConverter::convert(who.clone()),
                 }
