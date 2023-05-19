@@ -28,6 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::traits::BalancePrecisionConverter;
 use bridge_types::traits::BridgeAssetRegistry;
 use codec::Decode;
 use codec::Encode;
@@ -247,6 +248,26 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     }
 }
 
+pub struct BalancePrecisionConverterImpl;
+
+impl BalancePrecisionConverter<AssetId, Balance> for BalancePrecisionConverterImpl {
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount * 10)
+    }
+
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount / 10)
+    }
+}
+
 impl substrate_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type BridgeAccountId = GetBridgeAccountId;
@@ -263,7 +284,7 @@ impl substrate_app::Config for Test {
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
     type BalanceConverter = ();
-    type BalancePrecisionConverter = ();
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
