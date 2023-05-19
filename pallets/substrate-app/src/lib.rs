@@ -252,7 +252,8 @@ pub mod pallet {
                     let precision = SidechainPrecision::<T>::get(network_id, asset_id)
                         .ok_or(Error::<T>::UnknownPrecision)?;
                     let amount =
-                        T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount);
+                        T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
+                            .ok_or(Error::<T>::WrongAmount)?;
                     amount
                 }
             };
@@ -421,7 +422,8 @@ pub mod pallet {
                     let precision = SidechainPrecision::<T>::get(network_id, asset_id)
                         .ok_or(Error::<T>::UnknownPrecision)?;
                     let amount =
-                        T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount);
+                        T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount)
+                            .ok_or(Error::<T>::WrongAmount)?;
                     amount
                 }
             };

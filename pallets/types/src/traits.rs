@@ -239,16 +239,32 @@ impl AuxiliaryDigestHandler for () {
 }
 
 pub trait BalancePrecisionConverter<AssetId, Balance> {
-    fn to_sidechain(asset_id: &AssetId, sidechain_precision: u8, amount: Balance) -> Balance;
-    fn from_sidechain(asset_id: &AssetId, sidechain_precision: u8, amount: Balance) -> Balance;
+    fn to_sidechain(
+        asset_id: &AssetId,
+        sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance>;
+    fn from_sidechain(
+        asset_id: &AssetId,
+        sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance>;
 }
 
 impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance> for () {
-    fn to_sidechain(_asset_id: &AssetId, _sidechain_precision: u8, amount: Balance) -> Balance {
-        amount
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount)
     }
 
-    fn from_sidechain(_asset_id: &AssetId, _sidechain_precision: u8, amount: Balance) -> Balance {
-        amount
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount)
     }
 }
