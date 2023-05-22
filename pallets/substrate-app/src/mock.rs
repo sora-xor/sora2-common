@@ -254,8 +254,12 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
         Ok(())
     }
 
-    fn asset_precision(_asset_id: AssetId) -> u8 {
-        18
+    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        bridge_types::types::RawAssetInfo {
+            name: Default::default(),
+            symbol: Default::default(),
+            precision: 18,
+        }
     }
 }
 

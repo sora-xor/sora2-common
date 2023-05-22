@@ -56,11 +56,13 @@ pub struct MessageId {
 }
 
 impl From<(MessageDirection, BatchNonce, MessageNonce)> for MessageId {
-    fn from((direction, batch_nonce, message_nonce): (MessageDirection, BatchNonce, MessageNonce)) -> Self {
+    fn from(
+        (direction, batch_nonce, message_nonce): (MessageDirection, BatchNonce, MessageNonce),
+    ) -> Self {
         MessageId {
             direction,
             batch_nonce: Some(batch_nonce),
-            message_nonce
+            message_nonce,
         }
     }
 }
@@ -70,7 +72,7 @@ impl From<(MessageDirection, MessageNonce)> for MessageId {
         MessageId {
             direction,
             batch_nonce: None,
-            message_nonce
+            message_nonce,
         }
     }
 }
@@ -353,6 +355,12 @@ impl<NetworkId, Additional> crate::traits::OriginOutput<NetworkId, Additional>
             additional,
         }
     }
+}
+
+pub struct RawAssetInfo {
+    pub name: Vec<u8>,
+    pub symbol: Vec<u8>,
+    pub precision: u8,
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";

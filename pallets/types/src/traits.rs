@@ -38,7 +38,7 @@ use crate::types::AuxiliaryDigestItem;
 use crate::H256;
 use crate::U256;
 use crate::{
-    types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
+    types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus, RawAssetInfo},
     GenericAccount, GenericNetworkId,
 };
 use codec::FullCodec;
@@ -231,7 +231,7 @@ pub trait BridgeAssetRegistry<AccountId, AssetId> {
 
     fn manage_asset(manager: AccountId, asset_id: AssetId) -> DispatchResult;
 
-    fn asset_precision(asset_id: AssetId) -> u8;
+    fn get_raw_info(asset_id: AssetId) -> RawAssetInfo;
 }
 
 pub trait AuxiliaryDigestHandler {

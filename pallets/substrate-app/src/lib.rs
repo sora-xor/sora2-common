@@ -328,7 +328,7 @@ pub mod pallet {
                 Error::<T>::TokenAlreadyRegistered
             );
 
-            let sidechain_precision = T::AssetRegistry::asset_precision(asset_id);
+            let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id).precision;
 
             Self::register_asset_inner(
                 network_id,
