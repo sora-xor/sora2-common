@@ -230,6 +230,8 @@ pub trait BridgeAssetRegistry<AccountId, AssetId> {
     ) -> Result<AssetId, DispatchError>;
 
     fn manage_asset(manager: AccountId, asset_id: AssetId) -> DispatchResult;
+
+    fn asset_precision(asset_id: AssetId) -> u8;
 }
 
 pub trait AuxiliaryDigestHandler {
@@ -240,20 +242,21 @@ impl AuxiliaryDigestHandler for () {
     fn add_item(_item: AuxiliaryDigestItem) {}
 }
 
-pub trait BalancePrecisionConverter<AssetId, Balance> {
+pub trait BalancePrecisionConverter<AssetId, Balance, SidechainBalance> {
     fn to_sidechain(
         asset_id: &AssetId,
         sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance>;
+    ) -> Option<SidechainBalance>;
+
     fn from_sidechain(
         asset_id: &AssetId,
         sidechain_precision: u8,
-        amount: Balance,
+        amount: SidechainBalance,
     ) -> Option<Balance>;
 }
 
-impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance> for () {
+impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance, Balance> for () {
     fn to_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,

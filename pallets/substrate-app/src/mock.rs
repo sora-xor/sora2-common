@@ -253,11 +253,15 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     ) -> frame_support::pallet_prelude::DispatchResult {
         Ok(())
     }
+
+    fn asset_precision(_asset_id: AssetId) -> u8 {
+        18
+    }
 }
 
 pub struct BalancePrecisionConverterImpl;
 
-impl BalancePrecisionConverter<AssetId, Balance> for BalancePrecisionConverterImpl {
+impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionConverterImpl {
     fn to_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
@@ -290,7 +294,6 @@ impl substrate_app::Config for Test {
     type WeightInfo = ();
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
-    type BalanceConverter = ();
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
 }
 
