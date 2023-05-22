@@ -38,7 +38,6 @@ use frame_support::weights::Weight;
 use sp_core::{RuntimeDebug, H256};
 use sp_io::offchain_index;
 use sp_runtime::traits::Hash;
-use sp_runtime::traits::UniqueSaturatedInto;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
@@ -71,10 +70,12 @@ pub mod pallet {
     use bridge_types::traits::AuxiliaryDigestHandler;
     use bridge_types::traits::MessageStatusNotifier;
     use bridge_types::traits::OutboundChannel;
+    use bridge_types::traits::TimepointProvider;
     use bridge_types::types::AuxiliaryDigestItem;
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
     use bridge_types::GenericNetworkId;
+    use bridge_types::GenericTimepoint;
     use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -119,6 +120,8 @@ pub mod pallet {
         type Currency: MultiCurrency<Self::AccountId>;
 
         type BalanceConverter: Convert<BalanceOf<Self>, MainnetBalance>;
+
+        type TimepointProvider: TimepointProvider;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -231,7 +234,7 @@ pub mod pallet {
                     GenericNetworkId::Sub(network_id),
                     Self::make_message_id(message.nonce),
                     MessageStatus::Committed,
-                    None,
+                    GenericTimepoint::Pending,
                 );
             }
 
@@ -341,14 +344,13 @@ pub mod pallet {
                     _ => 0u32.into(),
                 };
 
-                let timestamp = pallet_timestamp::Pallet::<T>::now();
                 Self::append_message_queue(
                     network_id,
                     BridgeMessage {
                         nonce: *nonce,
                         payload: payload.to_vec(),
                         fee: T::BalanceConverter::convert(fee),
-                        timestamp: timestamp.unique_saturated_into(),
+                        timepoint: T::TimepointProvider::get_timepoint(),
                     },
                 );
                 Self::deposit_event(Event::MessageAccepted(network_id, *nonce));

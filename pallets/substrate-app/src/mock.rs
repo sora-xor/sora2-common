@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use bridge_types::traits::BridgeAssetRegistry;
+use bridge_types::traits::TimepointProvider;
 use codec::Decode;
 use codec::Encode;
 use codec::MaxEncodedLen;
@@ -210,6 +211,14 @@ parameter_types! {
     pub const FeeCurrency: AssetId = AssetId::XOR;
 }
 
+pub struct GenericTimepointProvider;
+
+impl TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number() as u32)
+    }
+}
+
 impl substrate_bridge_channel::outbound::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
@@ -223,6 +232,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type AuxiliaryDigestHandler = ();
     type WeightInfo = ();
     type BalanceConverter = ();
+    type TimepointProvider = GenericTimepointProvider;
 }
 
 impl pallet_timestamp::Config for Test {
