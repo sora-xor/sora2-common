@@ -68,7 +68,7 @@ benchmarks! {
         let caller: T::AccountId = whitelisted_caller();
         let message = vec![BridgeMessage {
             nonce: 1,
-            timestamp: 0,
+            timepoint: Default::default(),
             payload: Default::default(),
         }];
     }: _(RawOrigin::None, BASE_NETWORK_ID, message, Default::default())

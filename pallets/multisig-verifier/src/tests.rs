@@ -220,7 +220,7 @@ fn it_works_verify() {
         let mes = bridge_types::substrate::BridgeMessage {
             payload: Vec::new(),
             nonce: 0,
-            timestamp: 0,
+            timepoint: Default::default(),
         };
 
         let messages = vec![mes];

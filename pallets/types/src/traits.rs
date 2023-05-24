@@ -35,6 +35,7 @@
 use core::fmt::Debug;
 
 use crate::types::AuxiliaryDigestItem;
+use crate::GenericTimepoint;
 use crate::H256;
 use crate::U256;
 use crate::{
@@ -74,7 +75,7 @@ pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
     fn dispatch(
         network_id: NetworkId,
         id: MessageId,
-        timestamp: u64,
+        timepoint: GenericTimepoint,
         payload: &[u8],
         additional: Additional,
     );
@@ -98,12 +99,12 @@ impl<NetworkId, Source> AppRegistry<NetworkId, Source> for () {
     }
 }
 
-pub trait BridgeApp<NetworkId, AccountId, Recipient, AssetId, Balance> {
-    fn is_asset_supported(network_id: NetworkId, asset_id: AssetId) -> bool;
+pub trait BridgeApp<AccountId, Recipient, AssetId, Balance> {
+    fn is_asset_supported(network_id: GenericNetworkId, asset_id: AssetId) -> bool;
 
     // Initiates transfer to Sidechain by burning the asset on substrate side
     fn transfer(
-        network_id: NetworkId,
+        network_id: GenericNetworkId,
         asset_id: AssetId,
         sender: AccountId,
         recipient: Recipient,
@@ -111,16 +112,52 @@ pub trait BridgeApp<NetworkId, AccountId, Recipient, AssetId, Balance> {
     ) -> Result<H256, DispatchError>;
 
     fn refund(
-        network_id: NetworkId,
+        network_id: GenericNetworkId,
         message_id: H256,
         recipient: AccountId,
         asset_id: AssetId,
         amount: Balance,
     ) -> DispatchResult;
 
-    fn list_supported_assets(network_id: NetworkId) -> Vec<BridgeAssetInfo<AssetId>>;
+    fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo>;
 
-    fn list_apps(network_id: NetworkId) -> Vec<BridgeAppInfo>;
+    fn list_apps() -> Vec<BridgeAppInfo>;
+}
+
+impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, AssetId, Balance>
+    for ()
+{
+    fn is_asset_supported(_network_id: GenericNetworkId, _asset_id: AssetId) -> bool {
+        false
+    }
+
+    fn transfer(
+        _network_id: GenericNetworkId,
+        _asset_id: AssetId,
+        _sender: AccountId,
+        _recipient: Recipient,
+        _amount: Balance,
+    ) -> Result<H256, DispatchError> {
+        Err(DispatchError::Unavailable)
+    }
+
+    fn refund(
+        _network_id: GenericNetworkId,
+        _message_id: H256,
+        _recipient: AccountId,
+        _asset_id: AssetId,
+        _amount: Balance,
+    ) -> DispatchResult {
+        Err(DispatchError::Unavailable)
+    }
+
+    fn list_supported_assets(_network_id: GenericNetworkId) -> Vec<BridgeAssetInfo> {
+        vec![]
+    }
+
+    fn list_apps() -> Vec<BridgeAppInfo> {
+        vec![]
+    }
 }
 
 pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
@@ -128,7 +165,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
         network_id: GenericNetworkId,
         message_id: H256,
         status: MessageStatus,
-        end_timestamp: Option<u64>,
+        end_timepoint: GenericTimepoint,
     );
 
     fn inbound_request(
@@ -138,7 +175,8 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
         dest: AccountId,
         asset_id: AssetId,
         amount: Balance,
-        start_timestamp: u64,
+        start_timestamp: GenericTimepoint,
+        status: MessageStatus,
     );
 
     fn outbound_request(
@@ -148,6 +186,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
         dest: GenericAccount<AccountId>,
         asset_id: AssetId,
         amount: Balance,
+        status: MessageStatus,
     );
 }
 
@@ -156,7 +195,7 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
         _network_id: GenericNetworkId,
         _message_id: H256,
         _status: MessageStatus,
-        _end_timestamp: Option<u64>,
+        _end_timestamp: GenericTimepoint,
     ) {
     }
 
@@ -167,7 +206,8 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
         _dest: AccountId,
         _asset_id: AssetId,
         _amount: Balance,
-        _start_timestamp: u64,
+        _start_timestamp: GenericTimepoint,
+        _status: MessageStatus,
     ) {
     }
 
@@ -178,6 +218,7 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
         _dest: GenericAccount<AccountId>,
         _asset_id: AssetId,
         _amount: Balance,
+        _status: MessageStatus,
     ) {
     }
 }
@@ -215,8 +256,12 @@ impl<Balance> GasTracker<Balance> for () {
 /// Trait that every origin (like Ethereum origin or Parachain origin) should implement
 pub trait OriginOutput<NetworkId, Additional> {
     /// Construct new origin
-    fn new(network_id: NetworkId, message_id: H256, timestamp: u64, additional: Additional)
-        -> Self;
+    fn new(
+        network_id: NetworkId,
+        message_id: H256,
+        timepoint: GenericTimepoint,
+        additional: Additional,
+    ) -> Self;
 }
 
 pub trait BridgeAssetRegistry<AccountId, AssetId> {
@@ -238,4 +283,8 @@ pub trait AuxiliaryDigestHandler {
 
 impl AuxiliaryDigestHandler for () {
     fn add_item(_item: AuxiliaryDigestItem) {}
+}
+
+pub trait TimepointProvider {
+    fn get_timepoint() -> GenericTimepoint;
 }

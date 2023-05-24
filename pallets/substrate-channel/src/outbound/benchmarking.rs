@@ -52,7 +52,7 @@ benchmarks! {
             Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
                 nonce: 0u64,
                 payload,
-                timestamp: Default::default(),
+                timepoint: Default::default(),
             });
         }
 
@@ -71,7 +71,7 @@ benchmarks! {
         Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
             nonce: 0u64,
             payload,
-            timestamp: Default::default(),
+            timepoint: Default::default(),
         });
 
         let interval: T::BlockNumber = 10u32.into();

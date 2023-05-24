@@ -35,7 +35,10 @@ use sp_core::ecdsa;
 use sp_runtime::{AccountId32, RuntimeDebug};
 use sp_std::prelude::*;
 
-use crate::types::{AssetKind, MessageNonce};
+use crate::{
+    types::{AssetKind, MessageNonce},
+    GenericTimepoint,
+};
 
 pub type ParachainAccountId = xcm::VersionedMultiLocation;
 
@@ -143,5 +146,5 @@ impl SubstrateBridgeMessageEncode for BridgeCall {
 pub struct BridgeMessage {
     pub payload: Vec<u8>,
     pub nonce: MessageNonce,
-    pub timestamp: u64,
+    pub timepoint: GenericTimepoint,
 }
