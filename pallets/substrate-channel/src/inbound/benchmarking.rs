@@ -69,10 +69,9 @@ benchmarks! {
         let message = vec![BridgeMessage {
             nonce: 1,
             timepoint: Default::default(),
-            fee: 0,
             payload: Default::default(),
         }];
-    }: _(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, message, Default::default())
+    }: _(RawOrigin::None, BASE_NETWORK_ID, message, Default::default())
     verify {
         assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
@@ -80,18 +79,6 @@ benchmarks! {
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }
-    }
-
-    // Benchmark `set_reward_fraction` under worst case conditions:
-    // * The origin is authorized, i.e. equals UpdateOrigin
-    set_reward_fraction {
-        // Pick a value that is different from the initial RewardFraction
-        let fraction = Perbill::from_percent(50);
-        assert!(<RewardFraction<T>>::get() != fraction);
-
-    }: _(RawOrigin::Root, fraction)
-    verify {
-        assert_eq!(<RewardFraction<T>>::get(), fraction);
     }
 }
 

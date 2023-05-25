@@ -34,7 +34,6 @@ use super::*;
 use bridge_types::substrate::BridgeMessage;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
-use frame_system::RawOrigin;
 
 const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
@@ -52,7 +51,6 @@ benchmarks! {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
             Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
                 nonce: 0u64,
-                fee: Default::default(),
                 payload,
                 timepoint: Default::default(),
             });
@@ -72,7 +70,6 @@ benchmarks! {
         let payload: Vec<u8> = (0..).take(10).collect();
         Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
             nonce: 0u64,
-            fee: Default::default(),
             payload,
             timepoint: Default::default(),
         });
@@ -94,17 +91,6 @@ benchmarks! {
         let block_number = Interval::<T>::get();
 
     }: { BridgeOutboundChannel::<T>::on_initialize(block_number.into()) }
-
-    // Benchmark `set_fee` under worst case conditions:
-    // * The origin is authorized, i.e. equals SetFeeOrigin
-    set_fee {
-        let new_fee: BalanceOf<T> = 32000000u32.into();
-        assert!(<Fee<T>>::get() != new_fee);
-
-    }: _(RawOrigin::Root, new_fee)
-    verify {
-        assert_eq!(<Fee<T>>::get(), new_fee);
-    }
 }
 
 impl_benchmark_test_suite!(
