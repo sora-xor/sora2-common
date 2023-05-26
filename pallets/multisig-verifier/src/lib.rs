@@ -225,7 +225,10 @@ pub mod pallet {
 
         #[pallet::call_index(2)]
         #[pallet::weight(0)]
-        pub fn remove_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
+        pub fn remove_peer(
+            origin: OriginFor<T>,
+            peer: ecdsa::Public,
+        ) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             frame_support::log::info!("Call remove_peer {:?} by {:?}", peer, output);
             PeerKeys::<T>::try_mutate(
@@ -245,8 +248,7 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 output.network_id.into(),
                 &frame_system::RawOrigin::Root,
-                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }
-                    .prepare_message(),
+                &bridge_types::substrate::DataSignerCall::RemovePeer { peer }.prepare_message(),
                 (),
             )?;
 

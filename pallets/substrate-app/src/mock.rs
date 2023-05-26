@@ -259,6 +259,10 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     }
 }
 
+parameter_types! {
+    pub const Lol: u128 = 1;
+}
+
 impl substrate_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type BridgeAccountId = GetBridgeAccountId;
@@ -275,6 +279,7 @@ impl substrate_app::Config for Test {
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
     type BalanceConverter = ();
+    type BridgeTransferLimit = Lol;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
