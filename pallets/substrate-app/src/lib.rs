@@ -177,9 +177,9 @@ pub mod pallet {
 
         type WeightInfo: WeightInfo;
 
-        type BridgeTransferLimit: Get<BalanceOf<Self>>;
+        // type BridgeTransferLimit: Get<BalanceOf<Self>>;
 
-        type BridgeTransferLimiter: BridgeTransferLimiter<MainnetAssetId, MainnetBalance>;
+        type BridgeTransferLimiter: BridgeTransferLimiter<AssetIdOf<Self>, BalanceOf<Self>>;
     }
 
     #[pallet::hooks]
@@ -399,7 +399,9 @@ pub mod pallet {
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
             // Self::is_amount_under_limit(amount)?;\
-            // let a = <T as Config>::BridgeTransferLimiter::is_transfer_under_limit();
+             ensure!(
+                T::BridgeTransferLimiter::is_transfer_under_limit(asset_id, amount), 
+                Error::<T>::TransferLimitReached);
 
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -440,13 +442,13 @@ pub mod pallet {
             Ok(Default::default())
         }
 
-        fn is_amount_under_limit(amount: BalanceOf<T>) -> DispatchResult {
-            let amount = <T as Config>::BalanceConverter::convert(amount);
-            let limit_amount =
-                <T as Config>::BalanceConverter::convert(<T as Config>::BridgeTransferLimit::get());
-            ensure!(amount < limit_amount, Error::<T>::TransferLimitReached);
-            Ok(())
-        }
+        // fn is_amount_under_limit(amount: BalanceOf<T>) -> DispatchResult {
+        //     let amount = <T as Config>::BalanceConverter::convert(amount);
+        //     let limit_amount =
+        //         <T as Config>::BalanceConverter::convert(<T as Config>::BridgeTransferLimit::get());
+        //     ensure!(amount < limit_amount, Error::<T>::TransferLimitReached);
+        //     Ok(())
+        // }
 
         // pub fn convert_precision(
         //     precision_from: u8,
@@ -576,5 +578,5 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
 }
 
 pub trait BridgeTransferLimiter<AssetId, Balance> {
-    fn is_transfer_under_limit(asset: AssetId, limit: Balance, amount: Balance) -> bool;
+    fn is_transfer_under_limit(asset: AssetId, amount: Balance) -> bool;
 }

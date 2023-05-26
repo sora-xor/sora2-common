@@ -53,6 +53,7 @@ use sp_runtime::{AccountId32, MultiSignature};
 use traits::parameter_type_with_key;
 
 use crate as substrate_app;
+use crate::BridgeTransferLimiter;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -259,8 +260,18 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     }
 }
 
-parameter_types! {
-    pub const Lol: u128 = 1;
+pub const AMOUNT_LIMIT: u128 = 1_000_000_000_000_000_000;
+
+pub struct MockBridgeTransferLimiter;
+
+impl BridgeTransferLimiter<AssetId, Balance> for MockBridgeTransferLimiter {
+    fn is_transfer_under_limit(asset: AssetId, amount: Balance) -> bool {
+        match  asset {
+            AssetId::XOR => true,
+            _ => amount > AMOUNT_LIMIT,
+        }
+        
+    }
 }
 
 impl substrate_app::Config for Test {
@@ -279,7 +290,7 @@ impl substrate_app::Config for Test {
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
     type BalanceConverter = ();
-    type BridgeTransferLimit = Lol;
+    type BridgeTransferLimiter = MockBridgeTransferLimiter;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
