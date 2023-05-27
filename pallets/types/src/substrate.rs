@@ -147,5 +147,4 @@ pub struct BridgeMessage {
     pub payload: Vec<u8>,
     pub nonce: MessageNonce,
     pub timepoint: GenericTimepoint,
-    pub fee: MainnetBalance,
 }

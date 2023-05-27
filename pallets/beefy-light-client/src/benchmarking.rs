@@ -28,8 +28,6 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use super::*;
-
 // #[allow(unused)]
 // use crate::Pallet as BeefyLightClient;
 // use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};

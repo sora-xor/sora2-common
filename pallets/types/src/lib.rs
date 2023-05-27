@@ -204,6 +204,7 @@ where
     digest
 }
 
+#[cfg(feature = "std")]
 mod serde_u256 {
     use serde::{Deserialize, Serialize};
     use sp_core::U256;

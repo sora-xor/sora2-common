@@ -221,7 +221,6 @@ fn it_works_verify() {
             payload: Vec::new(),
             nonce: 0,
             timepoint: Default::default(),
-            fee: 0,
         };
 
         let messages = vec![mes];
