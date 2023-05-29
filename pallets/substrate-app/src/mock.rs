@@ -258,8 +258,6 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     }
 }
 
-pub const AMOUNT_LIMIT: u128 = 1_000_000_000_000_000_000;
-
 pub struct MockBridgeTransferLimiter;
 
 impl BridgeTransferLimiter<AssetId, Balance> for MockBridgeTransferLimiter {
