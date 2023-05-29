@@ -261,7 +261,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 pub struct MockBridgeTransferLimiter;
 
 impl BridgeTransferLimiter<AssetId, Balance> for MockBridgeTransferLimiter {
-    fn is_transfer_under_limit(asset: AssetId, amount: Balance) -> bool {
+    fn is_transfer_under_limit(_asset: AssetId, _amount: Balance, _limit: Balance) -> bool {
         true
     }
 }

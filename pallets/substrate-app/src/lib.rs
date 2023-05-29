@@ -114,7 +114,7 @@ pub mod pallet {
     use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel};
     use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
-    use frame_support::pallet_prelude::*;
+    use frame_support::pallet_prelude::{*, OptionQuery};
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
     use traits::currency::MultiCurrency;
@@ -208,6 +208,14 @@ pub mod pallet {
     #[pallet::getter(fn asset_kind)]
     pub(super) type AssetKinds<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn get_transfer_limit)]
+    pub type BridgeTransferLimit<T> = StorageValue<
+        _,
+        BalanceOf<T>,
+        OptionQuery,
+    >;
 
     #[pallet::error]
     pub enum Error<T> {
@@ -361,6 +369,19 @@ pub mod pallet {
             )?;
             Ok(())
         }
+
+        /// Linits amount of tokens to transfer
+        /// WARNING - the limit should be without decimals, it should be in absolute value
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn set_transfer_limit(
+            origin: OriginFor<T>,
+            limit_count: Option<BalanceOf<T>>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            BridgeTransferLimit::<T>::set(limit_count);
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -396,10 +417,13 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
-            ensure!(
-                T::BridgeTransferLimiter::is_transfer_under_limit(asset_id, amount),
-                Error::<T>::TransferLimitReached
-            );
+
+            if let Some(limit) = Self::get_transfer_limit() {
+                ensure!(
+                    T::BridgeTransferLimiter::is_transfer_under_limit(asset_id, amount, limit),
+                    Error::<T>::TransferLimitReached
+                );
+            }
 
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -541,5 +565,5 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
 }
 
 pub trait BridgeTransferLimiter<AssetId, Balance> {
-    fn is_transfer_under_limit(asset: AssetId, amount: Balance) -> bool;
+    fn is_transfer_under_limit(asset: AssetId, amount: Balance, limit: Balance) -> bool;
 }
