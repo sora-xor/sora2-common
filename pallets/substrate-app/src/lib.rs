@@ -396,7 +396,6 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
-            // Self::is_amount_under_limit(amount)?;\
              ensure!(
                 T::BridgeTransferLimiter::is_transfer_under_limit(asset_id, amount), 
                 Error::<T>::TransferLimitReached);
@@ -439,41 +438,6 @@ pub mod pallet {
 
             Ok(Default::default())
         }
-
-        // fn is_amount_under_limit(amount: BalanceOf<T>) -> DispatchResult {
-        //     let amount = <T as Config>::BalanceConverter::convert(amount);
-        //     let limit_amount =
-        //         <T as Config>::BalanceConverter::convert(<T as Config>::BridgeTransferLimit::get());
-        //     ensure!(amount < limit_amount, Error::<T>::TransferLimitReached);
-        //     Ok(())
-        // }
-
-        // pub fn convert_precision(
-        //     precision_from: u8,
-        //     precision_to: u8,
-        //     amount: MainnetBalance,
-        // ) -> Result<(MainnetBalance, MainnetBalance), DispatchError> {
-        //     if precision_from == precision_to {
-        //         return Ok((amount, 0));
-        //     }
-        //     let pair = if precision_from < precision_to {
-        //         let exp = (precision_to - precision_from) as u32;
-        //         let coeff = 10_u128.pow(exp);
-        //         let coerced_amount = amount.saturating_mul(coeff);
-        //         // ensure!(
-        //         //     coerced_amount / coeff == amount,
-        //         //     Error::<T>::UnsupportedAssetPrecision
-        //         // );
-        //         (coerced_amount, 0)
-        //     } else {
-        //         let exp = (precision_from - precision_to) as u32;
-        //         let coeff = 10_u128.pow(exp);
-        //         let coerced_amount = amount / coeff;
-        //         let diff = amount - coerced_amount * coeff;
-        //         (coerced_amount, diff)
-        //     };
-        //     Ok(pair)
-        // }
     }
 
     #[pallet::genesis_config]

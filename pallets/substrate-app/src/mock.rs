@@ -264,11 +264,7 @@ pub struct MockBridgeTransferLimiter;
 
 impl BridgeTransferLimiter<AssetId, Balance> for MockBridgeTransferLimiter {
     fn is_transfer_under_limit(asset: AssetId, amount: Balance) -> bool {
-        match  asset {
-            AssetId::XOR => true,
-            _ => amount > AMOUNT_LIMIT,
-        }
-        
+        true
     }
 }
 
