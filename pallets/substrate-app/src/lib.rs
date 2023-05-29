@@ -396,9 +396,10 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
-             ensure!(
-                T::BridgeTransferLimiter::is_transfer_under_limit(asset_id, amount), 
-                Error::<T>::TransferLimitReached);
+            ensure!(
+                T::BridgeTransferLimiter::is_transfer_under_limit(asset_id, amount),
+                Error::<T>::TransferLimitReached
+            );
 
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
