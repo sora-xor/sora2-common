@@ -110,6 +110,7 @@ pub use pallet::*;
 pub mod pallet {
 
     use super::*;
+    use bridge_types::GenericTimepoint;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
@@ -190,7 +191,7 @@ pub mod pallet {
         fn dispatch(
             network_id: T::NetworkId,
             message_id: T::MessageId,
-            timestamp: u64,
+            timepoint: GenericTimepoint,
             payload: &[u8],
             additional: T::Additional,
         ) {
@@ -210,7 +211,7 @@ pub mod pallet {
             let origin = RawOrigin::new(<T::OriginOutput as traits::OriginOutput<_, _>>::new(
                 network_id,
                 message_id.using_encoded(|v| <T as Config<I>>::Hashing::hash(v)),
-                timestamp,
+                timepoint,
                 additional,
             ))
             .into();
@@ -339,7 +340,7 @@ mod tests {
             Dispatch::dispatch(
                 2u32.into(),
                 id,
-                0,
+                Default::default(),
                 &message,
                 AdditionalEVMInboundData { source },
             );
@@ -370,7 +371,7 @@ mod tests {
             Dispatch::dispatch(
                 2u32.into(),
                 id,
-                0,
+                Default::default(),
                 &message,
                 AdditionalEVMInboundData { source },
             );
@@ -400,7 +401,7 @@ mod tests {
             Dispatch::dispatch(
                 2u32.into(),
                 id,
-                0,
+                Default::default(),
                 &message,
                 AdditionalEVMInboundData { source },
             );

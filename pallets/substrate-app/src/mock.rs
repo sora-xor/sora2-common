@@ -30,6 +30,7 @@
 
 use bridge_types::traits::BalancePrecisionConverter;
 use bridge_types::traits::BridgeAssetRegistry;
+use bridge_types::traits::TimepointProvider;
 use codec::Decode;
 use codec::Encode;
 use codec::MaxEncodedLen;
@@ -211,19 +212,26 @@ parameter_types! {
     pub const FeeCurrency: AssetId = AssetId::XOR;
 }
 
+pub struct GenericTimepointProvider;
+
+impl TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number() as u32)
+    }
+}
+
 impl substrate_bridge_channel::outbound::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type FeeAccountId = GetFeesAccountId;
-    type FeeCurrency = FeeCurrency;
-    type Currency = Currencies;
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
+    type AssetId = ();
+    type Balance = u128;
     type WeightInfo = ();
-    type BalanceConverter = ();
+    type TimepointProvider = GenericTimepointProvider;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -314,10 +322,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(
-        &substrate_bridge_channel::outbound::GenesisConfig {
-            fee: 10000,
-            interval: 10,
-        },
+        &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
         &mut storage,
     )
     .unwrap();
