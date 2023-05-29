@@ -54,12 +54,19 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use bridge_types::substrate::{MainnetAccountId, MainnetAssetId, MainnetBalance, SubstrateAppCall};
+use bridge_types::substrate::{
+    MainnetAccountId, MainnetAssetId, MainnetBalance, ParachainAccountId, SubstrateAppCall,
+};
+use bridge_types::traits::BridgeApp;
+use bridge_types::types::{AssetKind, BridgeAppInfo, BridgeAssetInfo, SubAssetInfo};
+use bridge_types::GenericNetworkId;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
+use sp_runtime::traits::{Convert, Zero};
 use sp_std::prelude::*;
+use traits::MultiCurrency;
 
 pub use weights::WeightInfo;
 
@@ -105,12 +112,11 @@ pub mod pallet {
         SubstrateBridgeMessageEncode, XCMAppCall,
     };
     use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel};
-    use bridge_types::types::{AssetKind, CallOriginOutput};
+    use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
-    use sp_runtime::traits::{Convert, Zero};
     use traits::currency::MultiCurrency;
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -231,7 +237,7 @@ pub mod pallet {
             let CallOriginOutput {
                 network_id,
                 message_id,
-                timestamp,
+                timepoint,
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
 
@@ -264,7 +270,8 @@ pub mod pallet {
                 recipient.clone(),
                 asset_id,
                 amount,
-                timestamp,
+                timepoint,
+                MessageStatus::Done,
             );
             Self::deposit_event(Event::Minted(
                 network_id, asset_id, sender, recipient, amount,
@@ -374,7 +381,7 @@ pub mod pallet {
             Ok(())
         }
 
-        fn bridge_account() -> Result<T::AccountId, DispatchError> {
+        pub fn bridge_account() -> Result<T::AccountId, DispatchError> {
             Ok(T::BridgeAccountId::get())
         }
 
@@ -418,6 +425,7 @@ pub mod pallet {
                 GenericAccount::Parachain(recipient.clone()),
                 asset_id,
                 amount,
+                MessageStatus::InQueue,
             );
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
 
@@ -446,5 +454,80 @@ pub mod pallet {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             }
         }
+    }
+}
+
+impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, BalanceOf<T>>
+    for Pallet<T>
+{
+    fn is_asset_supported(network_id: GenericNetworkId, asset_id: AssetIdOf<T>) -> bool {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            return false;
+        };
+        AssetKinds::<T>::contains_key(network_id, asset_id)
+    }
+
+    fn transfer(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf<T>,
+        sender: T::AccountId,
+        recipient: ParachainAccountId,
+        amount: BalanceOf<T>,
+    ) -> Result<bridge_types::H256, DispatchError> {
+        let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
+        Self::burn_inner(sender, network_id, asset_id, recipient, amount)
+    }
+
+    fn refund(
+        network_id: GenericNetworkId,
+        _message_id: bridge_types::H256,
+        recipient: T::AccountId,
+        asset_id: AssetIdOf<T>,
+        amount: BalanceOf<T>,
+    ) -> DispatchResult {
+        let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
+        let asset_kind =
+            AssetKinds::<T>::get(network_id, asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
+        let bridge_account = Self::bridge_account()?;
+
+        match asset_kind {
+            AssetKind::Sidechain => {
+                T::Currency::deposit(asset_id, &recipient, amount)?;
+            }
+            AssetKind::Thischain => {
+                T::Currency::transfer(asset_id, &bridge_account, &recipient, amount)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn list_supported_assets(
+        network_id: GenericNetworkId,
+    ) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            return vec![];
+        };
+        let assets = AssetKinds::<T>::iter_prefix(network_id)
+            .map(|(asset_id, asset_kind)| {
+                let asset_id = T::AssetIdConverter::convert(asset_id);
+                BridgeAssetInfo::Sub(SubAssetInfo {
+                    asset_id,
+                    asset_kind,
+                    precision: 18,
+                })
+            })
+            .collect();
+        assets
+    }
+
+    fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+        AssetKinds::<T>::iter_keys()
+            .map(|(network_id, _asset_id)| BridgeAppInfo::Sub(network_id.into()))
+            .fold(vec![], |mut acc, value| {
+                if acc.iter().find(|x| value == **x).is_none() {
+                    acc.push(value);
+                }
+                acc
+            })
     }
 }

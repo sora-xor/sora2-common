@@ -114,8 +114,10 @@ pub enum SubNetworkId {
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum GenericNetworkId {
+    #[cfg_attr(feature = "std", serde(with = "serde_u256"))]
     EVM(EVMChainId),
     Sub(SubNetworkId),
+    EVMLegacy(u32),
 }
 
 impl GenericNetworkId {
@@ -129,6 +131,13 @@ impl GenericNetworkId {
     pub fn sub(self) -> Option<SubNetworkId> {
         match self {
             Self::Sub(network_id) => Some(network_id),
+            _ => None,
+        }
+    }
+
+    pub fn evm_legacy(self) -> Option<u32> {
+        match self {
+            Self::EVMLegacy(network_id) => Some(network_id),
             _ => None,
         }
     }
@@ -153,6 +162,33 @@ pub enum GenericAccount<AccountId> {
     Sora(AccountId),
     Parachain(xcm::VersionedMultiLocation),
     Unknown,
+    Root,
+}
+
+#[derive(
+    Encode,
+    Decode,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+pub enum GenericTimepoint {
+    EVM(u64),
+    Sora(u32),
+    Parachain(u32),
+    Pending,
+    Unknown,
+}
+
+impl Default for GenericTimepoint {
+    fn default() -> Self {
+        GenericTimepoint::Unknown
+    }
 }
 
 pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"commitment";
@@ -166,4 +202,33 @@ where
     network_id.encode_to(&mut digest);
     header.encode_to(&mut digest);
     digest
+}
+
+#[cfg(feature = "std")]
+mod serde_u256 {
+    use serde::{Deserialize, Serialize};
+    use sp_core::U256;
+
+    pub fn deserialize<'de, D>(deserializer: D) -> core::result::Result<U256, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let network_id = String::deserialize(deserializer)?;
+        if network_id.starts_with("0x") {
+            let network_id =
+                U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
+            Ok(network_id)
+        } else {
+            let network_id =
+                U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
+            Ok(network_id)
+        }
+    }
+
+    pub fn serialize<S>(value: &U256, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        value.0.serialize(serializer)
+    }
 }

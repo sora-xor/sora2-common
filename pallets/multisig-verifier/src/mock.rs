@@ -117,7 +117,7 @@ impl<OuterOrigin> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallO
         Ok(bridge_types::types::CallOriginOutput {
             network_id: SubNetworkId::Mainnet,
             message_id: [1; 32].into(),
-            timestamp: 0,
+            timepoint: Default::default(),
             additional: (),
         })
     }
