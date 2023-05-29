@@ -55,7 +55,7 @@ mod mock;
 mod tests;
 
 use bridge_types::substrate::{
-    MainnetAccountId, MainnetAssetId, MainnetBalance, ParachainAccountId, SubstrateAppCall,
+    MainnetAccountId, MainnetAssetId, ParachainAccountId, SubstrateAppCall,
 };
 use bridge_types::traits::BridgeApp;
 use bridge_types::types::{AssetKind, BridgeAppInfo, BridgeAssetInfo, SubAssetInfo};
@@ -110,7 +110,9 @@ pub mod pallet {
         MainnetAccountId, MainnetAssetId, MainnetBalance, ParachainAccountId, ParachainAssetId,
         SubstrateBridgeMessageEncode, XCMAppCall,
     };
-    use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel};
+    use bridge_types::traits::{
+        BalancePrecisionConverter, BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel,
+    };
     use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
     use frame_support::pallet_prelude::*;
