@@ -109,11 +109,7 @@ impl OutboundChannel<SubNetworkId, AccountId, ()> for TestOutboundChannel {
         _payload: &[u8],
         _additional: (),
     ) -> Result<H256, sp_runtime::DispatchError> {
-        Ok([
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1,
-        ]
-        .into())
+        Ok([1; 32].into())
     }
 }
 
@@ -124,11 +120,7 @@ impl<OuterOrigin> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallO
     fn try_origin(_o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
         Ok(bridge_types::types::CallOriginOutput {
             network_id: SubNetworkId::Mainnet,
-            message_id: [
-                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                1, 1, 1, 1,
-            ]
-            .into(),
+            message_id: [1; 32].into(),
             timestamp: 0,
             additional: (),
         })
