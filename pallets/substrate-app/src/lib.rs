@@ -177,8 +177,6 @@ pub mod pallet {
 
         type WeightInfo: WeightInfo;
 
-        // type BridgeTransferLimit: Get<BalanceOf<Self>>;
-
         type BridgeTransferLimiter: BridgeTransferLimiter<AssetIdOf<Self>, BalanceOf<Self>>;
     }
 
