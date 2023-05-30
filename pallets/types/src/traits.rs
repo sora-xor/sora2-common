@@ -39,7 +39,7 @@ use crate::GenericTimepoint;
 use crate::H256;
 use crate::U256;
 use crate::{
-    types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
+    types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus, RawAssetInfo},
     GenericAccount, GenericNetworkId,
 };
 use codec::FullCodec;
@@ -267,14 +267,16 @@ pub trait OriginOutput<NetworkId, Additional> {
 pub trait BridgeAssetRegistry<AccountId, AssetId> {
     type AssetName: Parameter;
     type AssetSymbol: Parameter;
-    type Decimals: Parameter;
 
     fn register_asset(
         owner: AccountId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
-        decimals: Self::Decimals,
     ) -> Result<AssetId, DispatchError>;
+
+    fn manage_asset(manager: AccountId, asset_id: AssetId) -> DispatchResult;
+
+    fn get_raw_info(asset_id: AssetId) -> RawAssetInfo;
 }
 
 pub trait AuxiliaryDigestHandler {
@@ -283,6 +285,38 @@ pub trait AuxiliaryDigestHandler {
 
 impl AuxiliaryDigestHandler for () {
     fn add_item(_item: AuxiliaryDigestItem) {}
+}
+
+pub trait BalancePrecisionConverter<AssetId, Balance, SidechainBalance> {
+    fn to_sidechain(
+        asset_id: &AssetId,
+        sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<SidechainBalance>;
+
+    fn from_sidechain(
+        asset_id: &AssetId,
+        sidechain_precision: u8,
+        amount: SidechainBalance,
+    ) -> Option<Balance>;
+}
+
+impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance, Balance> for () {
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount)
+    }
+
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount)
+    }
 }
 
 pub trait TimepointProvider {
