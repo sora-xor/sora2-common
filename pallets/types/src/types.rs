@@ -462,6 +462,12 @@ impl<NetworkId, Additional> crate::traits::OriginOutput<NetworkId, Additional>
     }
 }
 
+pub struct RawAssetInfo {
+    pub name: Vec<u8>,
+    pub symbol: Vec<u8>,
+    pub precision: u8,
+}
+
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";
 pub const TECH_ACCOUNT_MAIN: &[u8] = b"main";
 pub const TECH_ACCOUNT_FEES: &[u8] = b"fees";
