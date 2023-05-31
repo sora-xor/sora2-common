@@ -28,7 +28,9 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::traits::BalancePrecisionConverter;
 use bridge_types::traits::BridgeAssetRegistry;
+use bridge_types::traits::TimepointProvider;
 use codec::Decode;
 use codec::Encode;
 use codec::MaxEncodedLen;
@@ -210,19 +212,26 @@ parameter_types! {
     pub const FeeCurrency: AssetId = AssetId::XOR;
 }
 
+pub struct GenericTimepointProvider;
+
+impl TimepointProvider for GenericTimepointProvider {
+    fn get_timepoint() -> bridge_types::GenericTimepoint {
+        bridge_types::GenericTimepoint::Sora(System::block_number() as u32)
+    }
+}
+
 impl substrate_bridge_channel::outbound::Config for Test {
     const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
     type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
-    type FeeAccountId = GetFeesAccountId;
-    type FeeCurrency = FeeCurrency;
-    type Currency = Currencies;
     type MessageStatusNotifier = ();
     type AuxiliaryDigestHandler = ();
+    type AssetId = ();
+    type Balance = u128;
     type WeightInfo = ();
-    type BalanceConverter = ();
+    type TimepointProvider = GenericTimepointProvider;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -237,15 +246,48 @@ pub struct AssetRegistryImpl;
 impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     type AssetName = String;
     type AssetSymbol = String;
-    type Decimals = u8;
 
     fn register_asset(
         _owner: AccountId,
         _name: Self::AssetName,
         _symbol: Self::AssetSymbol,
-        _decimals: Self::Decimals,
     ) -> Result<AssetId, sp_runtime::DispatchError> {
         Ok(AssetId::Custom)
+    }
+
+    fn manage_asset(
+        _manager: AccountId,
+        _asset_id: AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        Ok(())
+    }
+
+    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        bridge_types::types::RawAssetInfo {
+            name: Default::default(),
+            symbol: Default::default(),
+            precision: 18,
+        }
+    }
+}
+
+pub struct BalancePrecisionConverterImpl;
+
+impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionConverterImpl {
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount * 10)
+    }
+
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount / 10)
     }
 }
 
@@ -264,7 +306,7 @@ impl substrate_app::Config for Test {
     type WeightInfo = ();
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
-    type BalanceConverter = ();
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -280,10 +322,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(
-        &substrate_bridge_channel::outbound::GenesisConfig {
-            fee: 10000,
-            interval: 10,
-        },
+        &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
         &mut storage,
     )
     .unwrap();

@@ -35,12 +35,6 @@ use bridge_types::types::MessageId;
 use bridge_types::SubNetworkId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
-use frame_system::ensure_signed;
-use sp_core::U256;
-
-use sp_runtime::traits::{Convert, Zero};
-use sp_runtime::Perbill;
-use traits::MultiCurrency;
 
 mod benchmarking;
 
@@ -56,22 +50,13 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use bridge_types::substrate::BridgeMessage;
-    use frame_support::log::{debug, warn};
+    use frame_support::log::warn;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::CheckedSub;
     use sp_runtime::traits::Hash;
     use sp_runtime::traits::Keccak256;
-    use sp_runtime::traits::UniqueSaturatedInto;
     use sp_std::prelude::*;
-
-    pub type AssetIdOf<T> = <<T as Config>::Currency as MultiCurrency<
-        <T as frame_system::Config>::AccountId,
-    >>::CurrencyId;
-
-    pub type BalanceOf<T> =
-        <<T as Config>::Currency as MultiCurrency<<T as frame_system::Config>::AccountId>>::Balance;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
@@ -83,16 +68,13 @@ pub mod pallet {
         /// Verifier module for message verification.
         type MessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
 
-        type FeeConverter: Convert<U256, BalanceOf<Self>>;
+        /// A configuration for base priority of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedPriority: Get<TransactionPriority>;
 
-        /// The base asset as the core asset in all trading pairs
-        type FeeAssetId: Get<AssetIdOf<Self>>;
-
-        type Currency: MultiCurrency<Self::AccountId>;
-
-        type FeeAccountId: Get<Self::AccountId>;
-
-        type TreasuryAccountId: Get<Self::AccountId>;
+        /// A configuration for longevity of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedLongevity: Get<u64>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -100,16 +82,6 @@ pub mod pallet {
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn reward_fraction)]
-    pub(super) type RewardFraction<T: Config> =
-        StorageValue<_, Perbill, ValueQuery, DefaultRewardFraction>;
-
-    #[pallet::type_value]
-    pub(super) fn DefaultRewardFraction() -> Perbill {
-        Perbill::from_percent(80)
-    }
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -156,8 +128,7 @@ pub mod pallet {
             messages: Vec<BridgeMessage>,
             proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
-            let relayer = ensure_signed(origin)?;
-            debug!("Received message from {:?}", relayer);
+            ensure_none(origin)?;
             // submit message to verifier for verification
             let message_hash = Keccak256::hash_of(&messages);
             T::Verifier::verify(network_id.into(), message_hash, &proof)?;
@@ -173,92 +144,54 @@ pub mod pallet {
                     }
                 })?;
 
-                Self::handle_fee(message.fee.unique_saturated_into(), &relayer);
+                // Self::handle_fee(message.fee.unique_saturated_into(), &relayer);
 
                 let message_id = MessageId::inbound(message.nonce);
                 T::MessageDispatch::dispatch(
                     network_id,
                     message_id,
-                    message.timestamp,
+                    message.timepoint,
                     &message.payload,
                     (),
                 );
             }
-            Ok(Pays::No.into())
-        }
-
-        #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::set_reward_fraction())]
-        pub fn set_reward_fraction(
-            origin: OriginFor<T>,
-            fraction: Perbill,
-        ) -> DispatchResultWithPostInfo {
-            ensure_root(origin)?;
-            RewardFraction::<T>::set(fraction);
             Ok(().into())
         }
     }
 
-    impl<T: Config> Pallet<T> {
-        /*
-         * Pay the message submission fee into the relayer and treasury account.
-         *
-         * - If the fee is zero, do nothing
-         * - Otherwise, withdraw the fee amount from the DotApp module account, returning a negative imbalance
-         * - Figure out the fraction of the fee amount that should be paid to the relayer
-         * - Pay the relayer if their account exists, returning a positive imbalance.
-         * - Adjust the negative imbalance by offsetting the amount paid to the relayer
-         * - Resolve the negative imbalance by depositing it into the treasury account
-         */
-        pub fn handle_fee(amount: BalanceOf<T>, relayer: &T::AccountId) {
-            if amount.is_zero() {
-                return;
-            }
-            let reward_fraction: Perbill = RewardFraction::<T>::get();
-            let reward_amount = reward_fraction.mul_ceil(amount);
-
-            if let Err(err) = <T as Config>::Currency::transfer(
-                T::FeeAssetId::get(),
-                &T::FeeAccountId::get(),
-                relayer,
-                reward_amount,
-            ) {
-                warn!("Unable to transfer reward to relayer: {:?}", err);
-                return;
-            }
-
-            if let Some(treasure_amount) = amount.checked_sub(&reward_amount) {
-                if let Err(err) = <T as Config>::Currency::transfer(
-                    T::FeeAssetId::get(),
-                    &T::FeeAccountId::get(),
-                    &T::TreasuryAccountId::get(),
-                    treasure_amount,
-                ) {
-                    warn!("Unable to transfer to treasury: {:?}", err);
+    #[pallet::validate_unsigned]
+    impl<T: Config> ValidateUnsigned for Pallet<T> {
+        type Call = Call<T>;
+        // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
+        fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if let Call::submit {
+                network_id,
+                messages,
+                proof,
+            } = call
+            {
+                let nonce = ChannelNonces::<T>::get(network_id);
+                // If messages array is empty or messages already submitted
+                if messages.get(0).ok_or(InvalidTransaction::BadProof)?.nonce <= nonce {
+                    return InvalidTransaction::BadProof.into();
                 }
+                let message_hash = Keccak256::hash_of(&messages);
+                T::Verifier::verify(network_id.clone().into(), message_hash, &proof).map_err(
+                    |e| {
+                        warn!("Bad submit proof received: {:?}", e);
+                        InvalidTransaction::BadProof
+                    },
+                )?;
+                ValidTransaction::with_tag_prefix("SubstrateBridgeChannelSubmit")
+                    .priority(T::UnsignedPriority::get())
+                    .longevity(T::UnsignedLongevity::get())
+                    .and_provides((network_id, message_hash))
+                    .propagate(true)
+                    .build()
+            } else {
+                warn!("Unknown unsigned call, can't validate");
+                InvalidTransaction::Call.into()
             }
-        }
-    }
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig {
-        pub reward_fraction: Perbill,
-    }
-
-    #[allow(clippy::derivable_impls)]
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
-        fn default() -> Self {
-            Self {
-                reward_fraction: Default::default(),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
-        fn build(&self) {
-            RewardFraction::<T>::set(self.reward_fraction);
         }
     }
 }

@@ -124,7 +124,7 @@ impl<OuterOrigin> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallO
                 1, 1, 1, 1,
             ]
             .into(),
-            timestamp: 0,
+            timepoint: Default::default(),
             additional: (),
         })
     }

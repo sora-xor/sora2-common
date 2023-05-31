@@ -35,7 +35,6 @@ use codec::Decode;
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{ecdsa, Pair};
 use sp_runtime::traits::{Hash, Keccak256};
-use frame_support::BoundedVec;
 
 fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
@@ -221,8 +220,7 @@ fn it_works_verify() {
         let mes = bridge_types::substrate::BridgeMessage {
             payload: Vec::new(),
             nonce: 0,
-            timestamp: 0,
-            fee: 0,
+            timepoint: Default::default(),
         };
 
         let messages = vec![mes];
@@ -231,7 +229,7 @@ fn it_works_verify() {
         let _ = <TrustedVerifier as bridge_types::traits::Verifier>::verify(
             bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
             hash,
-            &proof
+            &proof,
         );
     });
 }

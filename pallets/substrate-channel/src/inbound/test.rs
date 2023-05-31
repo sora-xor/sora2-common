@@ -31,25 +31,21 @@
 use super::*;
 use bridge_types::substrate::BridgeMessage;
 use codec::{Decode, Encode, MaxEncodedLen};
-use currencies::BasicCurrencyAdapter;
 
-use frame_support::dispatch::DispatchError;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::{
     assert_noop, assert_ok, parameter_types, Deserialize, RuntimeDebug, Serialize,
 };
 use scale_info::TypeInfo;
-use sp_core::H256;
+use sp_core::{ConstU64, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, Convert, IdentifyAccount, IdentityLookup, Verify};
-use sp_runtime::{AccountId32, MultiSignature, Perbill};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::MultiSignature;
 use sp_std::convert::From;
-use sp_std::marker::PhantomData;
 
 use bridge_types::traits::MessageDispatch;
-use bridge_types::{GenericNetworkId, U256};
-use traits::parameter_type_with_key;
+use bridge_types::{GenericNetworkId, GenericTimepoint};
 
 use crate::inbound::Error;
 
@@ -69,8 +65,6 @@ frame_support::construct_runtime!(
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage},
         BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Storage, Event<T>},
     }
 );
@@ -100,7 +94,6 @@ pub enum AssetId {
 }
 
 pub type Balance = u128;
-pub type Amount = i128;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -139,12 +132,6 @@ parameter_types! {
     pub const MaxReserves: u32 = 50;
 }
 
-parameter_type_with_key! {
-    pub ExistentialDeposits: |_currency_id: AssetId| -> Balance {
-        0
-    };
-}
-
 impl pallet_balances::Config for Test {
     /// The ubiquitous event type.
     type RuntimeEvent = RuntimeEvent;
@@ -159,33 +146,6 @@ impl pallet_balances::Config for Test {
     type ReserveIdentifier = ();
 }
 
-impl tokens::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type Balance = Balance;
-    type Amount = Amount;
-    type CurrencyId = AssetId;
-    type WeightInfo = ();
-    type ExistentialDeposits = ExistentialDeposits;
-    type CurrencyHooks = ();
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
-}
-
-impl currencies::Config for Test {
-    type MultiCurrency = Tokens;
-    type NativeCurrency = BasicCurrencyAdapter<Test, Balances, Amount, u64>;
-    type GetNativeCurrencyId = GetBaseAssetId;
-    type WeightInfo = ();
-}
-parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
-    pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
-    pub GetFeesAccountId: AccountId = AccountId32::from([1; 32]);
-    pub GetTreasuryAccountId: AccountId = AccountId32::from([2; 32]);
-}
-
 // Mock verifier
 pub struct MockVerifier;
 
@@ -194,7 +154,8 @@ impl Verifier for MockVerifier {
 
     fn verify(network_id: GenericNetworkId, _hash: H256, _proof: &Vec<u8>) -> DispatchResult {
         let network_id = match network_id {
-            bridge_types::GenericNetworkId::EVM(_) => {
+            bridge_types::GenericNetworkId::EVM(_)
+            | bridge_types::GenericNetworkId::EVMLegacy(_) => {
                 return Err(Error::<Test>::InvalidNetwork.into())
             }
             bridge_types::GenericNetworkId::Sub(ni) => ni,
@@ -211,7 +172,7 @@ impl Verifier for MockVerifier {
 pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch {
-    fn dispatch(_: SubNetworkId, _: MessageId, _: u64, _: &[u8], _: ()) {}
+    fn dispatch(_: SubNetworkId, _: MessageId, _: GenericTimepoint, _: &[u8], _: ()) {}
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(
@@ -225,14 +186,6 @@ parameter_types! {
     pub SourceAccount: AccountId = Keyring::Eve.into();
 }
 
-pub struct FeeConverter<T: Config>(PhantomData<T>);
-
-impl<T: Config> Convert<U256, BalanceOf<T>> for FeeConverter<T> {
-    fn convert(_: U256) -> BalanceOf<T> {
-        100u32.into()
-    }
-}
-
 impl pallet_timestamp::Config for Test {
     type Moment = u64;
     type OnTimestampSet = ();
@@ -244,28 +197,15 @@ impl bridge_inbound_channel::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
-    type FeeConverter = FeeConverter<Self>;
-    type FeeAssetId = GetBaseAssetId;
-    type FeeAccountId = GetFeesAccountId;
-    type TreasuryAccountId = GetTreasuryAccountId;
-    type Currency = Currencies;
+    type UnsignedLongevity = ConstU64<100>;
+    type UnsignedPriority = ConstU64<100>;
     type WeightInfo = ();
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
-    new_tester_with_config(bridge_inbound_channel::GenesisConfig {
-        reward_fraction: Perbill::from_percent(80),
-    })
-}
-
-pub fn new_tester_with_config(
-    config: bridge_inbound_channel::GenesisConfig,
-) -> sp_io::TestExternalities {
     let mut storage = frame_system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();
-
-    GenesisBuild::<Test>::assimilate_storage(&config, &mut storage).unwrap();
 
     let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
@@ -282,14 +222,12 @@ pub fn new_tester_with_config(
 #[test]
 fn test_submit() {
     new_tester().execute_with(|| {
-        let relayer: AccountId = Keyring::Bob.into();
-        let origin = RuntimeOrigin::signed(relayer);
+        let origin = RuntimeOrigin::none();
 
         // Submit message 1
         let message_1 = BridgeMessage {
             nonce: 1,
-            timestamp: 0,
-            fee: 0,
+            timepoint: Default::default(),
             payload: Default::default(),
         };
         assert_ok!(BridgeInboundChannel::submit(
@@ -304,8 +242,7 @@ fn test_submit() {
         // Submit message 2
         let message_2 = BridgeMessage {
             nonce: 2,
-            timestamp: 0,
-            fee: 0,
+            timepoint: Default::default(),
             payload: Default::default(),
         };
         assert_ok!(BridgeInboundChannel::submit(
@@ -322,14 +259,12 @@ fn test_submit() {
 #[test]
 fn test_submit_with_invalid_nonce() {
     new_tester().execute_with(|| {
-        let relayer: AccountId = Keyring::Bob.into();
-        let origin = RuntimeOrigin::signed(relayer);
+        let origin = RuntimeOrigin::none();
 
         // Submit message
         let message = BridgeMessage {
             nonce: 1,
-            timestamp: 0,
-            fee: 0,
+            timepoint: Default::default(),
             payload: Default::default(),
         };
         assert_ok!(BridgeInboundChannel::submit(
@@ -350,49 +285,14 @@ fn test_submit_with_invalid_nonce() {
 }
 
 #[test]
-#[ignore] // TODO: fix test_handle_fee test
-fn test_handle_fee() {
-    new_tester().execute_with(|| {
-        let relayer: AccountId = Keyring::Bob.into();
-        let fee_asset_id = <Test as Config>::FeeAssetId::get();
-        let treasury_acc = <Test as Config>::TreasuryAccountId::get();
-        let fees_acc = <Test as Config>::FeeAccountId::get();
-
-        Currencies::deposit(fee_asset_id, &fees_acc, 10_000).unwrap();
-
-        let fee = 1000; // 1 DOT
-
-        BridgeInboundChannel::handle_fee(fee, &relayer);
-        assert_eq!(Currencies::total_balance(fee_asset_id, &treasury_acc), 200);
-        assert_eq!(Currencies::total_balance(fee_asset_id, &relayer), 800);
-    });
-}
-
-#[test]
-fn test_set_reward_fraction_not_authorized() {
-    new_tester().execute_with(|| {
-        let bob: AccountId = Keyring::Bob.into();
-        assert_noop!(
-            BridgeInboundChannel::set_reward_fraction(
-                RuntimeOrigin::signed(bob),
-                Perbill::from_percent(60)
-            ),
-            DispatchError::BadOrigin
-        );
-    });
-}
-
-#[test]
 fn test_submit_with_invalid_network_id() {
     new_tester().execute_with(|| {
-        let relayer: AccountId = Keyring::Bob.into();
-        let origin = RuntimeOrigin::signed(relayer);
+        let origin = RuntimeOrigin::none();
 
         // Submit message
         let message = BridgeMessage {
             nonce: 1,
-            timestamp: 0,
-            fee: 0,
+            timepoint: Default::default(),
             payload: Default::default(),
         };
         assert_noop!(

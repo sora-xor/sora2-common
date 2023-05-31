@@ -54,12 +54,19 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use bridge_types::substrate::{MainnetAccountId, MainnetAssetId, MainnetBalance, SubstrateAppCall};
+use bridge_types::substrate::{
+    MainnetAccountId, MainnetAssetId, ParachainAccountId, SubstrateAppCall,
+};
+use bridge_types::traits::BridgeApp;
+use bridge_types::types::{AssetKind, BridgeAppInfo, BridgeAssetInfo, SubAssetInfo};
+use bridge_types::GenericNetworkId;
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
+use sp_runtime::traits::{Convert, Zero};
 use sp_std::prelude::*;
+use traits::MultiCurrency;
 
 pub use weights::WeightInfo;
 
@@ -69,7 +76,6 @@ impl<T: Config> From<SubstrateAppCall> for Call<T>
 where
     T::AccountId: From<MainnetAccountId>,
     AssetIdOf<T>: From<MainnetAssetId>,
-    BalanceOf<T>: From<MainnetBalance>,
 {
     fn from(value: SubstrateAppCall) -> Self {
         match value {
@@ -81,8 +87,8 @@ where
             } => Call::mint {
                 sender,
                 recipient: recipient.into(),
-                amount: amount.into(),
                 asset_id: asset_id.into(),
+                amount,
             },
             SubstrateAppCall::FinalizeAssetRegistration {
                 asset_id,
@@ -104,13 +110,14 @@ pub mod pallet {
         MainnetAccountId, MainnetAssetId, MainnetBalance, ParachainAccountId, ParachainAssetId,
         SubstrateBridgeMessageEncode, XCMAppCall,
     };
-    use bridge_types::traits::{BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel};
-    use bridge_types::types::{AssetKind, CallOriginOutput};
+    use bridge_types::traits::{
+        BalancePrecisionConverter, BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel,
+    };
+    use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
-    use frame_support::pallet_prelude::*;
+    use frame_support::pallet_prelude::{OptionQuery, *};
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
-    use sp_runtime::traits::{Convert, Zero};
     use traits::currency::MultiCurrency;
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -130,10 +137,6 @@ pub mod pallet {
         AccountIdOf<T>,
         AssetIdOf<T>,
     >>::AssetSymbol;
-    pub type DecimalsOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
-        AccountIdOf<T>,
-        AssetIdOf<T>,
-    >>::Decimals;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -167,7 +170,11 @@ pub mod pallet {
 
         type AssetIdConverter: Convert<AssetIdOf<Self>, MainnetAssetId>;
 
-        type BalanceConverter: Convert<BalanceOf<Self>, MainnetBalance>;
+        type BalancePrecisionConverter: BalancePrecisionConverter<
+            AssetIdOf<Self>,
+            BalanceOf<Self>,
+            MainnetBalance,
+        >;
 
         type WeightInfo: WeightInfo;
     }
@@ -201,6 +208,15 @@ pub mod pallet {
     pub(super) type AssetKinds<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn get_transfer_limit)]
+    pub type BridgeTransferLimit<T> = StorageValue<_, BalanceOf<T>, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn sidechain_precision)]
+    pub(super) type SidechainPrecision<T: Config> =
+        StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, u8, OptionQuery>;
+
     #[pallet::error]
     pub enum Error<T> {
         TokenIsNotRegistered,
@@ -213,6 +229,8 @@ pub mod pallet {
         CallEncodeFailed,
         /// Amount must be > 0
         WrongAmount,
+        TransferLimitReached,
+        UnknownPrecision,
     }
 
     #[pallet::call]
@@ -226,12 +244,12 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             sender: Option<ParachainAccountId>,
             recipient: T::AccountId,
-            amount: BalanceOf<T>,
+            amount: MainnetBalance,
         ) -> DispatchResult {
             let CallOriginOutput {
                 network_id,
                 message_id,
-                timestamp,
+                timepoint,
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
 
@@ -239,8 +257,13 @@ pub mod pallet {
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             let bridge_account = Self::bridge_account()?;
+            let precision = SidechainPrecision::<T>::get(network_id, asset_id)
+                .ok_or(Error::<T>::UnknownPrecision)?;
+            let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
+                .ok_or(Error::<T>::WrongAmount)?;
 
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
+
             match asset_kind {
                 AssetKind::Thischain => {
                     <T as Config>::Currency::transfer(
@@ -264,7 +287,8 @@ pub mod pallet {
                 recipient.clone(),
                 asset_id,
                 amount,
-                timestamp,
+                timepoint,
+                MessageStatus::Done,
             );
             Self::deposit_event(Event::Minted(
                 network_id, asset_id, sender, recipient, amount,
@@ -316,11 +340,14 @@ pub mod pallet {
                 Error::<T>::TokenAlreadyRegistered
             );
 
+            let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id).precision;
+
             Self::register_asset_inner(
                 network_id,
                 asset_id,
                 sidechain_asset,
                 AssetKind::Thischain,
+                sidechain_precision,
             )?;
 
             Ok(())
@@ -334,21 +361,33 @@ pub mod pallet {
             sidechain_asset: ParachainAssetId,
             symbol: AssetSymbolOf<T>,
             name: AssetNameOf<T>,
-            decimals: DecimalsOf<T>,
+            decimals: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
             let bridge_account = Self::bridge_account()?;
 
-            let asset_id =
-                T::AssetRegistry::register_asset(bridge_account, name, symbol, decimals)?;
+            let asset_id = T::AssetRegistry::register_asset(bridge_account, name, symbol)?;
 
             Self::register_asset_inner(
                 network_id,
                 asset_id,
                 sidechain_asset,
                 AssetKind::Sidechain,
+                decimals,
             )?;
+            Ok(())
+        }
+
+        /// Limits amount of tokens to transfer with limit precision
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn set_transfer_limit(
+            origin: OriginFor<T>,
+            limit_count: Option<BalanceOf<T>>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            BridgeTransferLimit::<T>::set(limit_count);
             Ok(())
         }
     }
@@ -359,7 +398,12 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             sidechain_asset: ParachainAssetId,
             asset_kind: AssetKind,
+            sidechain_precision: u8,
         ) -> DispatchResult {
+            let bridge_account = Self::bridge_account()?;
+            T::AssetRegistry::manage_asset(bridge_account, asset_id)?;
+            SidechainPrecision::<T>::insert(network_id, asset_id, sidechain_precision);
+
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
@@ -374,7 +418,7 @@ pub mod pallet {
             Ok(())
         }
 
-        fn bridge_account() -> Result<T::AccountId, DispatchError> {
+        pub fn bridge_account() -> Result<T::AccountId, DispatchError> {
             Ok(T::BridgeAccountId::get())
         }
 
@@ -386,9 +430,26 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
+
+            if let Some(limit) = Self::get_transfer_limit() {
+                ensure!(
+                    amount <= limit,
+                    Error::<T>::TransferLimitReached
+                );
+            }
+
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let bridge_account = Self::bridge_account()?;
+
+            let precision = SidechainPrecision::<T>::get(network_id, asset_id)
+                    .ok_or(Error::<T>::UnknownPrecision)?;
+
+            let sidechain_amount =
+                T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount)
+                    .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(sidechain_amount > 0, Error::<T>::WrongAmount);
 
             match asset_kind {
                 AssetKind::Sidechain => {
@@ -404,13 +465,14 @@ pub mod pallet {
                 &RawOrigin::Signed(who.clone()),
                 &XCMAppCall::Transfer {
                     recipient: recipient.clone(),
-                    amount: T::BalanceConverter::convert(amount),
+                    amount: sidechain_amount,
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sender: T::AccountIdConverter::convert(who.clone()),
                 }
                 .prepare_message(),
                 (),
             )?;
+
             T::MessageStatusNotifier::outbound_request(
                 GenericNetworkId::Sub(network_id),
                 message_id,
@@ -418,7 +480,9 @@ pub mod pallet {
                 GenericAccount::Parachain(recipient.clone()),
                 asset_id,
                 amount,
+                MessageStatus::InQueue,
             );
+
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
 
             Ok(Default::default())
@@ -446,5 +510,80 @@ pub mod pallet {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             }
         }
+    }
+}
+
+impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, BalanceOf<T>>
+    for Pallet<T>
+{
+    fn is_asset_supported(network_id: GenericNetworkId, asset_id: AssetIdOf<T>) -> bool {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            return false;
+        };
+        AssetKinds::<T>::contains_key(network_id, asset_id)
+    }
+
+    fn transfer(
+        network_id: GenericNetworkId,
+        asset_id: AssetIdOf<T>,
+        sender: T::AccountId,
+        recipient: ParachainAccountId,
+        amount: BalanceOf<T>,
+    ) -> Result<bridge_types::H256, DispatchError> {
+        let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
+        Self::burn_inner(sender, network_id, asset_id, recipient, amount)
+    }
+
+    fn refund(
+        network_id: GenericNetworkId,
+        _message_id: bridge_types::H256,
+        recipient: T::AccountId,
+        asset_id: AssetIdOf<T>,
+        amount: BalanceOf<T>,
+    ) -> DispatchResult {
+        let network_id = network_id.sub().ok_or(Error::<T>::InvalidNetwork)?;
+        let asset_kind =
+            AssetKinds::<T>::get(network_id, asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
+        let bridge_account = Self::bridge_account()?;
+
+        match asset_kind {
+            AssetKind::Sidechain => {
+                T::Currency::deposit(asset_id, &recipient, amount)?;
+            }
+            AssetKind::Thischain => {
+                T::Currency::transfer(asset_id, &bridge_account, &recipient, amount)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn list_supported_assets(
+        network_id: GenericNetworkId,
+    ) -> Vec<bridge_types::types::BridgeAssetInfo> {
+        let GenericNetworkId::Sub(network_id) = network_id else {
+            return vec![];
+        };
+        let assets = AssetKinds::<T>::iter_prefix(network_id)
+            .map(|(asset_id, asset_kind)| {
+                let asset_id = T::AssetIdConverter::convert(asset_id);
+                BridgeAssetInfo::Sub(SubAssetInfo {
+                    asset_id,
+                    asset_kind,
+                    precision: 18,
+                })
+            })
+            .collect();
+        assets
+    }
+
+    fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+        AssetKinds::<T>::iter_keys()
+            .map(|(network_id, _asset_id)| BridgeAppInfo::Sub(network_id.into()))
+            .fold(vec![], |mut acc, value| {
+                if acc.iter().find(|x| value == **x).is_none() {
+                    acc.push(value);
+                }
+                acc
+            })
     }
 }
