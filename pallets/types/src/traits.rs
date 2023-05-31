@@ -212,6 +212,18 @@ impl<Balance> GasTracker<Balance> for () {
     }
 }
 
+/// Trait for gas price oracle on Ethereum-based networks.
+pub trait EthereumGasPriceOracle {
+    /// Returns base fee for the block.
+    fn get_base_fee(block_number: u64) -> Result<u64, DispatchError>;
+}
+
+impl EthereumGasPriceOracle for () {
+    fn get_base_fee(block_number: u64) -> Result<u64, DispatchError> {
+        return Ok(0);
+    }
+}
+
 /// Trait that every origin (like Ethereum origin or Parachain origin) should implement
 pub trait OriginOutput<NetworkId, Additional> {
     /// Construct new origin
