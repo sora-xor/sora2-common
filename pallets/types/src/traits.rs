@@ -35,7 +35,7 @@
 use core::fmt::Debug;
 
 use crate::types::AuxiliaryDigestItem;
-use crate::GenericTimepoint;
+use crate::{EVMChainId, GenericTimepoint};
 use crate::H256;
 use crate::U256;
 use crate::{
@@ -256,12 +256,16 @@ impl<Balance> GasTracker<Balance> for () {
 /// Trait for gas price oracle on Ethereum-based networks.
 pub trait EthereumGasPriceOracle {
     /// Returns base fee for the block.
-    fn get_base_fee(block_number: u64) -> Result<u64, DispatchError>;
+    fn get_base_fee(network_id: EVMChainId, header_hash: H256)
+        -> Result<Option<U256>, DispatchError>;
 }
 
 impl EthereumGasPriceOracle for () {
-    fn get_base_fee(block_number: u64) -> Result<u64, DispatchError> {
-        return Ok(0);
+    fn get_base_fee(
+        network_id: EVMChainId,
+        header_hash: H256,
+    ) -> Result<Option<U256>, DispatchError> {
+        return Ok(Some(U256::zero()));
     }
 }
 
