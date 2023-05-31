@@ -210,11 +210,7 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn get_transfer_limit)]
-    pub type BridgeTransferLimit<T> = StorageValue<_, MainnetBalance, OptionQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn get_transfer_limit_precision)]
-    pub type TransferLimitPrecision<T> = StorageValue<_, u8, ValueQuery>;
+    pub type BridgeTransferLimit<T> = StorageValue<_, BalanceOf<T>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn sidechain_precision)]
@@ -388,12 +384,10 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn set_transfer_limit(
             origin: OriginFor<T>,
-            limit_count: Option<MainnetBalance>,
-            limit_precision: u8,
+            limit_count: Option<BalanceOf<T>>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             BridgeTransferLimit::<T>::set(limit_count);
-            TransferLimitPrecision::<T>::set(limit_precision);
             Ok(())
         }
     }
@@ -439,13 +433,7 @@ pub mod pallet {
 
             if let Some(limit) = Self::get_transfer_limit() {
                 ensure!(
-                    T::BalancePrecisionConverter::to_sidechain(
-                        &asset_id,
-                        Self::get_transfer_limit_precision(),
-                        amount
-                    )
-                    .ok_or(Error::<T>::WrongAmount)?
-                        <= limit,
+                    amount <= limit,
                     Error::<T>::TransferLimitReached
                 );
             }
