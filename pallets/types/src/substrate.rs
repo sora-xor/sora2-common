@@ -69,6 +69,8 @@ pub enum SubstrateAppCall {
         asset_id: MainnetAssetId,
         asset_kind: AssetKind,
     },
+    SwitchOnBridge,
+    SwitchOffBridge,
 }
 
 impl SubstrateBridgeMessageEncode for SubstrateAppCall {

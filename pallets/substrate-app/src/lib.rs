@@ -99,6 +99,8 @@ where
                 asset_id: asset_id.into(),
                 asset_kind,
             },
+            SubstrateAppCall::SwitchOffBridge => Call::finalize_change_bridge_state { action: FinalizeStateAction::SwitchOff },
+            SubstrateAppCall::SwitchOnBridge => Call::finalize_change_bridge_state { action: FinalizeStateAction::SwitchOn },
         }
     }
 }
@@ -465,10 +467,10 @@ pub mod pallet {
 
             match action {
                 FinalizeStateAction::SwitchOn => {
-                    // Self::bridge_switch_on_inner(network_id)?;
+                    Self::finilize_bridge_switch_on_inner(network_id)?;
                 }
                 FinalizeStateAction::SwitchOff => {
-                    // Self::bridge_switch_off_inner(network_id)?;
+                    Self::finilize_bridge_switch_off_inner(network_id)?;
                 }
             }
 
