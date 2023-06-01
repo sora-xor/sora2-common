@@ -123,6 +123,12 @@ pub enum ChangeStateAction {
     SwitchOff,
 }
 
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum FinalizeStateAction {
+    SwitchOn,
+    SwitchOff,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -223,6 +229,12 @@ pub mod pallet {
             T::AccountId,
             BalanceOf<T>,
         ),
+        /// [network_id, previos_state, current_state]
+        BridgeStateChanged(
+            SubNetworkId,
+            BridgeState,
+            BridgeState,
+        ),
     }
 
     #[pallet::storage]
@@ -258,7 +270,10 @@ pub mod pallet {
         WrongAmount,
         TransferLimitReached,
         UnknownPrecision,
+
+        /// The bridge for network is switched off
         NetworkIsLocked,
+        InvalidBridgeState,
     }
 
     #[pallet::call]
@@ -430,10 +445,30 @@ pub mod pallet {
 
             match action {
                 ChangeStateAction::SwitchOn => {
-                    Self::do_bridge_switch_on(network_id)?;
+                    Self::bridge_switch_on_inner(network_id)?;
                 }
                 ChangeStateAction::SwitchOff => {
-                    Self::do_bridge_switch_off(network_id)?;
+                    Self::bridge_switch_off_inner(network_id)?;
+                }
+            }
+
+            Ok(())
+        }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn finalize_change_bridge_state(
+            origin: OriginFor<T>,
+            action: FinalizeStateAction,
+        ) -> DispatchResult {
+            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+
+            match action {
+                FinalizeStateAction::SwitchOn => {
+                    // Self::bridge_switch_on_inner(network_id)?;
+                }
+                FinalizeStateAction::SwitchOff => {
+                    // Self::bridge_switch_off_inner(network_id)?;
                 }
             }
 
@@ -534,11 +569,55 @@ pub mod pallet {
             Ok(Default::default())
         }
 
-        pub fn do_bridge_switch_off(network_id: SubNetworkId) -> DispatchResult {
+        pub fn bridge_switch_off_inner(network_id: SubNetworkId) -> DispatchResult {
+            let state = Self::get_bridge_state(network_id);
+            // check that bridge is of for network, otherwise switching it off is not correct
+            ensure!(state== BridgeState::On, Error::<T>::InvalidBridgeState);
+            // switch to pending to wait an answer from the bridged chain
+            let new_state = BridgeState::SwitchOffPending;
+            NetworkBridgeState::<T>::try_mutate(network_id, |x| -> DispatchResult {
+                *x = new_state.clone();
+                Ok(())
+            })?;
+            Self::deposit_event(Event::BridgeStateChanged(network_id, state, new_state));
             Ok(())
         }
 
-        pub fn do_bridge_switch_on(network_id: SubNetworkId) -> DispatchResult {
+        pub fn bridge_switch_on_inner(network_id: SubNetworkId) -> DispatchResult {
+            let state = Self::get_bridge_state(network_id);
+            // ensure that bridge is off
+            ensure!(state == BridgeState::Off, Error::<T>::InvalidBridgeState);
+            // switch to pending to wait an answer from the bridged chain
+            let new_state = BridgeState::SwitchOnPending;
+            NetworkBridgeState::<T>::try_mutate(network_id, |x| -> DispatchResult {
+                *x = new_state.clone();
+                Ok(())
+            })?;
+            Self::deposit_event(Event::BridgeStateChanged(network_id, state, new_state));
+            Ok(())
+        }
+
+        pub fn finilize_bridge_switch_off_inner(network_id: SubNetworkId) -> DispatchResult {
+            let state = Self::get_bridge_state(network_id);
+            ensure!(state == BridgeState::SwitchOffPending, Error::<T>::InvalidBridgeState);
+            let new_state = BridgeState::Off;
+            NetworkBridgeState::<T>::try_mutate(network_id, |x| -> DispatchResult {
+                *x = new_state.clone();
+                Ok(())
+            })?;
+            Self::deposit_event(Event::BridgeStateChanged(network_id, state, new_state));
+            Ok(())
+        }
+
+        pub fn finilize_bridge_switch_on_inner(network_id: SubNetworkId) -> DispatchResult {
+            let state = Self::get_bridge_state(network_id);
+            ensure!(state == BridgeState::SwitchOnPending, Error::<T>::InvalidBridgeState);
+            let new_state = BridgeState::On;
+            NetworkBridgeState::<T>::try_mutate(network_id, |x| -> DispatchResult {
+                *x = new_state.clone();
+                Ok(())
+            })?;
+            Self::deposit_event(Event::BridgeStateChanged(network_id, state, new_state));
             Ok(())
         }
     }
