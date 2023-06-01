@@ -60,15 +60,15 @@ use bridge_types::substrate::{
 use bridge_types::traits::BridgeApp;
 use bridge_types::types::{AssetKind, BridgeAppInfo, BridgeAssetInfo, SubAssetInfo};
 use bridge_types::GenericNetworkId;
+use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
+use sp_core::RuntimeDebug;
 use sp_runtime::traits::{Convert, Zero};
 use sp_std::prelude::*;
 use traits::MultiCurrency;
-use sp_core::RuntimeDebug;
-use codec::{Encode, Decode};
 
 pub use weights::WeightInfo;
 
@@ -109,6 +109,12 @@ pub enum BridgeState {
     SwitchOffPending,
     SwitchOnPending,
     Off,
+}
+
+impl Default for BridgeState {
+    fn default() -> Self {
+        BridgeState::On
+    }
 }
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
@@ -232,6 +238,11 @@ pub mod pallet {
     #[pallet::getter(fn sidechain_precision)]
     pub(super) type SidechainPrecision<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, u8, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn get_bridge_state)]
+    pub(super) type NetworkBridgeState<T: Config> =
+        StorageMap<_, Identity, SubNetworkId, BridgeState, ValueQuery>;
 
     #[pallet::error]
     pub enum Error<T> {
@@ -420,11 +431,10 @@ pub mod pallet {
             match action {
                 ChangeStateAction::SwitchOn => {
                     Self::do_bridge_switch_on(network_id)?;
-                    
-                },
+                }
                 ChangeStateAction::SwitchOff => {
                     Self::do_bridge_switch_off(network_id)?;
-                },
+                }
             }
 
             Ok(())
@@ -471,10 +481,7 @@ pub mod pallet {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
 
             if let Some(limit) = Self::get_transfer_limit() {
-                ensure!(
-                    amount <= limit,
-                    Error::<T>::TransferLimitReached
-                );
+                ensure!(amount <= limit, Error::<T>::TransferLimitReached);
             }
 
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
@@ -482,7 +489,7 @@ pub mod pallet {
             let bridge_account = Self::bridge_account()?;
 
             let precision = SidechainPrecision::<T>::get(network_id, asset_id)
-                    .ok_or(Error::<T>::UnknownPrecision)?;
+                .ok_or(Error::<T>::UnknownPrecision)?;
 
             let sidechain_amount =
                 T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount)

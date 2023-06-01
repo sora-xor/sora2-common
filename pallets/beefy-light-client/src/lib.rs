@@ -35,7 +35,7 @@ use bridge_common::{beefy_types::*, bitfield, simplified_proof::Proof};
 use bridge_types::types::AuxiliaryDigest;
 use bridge_types::types::AuxiliaryDigestItem;
 use bridge_types::{GenericNetworkId, SubNetworkId};
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use frame_support::ensure;
 use frame_support::fail;
 use frame_support::log;
