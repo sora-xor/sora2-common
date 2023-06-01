@@ -93,6 +93,7 @@ pub type EVMChainId = U256;
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum SubNetworkId {
     Mainnet,
     Kusama,
@@ -113,10 +114,12 @@ pub enum SubNetworkId {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericNetworkId {
-    #[cfg_attr(feature = "std", serde(with = "serde_u256"))]
+    #[cfg_attr(feature = "std", serde(with = "serde_u256", rename = "evm"))]
     EVM(EVMChainId),
     Sub(SubNetworkId),
+    #[cfg_attr(feature = "std", serde(rename = "evmLegacy"))]
     EVMLegacy(u32),
 }
 
@@ -177,7 +180,9 @@ pub enum GenericAccount<AccountId> {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericTimepoint {
+    #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(u64),
     Sora(u32),
     Parachain(u32),
