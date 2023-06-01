@@ -67,6 +67,8 @@ use frame_system::ensure_signed;
 use sp_runtime::traits::{Convert, Zero};
 use sp_std::prelude::*;
 use traits::MultiCurrency;
+use sp_core::RuntimeDebug;
+use codec::{Encode, Decode};
 
 pub use weights::WeightInfo;
 
@@ -99,6 +101,20 @@ where
             },
         }
     }
+}
+
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum BridgeState {
+    On,
+    SwitchOffPending,
+    SwitchOnPending,
+    Off,
+}
+
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum ChangeStateAction {
+    SwitchOn,
+    SwitchOff,
 }
 
 #[frame_support::pallet]
@@ -231,6 +247,7 @@ pub mod pallet {
         WrongAmount,
         TransferLimitReached,
         UnknownPrecision,
+        NetworkIsLocked,
     }
 
     #[pallet::call]
@@ -390,6 +407,28 @@ pub mod pallet {
             BridgeTransferLimit::<T>::set(limit_count);
             Ok(())
         }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn change_bridge_state(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            action: ChangeStateAction,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            match action {
+                ChangeStateAction::SwitchOn => {
+                    Self::do_bridge_switch_on(network_id)?;
+                    
+                },
+                ChangeStateAction::SwitchOff => {
+                    Self::do_bridge_switch_off(network_id)?;
+                },
+            }
+
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -486,6 +525,14 @@ pub mod pallet {
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
 
             Ok(Default::default())
+        }
+
+        pub fn do_bridge_switch_off(network_id: SubNetworkId) -> DispatchResult {
+            Ok(())
+        }
+
+        pub fn do_bridge_switch_on(network_id: SubNetworkId) -> DispatchResult {
+            Ok(())
         }
     }
 
