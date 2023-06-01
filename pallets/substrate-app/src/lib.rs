@@ -297,6 +297,7 @@ pub mod pallet {
                 timepoint,
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
+            ensure!(matches!(Self::get_bridge_state(network_id), BridgeState::On | BridgeState::SwitchOffPending), Error::<T>::NetworkIsLocked);
 
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -380,6 +381,7 @@ pub mod pallet {
             sidechain_asset: ParachainAssetId,
         ) -> DispatchResult {
             ensure_root(origin)?;
+            ensure!(Self::get_bridge_state(network_id) == BridgeState::On, Error::<T>::NetworkIsLocked);
             ensure!(
                 !AssetKinds::<T>::contains_key(network_id, asset_id),
                 Error::<T>::TokenAlreadyRegistered
@@ -409,7 +411,7 @@ pub mod pallet {
             decimals: u8,
         ) -> DispatchResult {
             ensure_root(origin)?;
-
+            ensure!(Self::get_bridge_state(network_id) == BridgeState::On, Error::<T>::NetworkIsLocked);
             let bridge_account = Self::bridge_account()?;
 
             let asset_id = T::AssetRegistry::register_asset(bridge_account, name, symbol)?;
@@ -516,6 +518,7 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
+            ensure!(Self::get_bridge_state(network_id) == BridgeState::On, Error::<T>::NetworkIsLocked);
 
             if let Some(limit) = Self::get_transfer_limit() {
                 ensure!(amount <= limit, Error::<T>::TransferLimitReached);
