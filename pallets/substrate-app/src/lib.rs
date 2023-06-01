@@ -573,7 +573,16 @@ pub mod pallet {
             let state = Self::get_bridge_state(network_id);
             // check that bridge is of for network, otherwise switching it off is not correct
             ensure!(state== BridgeState::On, Error::<T>::InvalidBridgeState);
-            // switch to pending to wait an answer from the bridged chain
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &XCMAppCall::SwitchOffBridge
+                    .prepare_message(),
+                (),
+            )?;
+
+            //switch to pending to wait an answer from the bridged chain
             let new_state = BridgeState::SwitchOffPending;
             NetworkBridgeState::<T>::try_mutate(network_id, |x| -> DispatchResult {
                 *x = new_state.clone();
@@ -587,6 +596,15 @@ pub mod pallet {
             let state = Self::get_bridge_state(network_id);
             // ensure that bridge is off
             ensure!(state == BridgeState::Off, Error::<T>::InvalidBridgeState);
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &XCMAppCall::SwitchOnBridge
+                    .prepare_message(),
+                (),
+            )?;
+
             // switch to pending to wait an answer from the bridged chain
             let new_state = BridgeState::SwitchOnPending;
             NetworkBridgeState::<T>::try_mutate(network_id, |x| -> DispatchResult {

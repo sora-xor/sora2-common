@@ -91,6 +91,8 @@ pub enum XCMAppCall {
         sidechain_asset: ParachainAssetId,
         asset_kind: AssetKind,
     },
+    SwitchOnBridge,
+    SwitchOffBridge,
 }
 
 impl SubstrateBridgeMessageEncode for XCMAppCall {
