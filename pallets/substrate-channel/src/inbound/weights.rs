@@ -32,18 +32,18 @@ use frame_support::weights::Weight;
 
 pub trait WeightInfo {
     fn submit() -> Weight;
-    fn set_reward_fraction() -> Weight;
-    fn register_channel() -> Weight;
+    fn lock_channel() -> Weight;
+    fn unlock_channel() -> Weight;
 }
 
 impl WeightInfo for () {
     fn submit() -> Weight {
         Weight::zero()
     }
-    fn set_reward_fraction() -> Weight {
+    fn lock_channel() -> Weight {
         Weight::zero()
     }
-    fn register_channel() -> Weight {
+    fn unlock_channel() -> Weight {
         Weight::zero()
     }
 }

@@ -136,6 +136,10 @@ pub mod pallet {
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn is_locked)]
+    pub type IsLocked<T: Config> = StorageValue<_, bool, ValueQuery>;
+
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -183,6 +187,35 @@ pub mod pallet {
         Overflow,
         /// This channel already exists
         ChannelExists,
+        /// Channel is locked
+        ChannelLocked,
+        /// Channel in invalid state
+        InvalidChannelState,
+    }
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> { 
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::lock_channel())]
+        pub fn lock_channel(
+            origin: OriginFor<T>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(!Self::is_locked(), Error::<T>::InvalidChannelState);
+            IsLocked::<T>::set(true);
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::unlock_channel())]
+        pub fn unlock_channel(
+            origin: OriginFor<T>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(Self::is_locked(), Error::<T>::InvalidChannelState);
+            IsLocked::<T>::set(false);
+            Ok(().into())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -191,6 +224,10 @@ pub mod pallet {
         }
 
         fn commit(network_id: SubNetworkId) -> Weight {
+            // while channel is locked - do nothing
+            if Self::is_locked() {
+                return Weight::zero();
+            }
             debug!("Commit substrate messages");
             let messages = Self::take_message_queue(network_id);
             if messages.is_empty() {
@@ -276,6 +313,7 @@ pub mod pallet {
             payload: &[u8],
             _: (),
         ) -> Result<H256, DispatchError> {
+            ensure!(!Self::is_locked(), Error::<T>::ChannelLocked);
             debug!("Send message from {:?} to network {:?}", who, network_id);
             ensure!(
                 MessageQueues::<T>::decode_len(network_id).unwrap_or(0)

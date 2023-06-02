@@ -83,6 +83,10 @@ pub mod pallet {
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn is_locked)]
+    pub type IsLocked<T: Config> = StorageValue<_, bool, ValueQuery>;
+
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -116,6 +120,10 @@ pub mod pallet {
         ContractExists,
         /// Call encoding failed.
         CallEncodeFailed,
+        /// The Channel is locked
+        ChannelLocked,
+        /// The Channel is in invalid state
+        InvalidChannelState,
     }
 
     #[pallet::call]
@@ -129,6 +137,7 @@ pub mod pallet {
             proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
             ensure_none(origin)?;
+            ensure!(!Self::is_locked(), Error::<T>::ChannelLocked);
             // submit message to verifier for verification
             let message_hash = Keccak256::hash_of(&messages);
             T::Verifier::verify(network_id.into(), message_hash, &proof)?;
@@ -155,6 +164,28 @@ pub mod pallet {
                     (),
                 );
             }
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::lock_channel())]
+        pub fn lock_channel(
+            origin: OriginFor<T>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(!Self::is_locked(), Error::<T>::InvalidChannelState);
+            IsLocked::<T>::set(true);
+            Ok(().into())
+        }
+
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::unlock_channel())]
+        pub fn unlock_channel(
+            origin: OriginFor<T>,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(Self::is_locked(), Error::<T>::InvalidChannelState);
+            IsLocked::<T>::set(false);
             Ok(().into())
         }
     }

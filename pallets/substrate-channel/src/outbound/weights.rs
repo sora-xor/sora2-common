@@ -35,6 +35,8 @@ pub trait WeightInfo {
     fn on_initialize_no_messages() -> Weight;
     fn register_channel() -> Weight;
     fn set_fee() -> Weight;
+    fn lock_channel() -> Weight;
+    fn unlock_channel() -> Weight;
 }
 
 impl WeightInfo for () {
@@ -51,6 +53,12 @@ impl WeightInfo for () {
         Weight::zero()
     }
     fn register_channel() -> Weight {
+        Weight::zero()
+    }
+    fn lock_channel() -> Weight {
+        Weight::zero()
+    }
+    fn unlock_channel() -> Weight {
         Weight::zero()
     }
 }
