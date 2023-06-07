@@ -99,8 +99,8 @@ where
                 asset_id: asset_id.into(),
                 asset_kind,
             },
-            SubstrateAppCall::SwitchOffBridge => Call::finalize_change_bridge_state { action: FinalizeStateAction::SwitchOff },
-            SubstrateAppCall::SwitchOnBridge => Call::finalize_change_bridge_state { action: FinalizeStateAction::SwitchOn },
+            SubstrateAppCall::FinalizeSwitchOffBridge => Call::finalize_change_bridge_state { action: FinalizeStateAction::SwitchOff },
+            SubstrateAppCall::FinalizeSwitchOnBridge => Call::finalize_change_bridge_state { action: FinalizeStateAction::SwitchOn },
         }
     }
 }
