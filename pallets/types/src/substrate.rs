@@ -41,7 +41,7 @@ use crate::{
 };
 
 pub use xcm::VersionedMultiLocation;
-pub use xcm::v3::Junctions;
+pub use xcm::v3::{Junctions, Junction};
 
 pub type ParachainAccountId = VersionedMultiLocation;
 

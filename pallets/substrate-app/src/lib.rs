@@ -115,6 +115,7 @@ pub mod pallet {
     };
     use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
+    use frame_support::fail;
     use frame_support::pallet_prelude::{OptionQuery, *, ValueQuery};
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
@@ -241,6 +242,8 @@ pub mod pallet {
         WrongAmount,
         TransferLimitReached,
         UnknownPrecision,
+        InvalidDestinationParachain,
+        InvalidDestinationParams,
     }
 
     #[pallet::call]
@@ -459,7 +462,7 @@ pub mod pallet {
                 );
             }
 
-            Self::check_parachain_transfer_valid(network_id, asset_id, recipient.clone())?;
+            Self::check_parachain_transfer_params(network_id, asset_id, recipient.clone())?;
 
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -511,8 +514,8 @@ pub mod pallet {
             Ok(Default::default())
         }
 
-        fn check_parachain_transfer_valid(network_id: SubNetworkId, asset_id: AssetIdOf<T>, recipient: ParachainAccountId) -> DispatchResult {
-            use bridge_types::substrate::{VersionedMultiLocation::V3, Junctions::{X1, X2}};
+        fn check_parachain_transfer_params(network_id: SubNetworkId, asset_id: AssetIdOf<T>, recipient: ParachainAccountId) -> DispatchResult {
+            use bridge_types::substrate::{VersionedMultiLocation::V3, Junctions::{X1, X2,}, Junction};
 
             let V3(ml) = recipient else {
                 todo!();
@@ -522,15 +525,40 @@ pub mod pallet {
                 todo!();
             }
 
-            match ml.interior {
-                X1(j1) => {
-                    todo!()
-                },
-                X2(j1, j2) => {
-                    todo!()
-                },
-                _ => todo!(),
+            if ml.interior.len() == 1 {
+                todo!()
+            } else if ml.interior.len() == 2 {
+                let mut parachain: Vec<u32> = Vec::new();
+                for x in ml.interior {
+                    if let Junction::Parachain(id) = x {
+                        parachain.push(id)
+                    }
+                }
+
+                let account: Vec<Junction> = ml.interior.into_iter().filter(|x| {
+                    matches!(x, Junction::AccountId32 {..})
+                }).collect();
+
+                if parachain.len() != 1 || account.len() != 1 {
+                    fail!(Error::<T>::InvalidDestinationParams)
+                }
+            
+                ensure!(Self::allowed_parachains(network_id, asset_id).iter().any(|x| *x == parachain[0]), Error::<T>::InvalidDestinationParachain);
+            } else {
+                fail!(Error::<T>::InvalidDestinationParams)
             }
+
+            // match ml.interior {
+            //     X1(j1) => {
+            //         todo!()
+            //     },
+            //     X2(j1, j2) => {
+            //         // let a = matches!(Junction::Parachain(_), j1 | j2);
+            //         let a = 
+
+            //     },
+            //     _ => todo!(),
+            // }
 
             // match recipient {
             //     V2(_) => todo!(),
