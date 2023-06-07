@@ -115,7 +115,7 @@ pub mod pallet {
     };
     use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
     use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
-    use frame_support::pallet_prelude::{OptionQuery, *};
+    use frame_support::pallet_prelude::{OptionQuery, *, ValueQuery};
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
     use traits::currency::MultiCurrency;
@@ -216,6 +216,16 @@ pub mod pallet {
     #[pallet::getter(fn sidechain_precision)]
     pub(super) type SidechainPrecision<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, u8, OptionQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn allowed_parachains)]
+    pub(super) type AllowedParachains<T: Config> =
+        StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, Vec<u32>, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn relaychain_asset)]
+    pub(super) type RelaychainAsset<T: Config> =
+        StorageMap<_, Identity, SubNetworkId, AssetIdOf<T>, OptionQuery>;
 
     #[pallet::error]
     pub enum Error<T> {
@@ -333,6 +343,7 @@ pub mod pallet {
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
             sidechain_asset: ParachainAssetId,
+            allowed_parachains: Vec<u32>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -348,6 +359,7 @@ pub mod pallet {
                 sidechain_asset,
                 AssetKind::Thischain,
                 sidechain_precision,
+                allowed_parachains,
             )?;
 
             Ok(())
@@ -362,6 +374,7 @@ pub mod pallet {
             symbol: AssetSymbolOf<T>,
             name: AssetNameOf<T>,
             decimals: u8,
+            allowed_parachains: Vec<u32>,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
@@ -375,6 +388,7 @@ pub mod pallet {
                 sidechain_asset,
                 AssetKind::Sidechain,
                 decimals,
+                allowed_parachains,
             )?;
             Ok(())
         }
@@ -399,10 +413,17 @@ pub mod pallet {
             sidechain_asset: ParachainAssetId,
             asset_kind: AssetKind,
             sidechain_precision: u8,
+            allowed_parachains: Vec<u32>,
         ) -> DispatchResult {
             let bridge_account = Self::bridge_account()?;
             T::AssetRegistry::manage_asset(bridge_account, asset_id)?;
             SidechainPrecision::<T>::insert(network_id, asset_id, sidechain_precision);
+            AllowedParachains::<T>::insert(network_id, asset_id, allowed_parachains);
+
+            // if it is a native relaychain asset - register it on the pallet to identify if it is transferred
+            if sidechain_asset == bridge_types::substrate::PARENT_PARACHAIN_ASSET {
+                RelaychainAsset::<T>::insert(network_id, asset_id);
+            }
 
             T::OutboundChannel::submit(
                 network_id,
@@ -437,6 +458,8 @@ pub mod pallet {
                     Error::<T>::TransferLimitReached
                 );
             }
+
+            Self::check_parachain_transfer_valid(network_id, asset_id, recipient.clone())?;
 
             let asset_kind = AssetKinds::<T>::get(network_id, asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -486,6 +509,34 @@ pub mod pallet {
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
 
             Ok(Default::default())
+        }
+
+        fn check_parachain_transfer_valid(network_id: SubNetworkId, asset_id: AssetIdOf<T>, recipient: ParachainAccountId) -> DispatchResult {
+            use bridge_types::substrate::{VersionedMultiLocation::V3, Junctions::{X1, X2}};
+
+            let V3(ml) = recipient else {
+                todo!();
+            };
+
+            if ml.parents != 1 {
+                todo!();
+            }
+
+            match ml.interior {
+                X1(j1) => {
+                    todo!()
+                },
+                X2(j1, j2) => {
+                    todo!()
+                },
+                _ => todo!(),
+            }
+
+            // match recipient {
+            //     V2(_) => todo!(),
+            //     V3(ml) => todo!(),
+            // }
+            Ok(())
         }
     }
 

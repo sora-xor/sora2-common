@@ -40,7 +40,10 @@ use crate::{
     GenericTimepoint,
 };
 
-pub type ParachainAccountId = xcm::VersionedMultiLocation;
+pub use xcm::VersionedMultiLocation;
+pub use xcm::v3::Junctions;
+
+pub type ParachainAccountId = VersionedMultiLocation;
 
 pub type ParachainAssetId = xcm::v3::AssetId;
 
@@ -51,6 +54,8 @@ pub type MainnetAssetId = H256;
 pub type MainnetAccountId = AccountId32;
 
 pub type MainnetBalance = u128;
+
+pub const PARENT_PARACHAIN_ASSET: ParachainAssetId = ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
