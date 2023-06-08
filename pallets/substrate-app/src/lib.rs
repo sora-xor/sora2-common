@@ -409,6 +409,46 @@ pub mod pallet {
             BridgeTransferLimit::<T>::set(limit_count);
             Ok(())
         }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn add_assetid_paraid(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            mut para_ids: Vec<u32>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            AssetKinds::<T>::get(network_id, asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+
+            AllowedParachains::<T>::try_mutate(network_id, asset_id, |x| -> DispatchResult {
+                x.append(&mut para_ids);
+                Ok(())
+            })?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn remove_assetid_paraid(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            para_id: u32,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            AssetKinds::<T>::get(network_id, asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+
+            AllowedParachains::<T>::try_mutate(network_id, asset_id, |x| -> DispatchResult {
+                x.retain(|el| *el != para_id);
+                Ok(())
+            })?;
+
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -540,10 +580,12 @@ pub mod pallet {
                 let Some(relaychain_asset) = Self::relaychain_asset(network_id) else {
                     fail!(Error::<T>::RelaychainAssetNotRegistered)
                 };
+
                 // only native relaychain asset can be transferred to the relaychain
                 ensure!(asset_id == relaychain_asset, Error::<T>::NotRelayTransferableAsset);
             } else if ml.interior.len() == 2 {
                 // len == 1 is transfer to a parachain
+
                 let mut parachain: Vec<u32> = Vec::new();
                 for x in ml.interior {
                     if let Junction::Parachain(id) = x {
