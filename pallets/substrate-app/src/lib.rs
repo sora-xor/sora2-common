@@ -244,6 +244,8 @@ pub mod pallet {
         UnknownPrecision,
         InvalidDestinationParachain,
         InvalidDestinationParams,
+        RelaychainAssetNotRegistered,
+        NotRelayTransferableAsset,
     }
 
     #[pallet::call]
@@ -515,19 +517,33 @@ pub mod pallet {
         }
 
         fn check_parachain_transfer_params(network_id: SubNetworkId, asset_id: AssetIdOf<T>, recipient: ParachainAccountId) -> DispatchResult {
-            use bridge_types::substrate::{VersionedMultiLocation::V3, Junctions::{X1, X2,}, Junction};
+            use bridge_types::substrate::{VersionedMultiLocation::V3, Junction};
 
             let V3(ml) = recipient else {
-                todo!();
+                fail!(Error::<T>::InvalidDestinationParams)
             };
 
+            // parents should be == 1
             if ml.parents != 1 {
-                todo!();
+                fail!(Error::<T>::InvalidDestinationParams)
             }
 
+            // check that only exact one account is given
+            let len = ml.interior.into_iter().filter(|x| {
+                matches!(x, Junction::AccountId32 {..})
+            }).count();
+            ensure!(len == 1, Error::<T>::InvalidDestinationParams);
+            
             if ml.interior.len() == 1 {
-                todo!()
+                // len == 1 is transfer to the relay chain
+
+                let Some(relaychain_asset) = Self::relaychain_asset(network_id) else {
+                    fail!(Error::<T>::RelaychainAssetNotRegistered)
+                };
+                // only native relaychain asset can be transferred to the relaychain
+                ensure!(asset_id == relaychain_asset, Error::<T>::NotRelayTransferableAsset);
             } else if ml.interior.len() == 2 {
+                // len == 1 is transfer to a parachain
                 let mut parachain: Vec<u32> = Vec::new();
                 for x in ml.interior {
                     if let Junction::Parachain(id) = x {
@@ -535,35 +551,14 @@ pub mod pallet {
                     }
                 }
 
-                let account: Vec<Junction> = ml.interior.into_iter().filter(|x| {
-                    matches!(x, Junction::AccountId32 {..})
-                }).collect();
-
-                if parachain.len() != 1 || account.len() != 1 {
-                    fail!(Error::<T>::InvalidDestinationParams)
-                }
+                // Only one parachain is allowed in query
+                ensure!(parachain.len() == 1,  Error::<T>::InvalidDestinationParams);
             
+                // ensure that destination para id is allowed to transfer to
                 ensure!(Self::allowed_parachains(network_id, asset_id).iter().any(|x| *x == parachain[0]), Error::<T>::InvalidDestinationParachain);
             } else {
                 fail!(Error::<T>::InvalidDestinationParams)
             }
-
-            // match ml.interior {
-            //     X1(j1) => {
-            //         todo!()
-            //     },
-            //     X2(j1, j2) => {
-            //         // let a = matches!(Junction::Parachain(_), j1 | j2);
-            //         let a = 
-
-            //     },
-            //     _ => todo!(),
-            // }
-
-            // match recipient {
-            //     V2(_) => todo!(),
-            //     V3(ml) => todo!(),
-            // }
             Ok(())
         }
     }
