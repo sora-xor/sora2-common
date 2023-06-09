@@ -246,6 +246,7 @@ pub mod pallet {
         InvalidDestinationParams,
         RelaychainAssetNotRegistered,
         NotRelayTransferableAsset,
+        RelaychainAssetRegistered,
     }
 
     #[pallet::call]
@@ -473,6 +474,7 @@ pub mod pallet {
 
             // if it is a native relaychain asset - register it on the pallet to identify if it is transferred
             if sidechain_asset == bridge_types::substrate::PARENT_PARACHAIN_ASSET {
+                ensure!(Self::relaychain_asset(network_id).is_none(), Error::<T>::RelaychainAssetRegistered);
                 RelaychainAsset::<T>::insert(network_id, asset_id);
             }
 
