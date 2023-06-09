@@ -464,7 +464,7 @@ pub mod pallet {
             let bridge_account = Self::bridge_account()?;
             T::AssetRegistry::manage_asset(bridge_account, asset_id)?;
             SidechainPrecision::<T>::insert(network_id, asset_id, sidechain_precision);
-            // AllowedParachains::<T>::insert(network_id, asset_id, allowed_parachains);
+
             for paraid in allowed_parachains {
                 AllowedParachainAssets::<T>::try_mutate(network_id, paraid, |x| -> DispatchResult {
                     x.push(asset_id);
