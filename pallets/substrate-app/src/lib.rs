@@ -219,9 +219,9 @@ pub mod pallet {
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, u8, OptionQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn allowed_parachains)]
-    pub(super) type AllowedParachains<T: Config> =
-        StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, Vec<u32>, ValueQuery>;
+    #[pallet::getter(fn allowed_parachain_assets)]
+    pub(super) type AllowedParachainAssets<T: Config> =
+        StorageDoubleMap<_, Identity, SubNetworkId, Identity, u32, Vec<AssetIdOf<T>>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn relaychain_asset)]
@@ -415,15 +415,15 @@ pub mod pallet {
         pub fn add_assetid_paraid(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
+            para_id: u32,
             asset_id: AssetIdOf<T>,
-            mut para_ids: Vec<u32>,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            AssetKinds::<T>::get(network_id, asset_id)
-                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+            // AssetKinds::<T>::get(network_id, asset_id)
+            //     .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
-            AllowedParachains::<T>::try_mutate(network_id, asset_id, |x| -> DispatchResult {
-                x.append(&mut para_ids);
+            AllowedParachainAssets::<T>::try_mutate(network_id, para_id, |x| -> DispatchResult {
+                x.push(asset_id);
                 Ok(())
             })?;
 
@@ -435,15 +435,15 @@ pub mod pallet {
         pub fn remove_assetid_paraid(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
-            asset_id: AssetIdOf<T>,
             para_id: u32,
+            asset_id: AssetIdOf<T>,     
         ) -> DispatchResult {
             ensure_root(origin)?;
-            AssetKinds::<T>::get(network_id, asset_id)
-                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+            // AssetKinds::<T>::get(network_id, asset_id)
+            //     .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
-            AllowedParachains::<T>::try_mutate(network_id, asset_id, |x| -> DispatchResult {
-                x.retain(|el| *el != para_id);
+            AllowedParachainAssets::<T>::try_mutate(network_id, para_id, |x| -> DispatchResult {
+                x.retain(|el| *el != asset_id);
                 Ok(())
             })?;
 
@@ -463,7 +463,13 @@ pub mod pallet {
             let bridge_account = Self::bridge_account()?;
             T::AssetRegistry::manage_asset(bridge_account, asset_id)?;
             SidechainPrecision::<T>::insert(network_id, asset_id, sidechain_precision);
-            AllowedParachains::<T>::insert(network_id, asset_id, allowed_parachains);
+            // AllowedParachains::<T>::insert(network_id, asset_id, allowed_parachains);
+            for paraid in allowed_parachains {
+                AllowedParachainAssets::<T>::try_mutate(network_id, paraid, |x| -> DispatchResult {
+                    x.push(asset_id);
+                    Ok(())
+                })?;
+            }
 
             // if it is a native relaychain asset - register it on the pallet to identify if it is transferred
             if sidechain_asset == bridge_types::substrate::PARENT_PARACHAIN_ASSET {
@@ -567,12 +573,6 @@ pub mod pallet {
             if ml.parents != 1 {
                 fail!(Error::<T>::InvalidDestinationParams)
             }
-
-            // check that only exact one account is given
-            let len = ml.interior.into_iter().filter(|x| {
-                matches!(x, Junction::AccountId32 {..})
-            }).count();
-            ensure!(len == 1, Error::<T>::InvalidDestinationParams);
             
             if ml.interior.len() == 1 {
                 // len == 1 is transfer to the relay chain
@@ -584,20 +584,20 @@ pub mod pallet {
                 // only native relaychain asset can be transferred to the relaychain
                 ensure!(asset_id == relaychain_asset, Error::<T>::NotRelayTransferableAsset);
             } else if ml.interior.len() == 2 {
-                // len == 1 is transfer to a parachain
+                // len == 2 is transfer to a parachain
 
-                let mut parachain: Vec<u32> = Vec::new();
+                let mut parachains: Vec<u32> = Vec::with_capacity(1);
                 for x in ml.interior {
                     if let Junction::Parachain(id) = x {
-                        parachain.push(id)
+                        parachains.push(id)
                     }
                 }
 
                 // Only one parachain is allowed in query
-                ensure!(parachain.len() == 1,  Error::<T>::InvalidDestinationParams);
+                ensure!(parachains.len() == 1,  Error::<T>::InvalidDestinationParams);
             
                 // ensure that destination para id is allowed to transfer to
-                ensure!(Self::allowed_parachains(network_id, asset_id).iter().any(|x| *x == parachain[0]), Error::<T>::InvalidDestinationParachain);
+                ensure!(Self::allowed_parachain_assets(network_id, parachains[0]).contains(&asset_id), Error::<T>::InvalidDestinationParachain);
             } else {
                 fail!(Error::<T>::InvalidDestinationParams)
             }
