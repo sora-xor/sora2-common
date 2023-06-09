@@ -419,8 +419,8 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            // AssetKinds::<T>::get(network_id, asset_id)
-            //     .ok_or(Error::<T>::TokenIsNotRegistered)?;
+            AssetKinds::<T>::get(network_id, asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             AllowedParachainAssets::<T>::try_mutate(network_id, para_id, |x| -> DispatchResult {
                 x.push(asset_id);
@@ -439,8 +439,8 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,     
         ) -> DispatchResult {
             ensure_root(origin)?;
-            // AssetKinds::<T>::get(network_id, asset_id)
-            //     .ok_or(Error::<T>::TokenIsNotRegistered)?;
+            AssetKinds::<T>::get(network_id, asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             AllowedParachainAssets::<T>::try_mutate(network_id, para_id, |x| -> DispatchResult {
                 x.retain(|el| *el != asset_id);
