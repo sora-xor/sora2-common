@@ -50,13 +50,15 @@ pub mod utils;
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
 use frame_support::RuntimeDebug;
-use serde::Deserialize;
 use sp_std::vec;
 use sp_std::vec::Vec;
 
 pub use header::{Header, HeaderId};
 pub use log::Log;
 pub use receipt::Receipt;
+
+#[cfg(feature = "std")]
+use serde::Deserialize;
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -207,6 +209,7 @@ where
 }
 
 /// Deserializes U256 from either hex or decimal string.
+#[cfg(feature = "std")]
 fn deserialize_u256<'de, D>(deserializer: D) -> Result<U256, D::Error>
 where
     D: serde::Deserializer<'de>,
