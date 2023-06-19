@@ -34,6 +34,7 @@
 
 use core::fmt::Debug;
 
+use crate::types::AssetKind;
 use crate::types::AuxiliaryDigestItem;
 use crate::GenericTimepoint;
 use crate::H256;
@@ -50,6 +51,8 @@ use frame_support::{
 };
 use frame_system::{Config, RawOrigin};
 use scale_info::TypeInfo;
+use sp_runtime::traits::AtLeast32BitUnsigned;
+use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::prelude::*;
 
 /// A trait for verifying messages.
@@ -269,12 +272,12 @@ pub trait BridgeAssetRegistry<AccountId, AssetId> {
     type AssetSymbol: Parameter;
 
     fn register_asset(
-        owner: AccountId,
+        network_id: GenericNetworkId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
     ) -> Result<AssetId, DispatchError>;
 
-    fn manage_asset(manager: AccountId, asset_id: AssetId) -> DispatchResult;
+    fn manage_asset(network_id: GenericNetworkId, asset_id: AssetId) -> DispatchResult;
 
     fn get_raw_info(asset_id: AssetId) -> RawAssetInfo;
 }
@@ -321,4 +324,25 @@ impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance, Balance> for 
 
 pub trait TimepointProvider {
     fn get_timepoint() -> GenericTimepoint;
+}
+
+pub trait BridgeAssetLocker<AccountId> {
+    type AssetId: Parameter + MaybeSerializeDeserialize;
+    type Balance: Parameter + AtLeast32BitUnsigned + MaybeSerializeDeserialize;
+
+    fn lock_asset(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        who: AccountId,
+        asset_id: Self::AssetId,
+        amount: Self::Balance,
+    ) -> DispatchResult;
+
+    fn unlock_asset(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        who: AccountId,
+        asset_id: Self::AssetId,
+        amount: Self::Balance,
+    ) -> DispatchResult;
 }

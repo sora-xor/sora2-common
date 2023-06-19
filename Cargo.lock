@@ -388,6 +388,7 @@ dependencies = [
  "getrandom 0.2.8",
  "hex-literal",
  "libsecp256k1",
+ "orml-traits",
  "parity-bytes",
  "parity-scale-codec",
  "rand 0.7.3",
