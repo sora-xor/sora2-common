@@ -237,8 +237,9 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bridge_types::evm::AdditionalEVMInboundData;
     use bridge_types::traits::MessageDispatch as _;
-    use bridge_types::types::{self, AdditionalEVMInboundData};
+    use bridge_types::types;
     use bridge_types::{EVMChainId, H160};
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;

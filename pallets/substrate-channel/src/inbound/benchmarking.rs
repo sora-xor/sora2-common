@@ -66,12 +66,17 @@ benchmarks! {
     // * `unlock` call successfully unlocks DOT
     submit {
         let caller: T::AccountId = whitelisted_caller();
-        let message = vec![BridgeMessage {
-            nonce: 1,
+        let messages = vec![BridgeMessage {
             timepoint: Default::default(),
             payload: Default::default(),
         }];
-    }: _(RawOrigin::None, BASE_NETWORK_ID, message, Default::default())
+        let commitment = bridge_types::GenericCommitment::Sub(
+            bridge_types::substrate::Commitment {
+                messages: messages.try_into().unwrap(),
+                nonce: 1u64,
+            }
+        );
+    }: _(RawOrigin::None, BASE_NETWORK_ID, commitment, Default::default())
     verify {
         assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 

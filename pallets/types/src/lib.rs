@@ -43,6 +43,7 @@ pub mod substrate;
 pub mod traits;
 pub mod types;
 
+pub mod evm;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
 pub mod utils;
@@ -50,6 +51,7 @@ pub mod utils;
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
 use frame_support::RuntimeDebug;
+use sp_core::Get;
 use sp_std::vec;
 use sp_std::vec::Vec;
 
@@ -57,8 +59,9 @@ pub use header::{Header, HeaderId};
 pub use log::Log;
 pub use receipt::Receipt;
 
+use derivative::Derivative;
 #[cfg(feature = "std")]
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -170,15 +173,7 @@ pub enum GenericAccount<AccountId> {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum GenericTimepoint {
@@ -195,7 +190,44 @@ impl Default for GenericTimepoint {
     }
 }
 
-pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"commitment";
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxMessages, MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    Sub(substrate::Commitment<MaxMessages, MaxPayload>),
+    EVM(evm::Commitment<MaxMessages, MaxPayload>),
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages, MaxPayload> {
+    pub fn hash(&self) -> H256 {
+        match self {
+            GenericCommitment::EVM(commitment) => commitment.hash(),
+            GenericCommitment::Sub(commitment) => commitment.hash(),
+        }
+    }
+
+    pub fn nonce(&self) -> u64 {
+        match self {
+            GenericCommitment::Sub(commitment) => commitment.nonce,
+            GenericCommitment::EVM(commitment) => commitment.nonce,
+        }
+    }
+}
+
+// Use predefined types to ensure data compatability
+
+pub type MainnetAssetId = H256;
+
+pub type MainnetAccountId = sp_runtime::AccountId32;
+
+pub type MainnetBalance = u128;
 
 pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
 where

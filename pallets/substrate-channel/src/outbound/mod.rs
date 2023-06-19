@@ -31,14 +31,12 @@
 //! Channel for passing messages from substrate to ethereum.
 
 use bridge_types::substrate::BridgeMessage;
-use codec::{Decode, Encode};
+use codec::Encode;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
-use sp_core::{RuntimeDebug, H256};
+use sp_core::H256;
 use sp_io::offchain_index;
-use sp_runtime::traits::Hash;
-use sp_std::prelude::*;
 
 use bridge_types::types::MessageNonce;
 use bridge_types::SubNetworkId;
@@ -51,14 +49,6 @@ mod benchmarking;
 
 #[cfg(test)]
 mod test;
-
-/// Wire-format for commitment
-#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct Commitment {
-    /// Messages passed through the channel in the current commit.
-    pub messages: Vec<BridgeMessage>,
-}
 
 pub use pallet::*;
 
@@ -81,21 +71,17 @@ pub mod pallet {
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
     use sp_runtime::traits::Zero;
+    use sp_runtime::DispatchError;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        /// Prefix for offchain storage keys.
-        const INDEXING_PREFIX: &'static [u8];
-
-        type Hashing: Hash<Output = H256>;
-
         /// Max bytes in a message payload
-        type MaxMessagePayloadSize: Get<u64>;
+        type MaxMessagePayloadSize: Get<u32>;
 
         /// Max number of messages that can be queued and committed in one go for a given channel.
-        type MaxMessagesPerCommit: Get<u64>;
+        type MaxMessagesPerCommit: Get<u32>;
 
         type AssetId: Parameter;
 
@@ -130,8 +116,13 @@ pub mod pallet {
     /// Messages waiting to be committed. To update the queue, use `append_message_queue` and `take_message_queue` methods
     /// (to keep correct value in [QueuesTotalGas]).
     #[pallet::storage]
-    pub(crate) type MessageQueues<T: Config> =
-        StorageMap<_, Identity, SubNetworkId, Vec<BridgeMessage>, ValueQuery>;
+    pub(crate) type MessageQueues<T: Config> = StorageMap<
+        _,
+        Identity,
+        SubNetworkId,
+        BoundedVec<BridgeMessage<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit>,
+        ValueQuery,
+    >;
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
@@ -166,7 +157,11 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        MessageAccepted(SubNetworkId, MessageNonce),
+        MessageAccepted {
+            network_id: SubNetworkId,
+            batch_nonce: u64,
+            message_nonce: MessageNonce,
+        },
     }
 
     #[pallet::error]
@@ -186,38 +181,51 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn make_message_id(nonce: u64) -> H256 {
-            MessageId::outbound(nonce).using_encoded(|v| <T as Config>::Hashing::hash(v))
+        pub fn make_message_id(batch_nonce: u64, message_nonce: u64) -> H256 {
+            MessageId::outbound_batched(batch_nonce, message_nonce).hash()
         }
 
-        fn commit(network_id: SubNetworkId) -> Weight {
+        pub(crate) fn commit(network_id: SubNetworkId) -> Weight {
             debug!("Commit substrate messages");
-            let messages = Self::take_message_queue(network_id);
+            let messages = MessageQueues::<T>::take(network_id);
             if messages.is_empty() {
                 return <T as Config>::WeightInfo::on_initialize_no_messages();
             }
 
-            for message in messages.iter() {
+            let batch_nonce = ChannelNonces::<T>::mutate(network_id, |nonce| {
+                *nonce += 1;
+                *nonce
+            });
+
+            for idx in 0..messages.len() as u64 {
                 T::MessageStatusNotifier::update_status(
                     GenericNetworkId::Sub(network_id),
-                    Self::make_message_id(message.nonce),
+                    Self::make_message_id(batch_nonce, idx as u64),
                     MessageStatus::Committed,
                     GenericTimepoint::Pending,
                 );
             }
 
-            let commitment = Commitment { messages };
+            let average_payload_size = Self::average_payload_size(&messages);
+            let messages_count = messages.len();
 
-            let average_payload_size = Self::average_payload_size(&commitment.messages);
-            let messages_count = commitment.messages.len();
-            let encoded_commitment = commitment.encode();
-            let commitment_hash = <T as Config>::Hashing::hash(&encoded_commitment);
+            let commitment =
+                bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                    messages,
+                    nonce: batch_nonce,
+                });
+
+            let commitment_hash = commitment.hash();
             let digest_item =
                 AuxiliaryDigestItem::Commitment(GenericNetworkId::Sub(network_id), commitment_hash);
             T::AuxiliaryDigestHandler::add_item(digest_item);
 
-            let key = Self::make_offchain_key(commitment_hash);
-            offchain_index::set(&key, &encoded_commitment);
+            let key = bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
+            let offchain_data = bridge_types::types::BridgeOffchainData {
+                commitment,
+                block_number: <frame_system::Pallet<T>>::block_number(),
+            };
+            offchain_index::set(&key, &offchain_data.encode());
 
             <T as Config>::WeightInfo::on_initialize(
                 messages_count as u32,
@@ -225,25 +233,11 @@ pub mod pallet {
             )
         }
 
-        fn average_payload_size(messages: &[BridgeMessage]) -> usize {
+        fn average_payload_size(messages: &[BridgeMessage<T::MaxMessagePayloadSize>]) -> usize {
             let sum: usize = messages.iter().fold(0, |acc, x| acc + x.payload.len());
             // We overestimate message payload size rather than underestimate.
             // So add 1 here to account for integer division truncation.
             (sum / messages.len()).saturating_add(1)
-        }
-
-        pub fn make_offchain_key(hash: H256) -> Vec<u8> {
-            (T::INDEXING_PREFIX, hash).encode()
-        }
-
-        /// Add message to queue and accumulate total maximum gas value    
-        pub(crate) fn append_message_queue(network: SubNetworkId, msg: BridgeMessage) {
-            MessageQueues::<T>::append(network, msg);
-        }
-
-        /// Take the queue together with accumulated total maximum gas value.
-        pub(crate) fn take_message_queue(network: SubNetworkId) -> Vec<BridgeMessage> {
-            MessageQueues::<T>::take(network)
         }
     }
 
@@ -277,9 +271,9 @@ pub mod pallet {
             _: (),
         ) -> Result<H256, DispatchError> {
             debug!("Send message from {:?} to network {:?}", who, network_id);
+            let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0);
             ensure!(
-                MessageQueues::<T>::decode_len(network_id).unwrap_or(0)
-                    < T::MaxMessagesPerCommit::get() as usize,
+                messages_count < T::MaxMessagesPerCommit::get() as usize,
                 Error::<T>::QueueSizeLimitReached,
             );
             ensure!(
@@ -287,24 +281,27 @@ pub mod pallet {
                 Error::<T>::PayloadTooLarge,
             );
 
-            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> Result<H256, DispatchError> {
-                if let Some(v) = nonce.checked_add(1) {
-                    *nonce = v;
-                } else {
-                    return Err(Error::<T>::Overflow.into());
-                }
+            let batch_nonce = ChannelNonces::<T>::get(network_id)
+                .checked_add(1)
+                .ok_or(Error::<T>::Overflow)?;
 
-                Self::append_message_queue(
-                    network_id,
-                    BridgeMessage {
-                        nonce: *nonce,
-                        payload: payload.to_vec(),
-                        timepoint: T::TimepointProvider::get_timepoint(),
-                    },
-                );
-                Self::deposit_event(Event::MessageAccepted(network_id, *nonce));
-                Ok(Self::make_message_id(*nonce))
-            })
+            MessageQueues::<T>::try_append(
+                network_id,
+                BridgeMessage {
+                    payload: payload
+                        .to_vec()
+                        .try_into()
+                        .map_err(|_| Error::<T>::PayloadTooLarge)?,
+                    timepoint: T::TimepointProvider::get_timepoint(),
+                },
+            )
+            .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+            Self::deposit_event(Event::MessageAccepted {
+                network_id,
+                batch_nonce,
+                message_nonce: messages_count as u64,
+            });
+            Ok(Self::make_message_id(batch_nonce, messages_count as u64))
         }
     }
 }

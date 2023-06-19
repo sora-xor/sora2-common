@@ -30,14 +30,17 @@
 
 //! Types for representing messages
 
-use crate::substrate::MainnetAssetId;
+use crate::evm::{EVMAppInfo, EVMAssetInfo, EVMLegacyAssetInfo};
+use crate::substrate::SubAssetInfo;
 use crate::{GenericTimepoint, H256};
-use crate::{H160, U256};
 use codec::{Decode, Encode};
+use derivative::Derivative;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
+use sp_core::Get;
+use sp_runtime::traits::Hash;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
 
@@ -97,25 +100,19 @@ impl MessageId {
     pub fn outbound_batched(batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
         MessageId::from((MessageDirection::Outbound, batch_nonce, message_nonce))
     }
+
+    /// Creates MessageId for Inbound message in batch.
+    pub fn inbound_batched(batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
+        MessageId::from((MessageDirection::Inbound, batch_nonce, message_nonce))
+    }
+
+    pub fn hash(&self) -> H256 {
+        sp_runtime::traits::Keccak256::hash_of(self)
+    }
 }
 
 pub type BatchNonce = u64;
 pub type MessageNonce = u64;
-
-/// Verification input for the message verifier.
-///
-/// This data type allows us to support multiple verification schemes. In the near future,
-/// A light-client scheme will be added too.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-pub struct Proof {
-    // The block hash of the block in which the receipt was included.
-    pub block_hash: H256,
-    // The index of the transaction (and receipt) within the block.
-    // !!! Untrusted value used just for logging purposes.
-    pub tx_index: u32,
-    // Proof values
-    pub data: Vec<Vec<u8>>,
-}
 
 #[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
@@ -227,34 +224,6 @@ pub enum MessageStatus {
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-/// EVM contract kind
-pub enum EVMAppKind {
-    /// Used for native token transfers
-    EthApp,
-    /// Used for ERC20 tokens
-    ERC20App,
-    /// Used for this chain native tokens
-    SidechainApp,
-    /// Legacy HASHI bridge contract
-    HashiBridge,
-    /// Legacy XOR master contract
-    XorMaster,
-    /// Legacy VAL master contract
-    ValMaster,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
 /// Additional leaf data for MMR
 pub struct LeafExtraData<Hash, RandomSeed> {
     /// This chain randomness which could be used in sidechain
@@ -297,131 +266,10 @@ pub enum BridgeAssetInfo {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-/// Information about asset in EVM network
-pub struct EVMAssetInfo {
-    /// Thischain asset id
-    pub asset_id: MainnetAssetId,
-    /// Contract address
-    pub evm_address: H160,
-    /// Kind of contract
-    pub app_kind: EVMAppKind,
-    /// Sidechain asset precision
-    pub precision: u8,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-/// HASHI bridge asset info
-/// Some data could not be provided by design
-pub struct EVMLegacyAssetInfo {
-    /// Thischain asset id
-    pub asset_id: MainnetAssetId,
-    /// Contract address
-    pub evm_address: Option<H160>,
-    /// Kind of contract
-    pub app_kind: EVMAppKind,
-    /// Sidechain asset precision
-    pub precision: Option<u8>,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-/// Substrate bridge asset info
-pub struct SubAssetInfo {
-    /// Thischain asset info
-    pub asset_id: MainnetAssetId,
-    pub asset_kind: AssetKind,
-    pub precision: u8,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum BridgeAppInfo {
     EVM(GenericNetworkId, EVMAppInfo),
     /// There's only one app supported for substrate bridge
     Sub(GenericNetworkId),
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct EVMAppInfo {
-    pub evm_address: H160,
-    pub app_kind: EVMAppKind,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    Default,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AdditionalEVMOutboundData {
-    pub max_gas: U256,
-    pub target: H160,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    Default,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AdditionalEVMInboundData {
-    pub source: H160,
 }
 
 #[derive(
@@ -466,6 +314,25 @@ pub struct RawAssetInfo {
     pub name: Vec<u8>,
     pub symbol: Vec<u8>,
     pub precision: u8,
+}
+
+#[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = "BlockNumber: core::fmt::Debug"),
+    Clone(bound = "BlockNumber: Clone")
+)]
+#[scale_info(skip_type_params(MaxMessages, MaxPayload))]
+#[cfg_attr(
+    feature = "std",
+    serde(bound(
+        serialize = "BlockNumber: Serialize",
+        deserialize = "BlockNumber: Deserialize<'de>"
+    ))
+)]
+pub struct BridgeOffchainData<BlockNumber, MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    pub block_number: BlockNumber,
+    pub commitment: crate::GenericCommitment<MaxMessages, MaxPayload>,
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";
