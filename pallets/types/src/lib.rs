@@ -244,7 +244,7 @@ fn test_serde_generic_network_id() {
 
 #[test]
 fn test_generic_network_id_deserialization_hex() {
-    let json = String::from("{\"EVM\":\"0x7fffffffffffffdb\"}");
+    let json = String::from("{\"evm\":\"0x7fffffffffffffdb\"}");
     let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
     let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
     assert_eq!(actual, expected);
@@ -252,7 +252,7 @@ fn test_generic_network_id_deserialization_hex() {
 
 #[test]
 fn test_generic_network_id_deserialization_dec() {
-    let json = String::from("{\"EVM\":\"9223372036854775771\"}");
+    let json = String::from("{\"evm\":\"9223372036854775771\"}");
     let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
     let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
     assert_eq!(actual, expected);
