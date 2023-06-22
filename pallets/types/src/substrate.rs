@@ -69,6 +69,16 @@ pub enum SubstrateAppCall {
         asset_id: MainnetAssetId,
         asset_kind: AssetKind,
     },
+    VerifySuccessTransfer {
+        message_id: H256,
+    },
+    Refund {
+        asset_id: MainnetAssetId,
+        sender: Option<ParachainAccountId>,
+        recipient: MainnetAccountId,
+        amount: MainnetBalance,
+        message_id: H256,
+    },
 }
 
 impl SubstrateBridgeMessageEncode for SubstrateAppCall {

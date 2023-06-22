@@ -97,6 +97,23 @@ where
                 asset_id: asset_id.into(),
                 asset_kind,
             },
+            SubstrateAppCall::VerifySuccessTransfer { 
+                message_id
+            } => Call::update_status_done {
+                message_id
+            },
+            SubstrateAppCall::Refund {
+                sender,
+                recipient,
+                amount,
+                asset_id,
+                message_id,
+            } => Call::refund_tokens{
+                message_id,
+                asset_id: asset_id.into(),
+                recipient: recipient.into(),
+                amount,
+            },
         }
     }
 }
@@ -388,6 +405,40 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_root(origin)?;
             BridgeTransferLimit::<T>::set(limit_count);
+            Ok(())
+        }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn update_status_done(
+            origin: OriginFor<T>,
+            message_id: H256,
+        ) -> DispatchResult {
+            let CallOriginOutput {
+                network_id,
+                timepoint,
+                ..
+            }  = T::CallOrigin::ensure_origin(origin.clone())?;
+            T::MessageStatusNotifier::update_status(network_id.into(), message_id, MessageStatus::Done, timepoint);
+            Ok(())
+        }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn refund_tokens(
+            origin: OriginFor<T>,
+            message_id: H256,
+            asset_id: AssetIdOf<T>,
+            recipient: T::AccountId,
+            amount: MainnetBalance,
+        ) -> DispatchResult {
+            let CallOriginOutput {
+                network_id,
+                timepoint,
+                ..
+            }  = T::CallOrigin::ensure_origin(origin.clone())?;
+            T::MessageStatusNotifier::update_status(network_id.into(), message_id, MessageStatus::Failed, timepoint);
+            // Self::refund(network_id.into(), message_id, recipient, asset_id, amount)?;
             Ok(())
         }
     }
