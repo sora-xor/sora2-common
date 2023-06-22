@@ -97,18 +97,15 @@ where
                 asset_id: asset_id.into(),
                 asset_kind,
             },
-            SubstrateAppCall::VerifySuccessTransfer { 
-                message_id
-            } => Call::update_status_done {
-                message_id
-            },
+            SubstrateAppCall::VerifySuccessTransfer { message_id } => {
+                Call::update_status_done { message_id }
+            }
             SubstrateAppCall::Refund {
-                sender,
                 recipient,
                 amount,
                 asset_id,
                 message_id,
-            } => Call::refund_tokens{
+            } => Call::refund_tokens {
                 message_id,
                 asset_id: asset_id.into(),
                 recipient: recipient.into(),
@@ -410,16 +407,18 @@ pub mod pallet {
 
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-        pub fn update_status_done(
-            origin: OriginFor<T>,
-            message_id: H256,
-        ) -> DispatchResult {
+        pub fn update_status_done(origin: OriginFor<T>, message_id: H256) -> DispatchResult {
             let CallOriginOutput {
                 network_id,
                 timepoint,
                 ..
-            }  = T::CallOrigin::ensure_origin(origin.clone())?;
-            T::MessageStatusNotifier::update_status(network_id.into(), message_id, MessageStatus::Done, timepoint);
+            } = T::CallOrigin::ensure_origin(origin.clone())?;
+            T::MessageStatusNotifier::update_status(
+                network_id.into(),
+                message_id,
+                MessageStatus::Done,
+                timepoint,
+            );
             Ok(())
         }
 
@@ -436,9 +435,18 @@ pub mod pallet {
                 network_id,
                 timepoint,
                 ..
-            }  = T::CallOrigin::ensure_origin(origin.clone())?;
-            T::MessageStatusNotifier::update_status(network_id.into(), message_id, MessageStatus::Failed, timepoint);
-            // Self::refund(network_id.into(), message_id, recipient, asset_id, amount)?;
+            } = T::CallOrigin::ensure_origin(origin.clone())?;
+            T::MessageStatusNotifier::update_status(
+                network_id.into(),
+                message_id,
+                MessageStatus::Failed,
+                timepoint,
+            );
+            let precision = SidechainPrecision::<T>::get(network_id, asset_id)
+                .ok_or(Error::<T>::UnknownPrecision)?;
+            let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
+                .ok_or(Error::<T>::WrongAmount)?;
+            Self::refund(network_id.into(), message_id, recipient, asset_id, amount)?;
             Ok(())
         }
     }

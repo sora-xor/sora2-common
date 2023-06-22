@@ -74,7 +74,6 @@ pub enum SubstrateAppCall {
     },
     Refund {
         asset_id: MainnetAssetId,
-        sender: Option<ParachainAccountId>,
         recipient: MainnetAccountId,
         amount: MainnetBalance,
         message_id: H256,
