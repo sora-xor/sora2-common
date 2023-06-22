@@ -215,6 +215,16 @@ pub mod pallet {
             T::AccountId,
             BalanceOf<T>,
         ),
+        Refunded(
+            SubNetworkId,
+            AssetIdOf<T>,
+            T::AccountId,
+            BalanceOf<T>,
+            H256,
+        ),
+        Done(
+            H256
+        )
     }
 
     #[pallet::storage]
@@ -419,6 +429,7 @@ pub mod pallet {
                 MessageStatus::Done,
                 timepoint,
             );
+            Self::deposit_event(Event::Done(message_id));
             Ok(())
         }
 
@@ -446,7 +457,8 @@ pub mod pallet {
                 .ok_or(Error::<T>::UnknownPrecision)?;
             let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
                 .ok_or(Error::<T>::WrongAmount)?;
-            Self::refund(network_id.into(), message_id, recipient, asset_id, amount)?;
+            Self::refund(network_id.into(), message_id, recipient.clone(), asset_id, amount)?;
+            Self::deposit_event(Event::Refunded(network_id, asset_id, recipient, amount, message_id));
             Ok(())
         }
     }
