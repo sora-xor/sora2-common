@@ -506,10 +506,7 @@ pub mod pallet {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
 
             if let Some(limit) = Self::get_transfer_limit() {
-                ensure!(
-                    amount <= limit,
-                    Error::<T>::TransferLimitReached
-                );
+                ensure!(amount <= limit, Error::<T>::TransferLimitReached);
             }
 
             Self::check_parachain_transfer_params(network_id, asset_id, recipient.clone())?;
@@ -519,7 +516,7 @@ pub mod pallet {
             let bridge_account = Self::bridge_account()?;
 
             let precision = SidechainPrecision::<T>::get(network_id, asset_id)
-                    .ok_or(Error::<T>::UnknownPrecision)?;
+                .ok_or(Error::<T>::UnknownPrecision)?;
 
             let sidechain_amount =
                 T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount)

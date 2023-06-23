@@ -57,6 +57,9 @@ pub use header::{Header, HeaderId};
 pub use log::Log;
 pub use receipt::Receipt;
 
+#[cfg(feature = "std")]
+use serde::Deserialize;
+
 #[derive(Debug)]
 pub enum DecodeError {
     // Unexpected RLP data
@@ -114,7 +117,8 @@ pub enum SubNetworkId {
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub enum GenericNetworkId {
-    #[cfg_attr(feature = "std", serde(with = "serde_u256"))]
+    // deserializes value either from hex or decimal
+    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_u256"))]
     EVM(EVMChainId),
     Sub(SubNetworkId),
     EVMLegacy(u32),
@@ -204,31 +208,44 @@ where
     digest
 }
 
+/// Deserializes U256 from either hex or decimal string.
 #[cfg(feature = "std")]
-mod serde_u256 {
-    use serde::{Deserialize, Serialize};
-    use sp_core::U256;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> core::result::Result<U256, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let network_id = String::deserialize(deserializer)?;
-        if network_id.starts_with("0x") {
-            let network_id =
-                U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
-            Ok(network_id)
-        } else {
-            let network_id =
-                U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
-            Ok(network_id)
-        }
+fn deserialize_u256<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let network_id = String::deserialize(deserializer)?;
+    if network_id.starts_with("0x") {
+        let network_id =
+            U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
+        Ok(network_id)
+    } else {
+        let network_id = U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
+        Ok(network_id)
     }
+}
 
-    pub fn serialize<S>(value: &U256, serializer: S) -> core::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        value.0.serialize(serializer)
-    }
+#[test]
+fn test_serde_generic_network_id() {
+    // MAX_CHAIN_ID from https://github.com/ethereum/EIPs/issues/2294
+    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
+    let json = serde_json::to_string(&expected).expect("must serialize");
+    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_generic_network_id_deserialization_hex() {
+    let json = String::from("{\"EVM\":\"0x7fffffffffffffdb\"}");
+    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
+    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_generic_network_id_deserialization_dec() {
+    let json = String::from("{\"EVM\":\"9223372036854775771\"}");
+    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
+    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
+    assert_eq!(actual, expected);
 }
