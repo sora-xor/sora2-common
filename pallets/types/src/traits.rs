@@ -333,16 +333,16 @@ pub trait BridgeAssetLocker<AccountId> {
     fn lock_asset(
         network_id: GenericNetworkId,
         asset_kind: AssetKind,
-        who: AccountId,
-        asset_id: Self::AssetId,
-        amount: Self::Balance,
+        who: &AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
     ) -> DispatchResult;
 
     fn unlock_asset(
         network_id: GenericNetworkId,
         asset_kind: AssetKind,
-        who: AccountId,
-        asset_id: Self::AssetId,
-        amount: Self::Balance,
+        who: &AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
     ) -> DispatchResult;
 }

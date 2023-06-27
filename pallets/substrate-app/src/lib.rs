@@ -261,9 +261,9 @@ pub mod pallet {
             T::BridgeAssetLocker::unlock_asset(
                 network_id.into(),
                 asset_kind,
-                recipient.clone(),
-                asset_id.clone(),
-                amount.clone(),
+                &recipient,
+                &asset_id,
+                &amount,
             )?;
 
             T::MessageStatusNotifier::inbound_request(
@@ -431,9 +431,9 @@ pub mod pallet {
             T::BridgeAssetLocker::lock_asset(
                 network_id.into(),
                 asset_kind,
-                who.clone(),
-                asset_id.clone(),
-                amount.clone(),
+                &who,
+                &asset_id,
+                &amount,
             )?;
 
             let message_id = T::OutboundChannel::submit(
@@ -524,9 +524,9 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
         T::BridgeAssetLocker::unlock_asset(
             network_id.into(),
             asset_kind,
-            recipient.clone(),
-            asset_id,
-            amount,
+            &recipient,
+            &asset_id,
+            &amount,
         )?;
         Ok(())
     }
