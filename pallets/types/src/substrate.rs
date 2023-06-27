@@ -116,6 +116,17 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
     }
 }
 
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum InterBridge {
+    BatchTransactionResult(Vec<bool>)
+}
+
+impl SubstrateBridgeMessageEncode for InterBridge {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::InterBridge(self).encode()
+    }
+}
+
 /// Substrate bridge message payload
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
@@ -123,7 +134,10 @@ pub enum BridgeCall {
     XCMApp(XCMAppCall),
     DataSigner(DataSignerCall),
     MultisigVerifier(MultisigVerifierCall),
+    InterBridge(InterBridge),
 }
+
+
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
     fn prepare_message(self) -> Vec<u8> {
