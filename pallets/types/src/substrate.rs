@@ -120,7 +120,6 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
     SubstrateApp(SubstrateAppCall),
-    #[cfg_attr(feature = "std", serde(rename = "xcmApp"))]
     XCMApp(XCMAppCall),
     DataSigner(DataSignerCall),
     MultisigVerifier(MultisigVerifierCall),
