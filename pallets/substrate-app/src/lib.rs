@@ -97,19 +97,16 @@ where
                 asset_id: asset_id.into(),
                 asset_kind,
             },
-            SubstrateAppCall::VerifySuccessTransfer { message_id } => {
-                Call::update_status_done { message_id }
+            SubstrateAppCall::VerifySuccessTransfer { transaction_nonce } => {
+                Call::update_status_done { transaction_nonce }
             }
             SubstrateAppCall::Refund {
-                recipient,
-                amount,
-                asset_id,
-                message_id,
+                // recipient,
+                // amount,
+                // asset_id,
+                transaction_nonce,
             } => Call::refund_tokens {
-                message_id,
-                asset_id: asset_id.into(),
-                recipient: recipient.into(),
-                amount,
+                transaction_nonce,
             },
         }
     }
@@ -241,6 +238,16 @@ pub mod pallet {
     pub(super) type SidechainPrecision<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, u8, OptionQuery>;
 
+    #[pallet::storage]
+    #[pallet::getter(fn transaction_nonce)]
+    pub(super) type NetworkTransactionNonce<T: Config> =
+        StorageMap<_, Identity, SubNetworkId, u128, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn nonce_message_id)]
+    pub(super) type NonceMessageId<T: Config> =
+        StorageDoubleMap<_, Identity, SubNetworkId, Identity, u128, H256, OptionQuery>;
+
     #[pallet::error]
     pub enum Error<T> {
         TokenIsNotRegistered,
@@ -255,6 +262,7 @@ pub mod pallet {
         WrongAmount,
         TransferLimitReached,
         UnknownPrecision,
+        MessageIdNotFound,
     }
 
     #[pallet::call]
@@ -417,12 +425,15 @@ pub mod pallet {
 
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-        pub fn update_status_done(origin: OriginFor<T>, message_id: H256) -> DispatchResult {
+        pub fn update_status_done(origin: OriginFor<T>, transaction_nonce: u128) -> DispatchResult {
             let CallOriginOutput {
                 network_id,
                 timepoint,
                 ..
-            } = T::CallOrigin::ensure_origin(origin.clone())?;
+            } = T::CallOrigin::ensure_origin(origin)?;
+            let Some(message_id) = Self::nonce_message_id(network_id, transaction_nonce) else {
+                frame_support::fail!(Error::<T>::MessageIdNotFound)
+            };
             T::MessageStatusNotifier::update_status(
                 network_id.into(),
                 message_id,
@@ -437,28 +448,22 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn refund_tokens(
             origin: OriginFor<T>,
-            message_id: H256,
-            asset_id: AssetIdOf<T>,
-            recipient: T::AccountId,
-            amount: MainnetBalance,
+            transaction_nonce: u128,
         ) -> DispatchResult {
             let CallOriginOutput {
                 network_id,
                 timepoint,
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
+            let Some(message_id) = Self::nonce_message_id(network_id, transaction_nonce) else {
+                frame_support::fail!(Error::<T>::MessageIdNotFound)
+            };
             T::MessageStatusNotifier::update_status(
                 network_id.into(),
                 message_id,
                 MessageStatus::Failed,
                 timepoint,
             );
-            let precision = SidechainPrecision::<T>::get(network_id, asset_id)
-                .ok_or(Error::<T>::UnknownPrecision)?;
-            let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
-                .ok_or(Error::<T>::WrongAmount)?;
-            Self::refund(network_id.into(), message_id, recipient.clone(), asset_id, amount)?;
-            Self::deposit_event(Event::Refunded(network_id, asset_id, recipient, amount, message_id));
             Ok(())
         }
     }
@@ -528,6 +533,8 @@ pub mod pallet {
                 }
             }
 
+            let transaction_nonce = Self::transaction_nonce(network_id);
+
             let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
@@ -536,10 +543,22 @@ pub mod pallet {
                     amount: sidechain_amount,
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sender: T::AccountIdConverter::convert(who.clone()),
+                    transaction_nonce,
                 }
                 .prepare_message(),
                 (),
             )?;
+
+            NonceMessageId::<T>::insert(network_id, transaction_nonce, message_id);
+
+            NetworkTransactionNonce::<T>::try_mutate(network_id, |nonce| -> DispatchResult {
+                if let Some(v) = nonce.checked_add(1) {
+                    *nonce = v;
+                } else {
+                    *nonce = 0;
+                }
+                Ok(())
+            })?;
 
             T::MessageStatusNotifier::outbound_request(
                 GenericNetworkId::Sub(network_id),

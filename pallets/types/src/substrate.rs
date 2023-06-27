@@ -70,13 +70,13 @@ pub enum SubstrateAppCall {
         asset_kind: AssetKind,
     },
     VerifySuccessTransfer {
-        message_id: H256,
+        transaction_nonce: u128,
     },
     Refund {
-        asset_id: MainnetAssetId,
-        recipient: MainnetAccountId,
-        amount: MainnetBalance,
-        message_id: H256,
+        // asset_id: MainnetAssetId,
+        // recipient: MainnetAccountId,
+        // amount: MainnetBalance,
+        transaction_nonce: u128,
     },
 }
 
@@ -94,6 +94,7 @@ pub enum XCMAppCall {
         sender: MainnetAccountId,
         recipient: ParachainAccountId,
         amount: MainnetBalance,
+        transaction_nonce: u128,
     },
     RegisterAsset {
         asset_id: MainnetAssetId,
