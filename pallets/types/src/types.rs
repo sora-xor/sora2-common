@@ -55,7 +55,7 @@ pub enum MessageDirection {
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
     direction: MessageDirection,
-    batch_nonce: Option<BatchNonce>,
+    batch_nonce: BatchNonce,
     message_nonce: MessageNonce,
 }
 
@@ -65,37 +65,13 @@ impl From<(MessageDirection, BatchNonce, MessageNonce)> for MessageId {
     ) -> Self {
         MessageId {
             direction,
-            batch_nonce: Some(batch_nonce),
+            batch_nonce,
             message_nonce,
         }
-    }
-}
-
-impl From<(MessageDirection, MessageNonce)> for MessageId {
-    fn from((direction, message_nonce): (MessageDirection, MessageNonce)) -> Self {
-        MessageId {
-            direction,
-            batch_nonce: None,
-            message_nonce,
-        }
-    }
-}
-
-impl From<MessageId> for MessageNonce {
-    fn from(id: MessageId) -> Self {
-        id.message_nonce
     }
 }
 
 impl MessageId {
-    pub fn inbound(nonce: MessageNonce) -> Self {
-        MessageId::from((MessageDirection::Inbound, nonce))
-    }
-
-    pub fn outbound(nonce: MessageNonce) -> Self {
-        MessageId::from((MessageDirection::Outbound, nonce))
-    }
-
     /// Creates MessageId for Outbound message in batch.
     pub fn outbound_batched(batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
         MessageId::from((MessageDirection::Outbound, batch_nonce, message_nonce))

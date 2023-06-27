@@ -200,7 +200,7 @@ pub mod pallet {
             for idx in 0..messages.len() as u64 {
                 T::MessageStatusNotifier::update_status(
                     GenericNetworkId::Sub(network_id),
-                    Self::make_message_id(batch_nonce, idx as u64),
+                    Self::make_message_id(batch_nonce, idx),
                     MessageStatus::Committed,
                     GenericTimepoint::Pending,
                 );
@@ -271,9 +271,9 @@ pub mod pallet {
             _: (),
         ) -> Result<H256, DispatchError> {
             debug!("Send message from {:?} to network {:?}", who, network_id);
-            let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0);
+            let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
             ensure!(
-                messages_count < T::MaxMessagesPerCommit::get() as usize,
+                messages_count < T::MaxMessagesPerCommit::get() as u64,
                 Error::<T>::QueueSizeLimitReached,
             );
             ensure!(
@@ -299,9 +299,9 @@ pub mod pallet {
             Self::deposit_event(Event::MessageAccepted {
                 network_id,
                 batch_nonce,
-                message_nonce: messages_count as u64,
+                message_nonce: messages_count,
             });
-            Ok(Self::make_message_id(batch_nonce, messages_count as u64))
+            Ok(Self::make_message_id(batch_nonce, messages_count))
         }
     }
 }

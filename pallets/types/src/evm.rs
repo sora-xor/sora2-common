@@ -115,7 +115,7 @@ pub struct AdditionalEVMInboundData {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-/// Information about asset in EVM network
+/// Information about ERC-20 asset in EVM network
 pub struct EVMAssetInfo {
     /// Thischain asset id
     pub asset_id: MainnetAssetId,

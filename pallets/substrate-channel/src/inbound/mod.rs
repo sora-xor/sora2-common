@@ -139,9 +139,9 @@ pub mod pallet {
             let bridge_types::GenericCommitment::Sub(sub_commitment) = commitment else {
                 frame_support::fail!(Error::<T>::InvalidCommitment);
             };
-            // submit message to verifier for verification
+            // submit commitment to verifier for verification
             T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
-            // Verify message nonce
+            // Verify batch nonce
             <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
                 if sub_commitment.nonce != *nonce + 1 {
                     Err(Error::<T>::InvalidNonce.into())

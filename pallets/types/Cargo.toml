@@ -51,8 +51,28 @@ serde_json = "1.0"
 default = ["std"]
 expensive_tests = []
 test = ["serde_json"]
-std = ["serde", "codec/std", "scale-info/std", "ethabi/std", "ethbloom/std", "ethereum-types/std", "hex/std", "libsecp256k1/std", "parity-bytes/std", "rlp/std", "sp-core/std", "sp-io/std", "sp-runtime/std", "sp-std/std", "sp-beefy/std", "xcm/std"]
+std = [
+  "serde",
+  "codec/std",
+  "scale-info/std",
+  "ethabi/std",
+  "ethbloom/std",
+  "ethereum-types/std",
+  "hex/std",
+  "libsecp256k1/std",
+  "parity-bytes/std",
+  "rlp/std",
+  "sp-core/std",
+  "sp-io/std",
+  "sp-runtime/std",
+  "sp-std/std",
+  "sp-beefy/std",
+  "xcm/std",
+]
 
-runtime-benchmarks = ["frame-support/runtime-benchmarks", "frame-system/runtime-benchmarks"]
+runtime-benchmarks = [
+  "frame-support/runtime-benchmarks",
+  "frame-system/runtime-benchmarks",
+]
 
 try-runtime = ["frame-support/try-runtime"]
