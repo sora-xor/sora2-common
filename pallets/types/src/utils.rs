@@ -28,7 +28,18 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use codec::Encode;
+
+use crate::GenericNetworkId;
+use sp_std::prelude::*;
+
+pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"bridge-commitment";
+
 pub fn threshold(peers: u32) -> u32 {
     let faulty = peers.saturating_sub(1) / 3;
     peers - faulty
+}
+
+pub fn make_offchain_key(network_id: GenericNetworkId, batch_nonce: u64) -> Vec<u8> {
+    (CHANNEL_INDEXING_PREFIX, network_id, batch_nonce).encode()
 }

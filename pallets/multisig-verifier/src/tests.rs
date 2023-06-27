@@ -33,7 +33,7 @@ use bridge_types::{types::AuxiliaryDigest, SubNetworkId};
 
 use codec::Decode;
 use frame_support::{assert_noop, assert_ok};
-use sp_core::{ecdsa, Pair};
+use sp_core::{ecdsa, ConstU32, Pair};
 use sp_runtime::traits::{Hash, Keccak256};
 
 fn alice<T: crate::Config>() -> T::AccountId {
@@ -217,9 +217,8 @@ fn it_works_verify() {
             digest: AuxiliaryDigest { logs: Vec::new() },
             proof: Vec::new(),
         };
-        let mes = bridge_types::substrate::BridgeMessage {
-            payload: Vec::new(),
-            nonce: 0,
+        let mes = bridge_types::substrate::BridgeMessage::<ConstU32<64>> {
+            payload: Default::default(),
             timepoint: Default::default(),
         };
 
