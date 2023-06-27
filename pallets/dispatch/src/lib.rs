@@ -330,7 +330,7 @@ mod tests {
     #[test]
     fn test_dispatch_bridge_message() {
         new_test_ext().execute_with(|| {
-            let id = types::MessageId::inbound(37);
+            let id = types::MessageId::inbound_batched(1, 37);
             let source = H160::repeat_byte(7);
 
             let message =
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn test_message_decode_failed() {
         new_test_ext().execute_with(|| {
-            let id = types::MessageId::inbound(37);
+            let id = types::MessageId::inbound_batched(1, 37);
             let source = H160::repeat_byte(7);
 
             let message: Vec<u8> = vec![1, 2, 3];
@@ -391,7 +391,7 @@ mod tests {
     #[test]
     fn test_message_rejected() {
         new_test_ext().execute_with(|| {
-            let id = types::MessageId::inbound(37);
+            let id = types::MessageId::inbound_batched(1, 37);
             let source = H160::repeat_byte(7);
 
             let message =
