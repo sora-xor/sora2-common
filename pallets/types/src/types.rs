@@ -92,6 +92,7 @@ pub type MessageNonce = u64;
 
 #[derive(Encode, Decode, Clone, Default, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct AuxiliaryDigest {
     pub logs: Vec<AuxiliaryDigestItem>,
 }
@@ -111,6 +112,7 @@ impl From<Digest> for AuxiliaryDigest {
 /// Auxiliary [`DigestItem`] to include in header digest.
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
     Commitment(GenericNetworkId, H256),
@@ -152,7 +154,6 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
 ///
 /// - Thischain: a Sora asset.
 /// - Sidechain: an Ethereum token.
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[derive(
     Clone,
     Copy,
@@ -164,6 +165,8 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum AssetKind {
     Thischain,
     Sidechain,
@@ -180,6 +183,8 @@ pub enum AssetKind {
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
 )]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum MessageStatus {
     InQueue,
     Committed,
@@ -220,11 +225,14 @@ pub struct LeafExtraData<Hash, RandomSeed> {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 /// Information about bridge asset which could be used by client applications
 pub enum BridgeAssetInfo {
     /// Legacy HASHI bridge token
+    #[cfg_attr(feature = "std", serde(rename = "evmLegacy"))]
     EVMLegacy(EVMLegacyAssetInfo),
     /// EVM network asset info
+    #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(EVMAssetInfo),
     /// Substrate network asset info
     Sub(SubAssetInfo),
@@ -243,6 +251,7 @@ pub enum BridgeAssetInfo {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum BridgeAppInfo {
+    #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(GenericNetworkId, EVMAppInfo),
     /// There's only one app supported for substrate bridge
     Sub(GenericNetworkId),
@@ -261,6 +270,7 @@ pub enum BridgeAppInfo {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub struct CallOriginOutput<NetworkId, MessageId, Additional> {
     pub network_id: NetworkId,
     pub message_id: MessageId,

@@ -40,6 +40,7 @@ pub enum EVMAppKind {
     /// Used for native token transfers
     EthApp,
     /// Used for ERC20 tokens
+    #[cfg_attr(feature = "std", serde(rename = "erc20App"))]
     ERC20App,
     /// Used for this chain native tokens
     SidechainApp,
