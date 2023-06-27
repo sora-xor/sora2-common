@@ -96,6 +96,7 @@ pub type EVMChainId = U256;
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum SubNetworkId {
     Mainnet,
     Kusama,
@@ -116,11 +117,16 @@ pub enum SubNetworkId {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericNetworkId {
     // deserializes value either from hex or decimal
-    #[cfg_attr(feature = "std", serde(deserialize_with = "deserialize_u256"))]
+    #[cfg_attr(
+        feature = "std",
+        serde(deserialize_with = "deserialize_u256", rename = "evm")
+    )]
     EVM(EVMChainId),
     Sub(SubNetworkId),
+    #[cfg_attr(feature = "std", serde(rename = "evmLegacy"))]
     EVMLegacy(u32),
 }
 
@@ -181,7 +187,9 @@ pub enum GenericAccount<AccountId> {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericTimepoint {
+    #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(u64),
     Sora(u32),
     Parachain(u32),
@@ -236,7 +244,7 @@ fn test_serde_generic_network_id() {
 
 #[test]
 fn test_generic_network_id_deserialization_hex() {
-    let json = String::from("{\"EVM\":\"0x7fffffffffffffdb\"}");
+    let json = String::from("{\"evm\":\"0x7fffffffffffffdb\"}");
     let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
     let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
     assert_eq!(actual, expected);
@@ -244,7 +252,7 @@ fn test_generic_network_id_deserialization_hex() {
 
 #[test]
 fn test_generic_network_id_deserialization_dec() {
-    let json = String::from("{\"EVM\":\"9223372036854775771\"}");
+    let json = String::from("{\"evm\":\"9223372036854775771\"}");
     let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
     let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
     assert_eq!(actual, expected);
