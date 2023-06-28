@@ -237,8 +237,9 @@ pub mod pallet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bridge_types::evm::AdditionalEVMInboundData;
     use bridge_types::traits::MessageDispatch as _;
-    use bridge_types::types::{self, AdditionalEVMInboundData};
+    use bridge_types::types;
     use bridge_types::{EVMChainId, H160};
     use frame_support::dispatch::DispatchError;
     use frame_support::parameter_types;
@@ -329,7 +330,7 @@ mod tests {
     #[test]
     fn test_dispatch_bridge_message() {
         new_test_ext().execute_with(|| {
-            let id = types::MessageId::inbound(37);
+            let id = types::MessageId::inbound_batched(1, 37);
             let source = H160::repeat_byte(7);
 
             let message =
@@ -362,7 +363,7 @@ mod tests {
     #[test]
     fn test_message_decode_failed() {
         new_test_ext().execute_with(|| {
-            let id = types::MessageId::inbound(37);
+            let id = types::MessageId::inbound_batched(1, 37);
             let source = H160::repeat_byte(7);
 
             let message: Vec<u8> = vec![1, 2, 3];
@@ -390,7 +391,7 @@ mod tests {
     #[test]
     fn test_message_rejected() {
         new_test_ext().execute_with(|| {
-            let id = types::MessageId::inbound(37);
+            let id = types::MessageId::inbound_batched(1, 37);
             let source = H160::repeat_byte(7);
 
             let message =
