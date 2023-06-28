@@ -55,7 +55,7 @@ pub enum MessageDirection {
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
     direction: MessageDirection,
-    batch_nonce: BatchNonce,
+    batch_nonce: Option<BatchNonce>,
     message_nonce: MessageNonce,
 }
 
@@ -65,7 +65,7 @@ impl From<(MessageDirection, BatchNonce, MessageNonce)> for MessageId {
     ) -> Self {
         MessageId {
             direction,
-            batch_nonce,
+            batch_nonce: Some(batch_nonce),
             message_nonce,
         }
     }
@@ -80,6 +80,15 @@ impl MessageId {
     /// Creates MessageId for Inbound message in batch.
     pub fn inbound_batched(batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
         MessageId::from((MessageDirection::Inbound, batch_nonce, message_nonce))
+    }
+
+    /// Creates MessageId for Inbound message.
+    pub fn inbound(message_nonce: MessageNonce) -> Self {
+        MessageId {
+            direction: MessageDirection::Inbound,
+            batch_nonce: None,
+            message_nonce,
+        }
     }
 
     pub fn hash(&self) -> H256 {
