@@ -28,38 +28,48 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bridge_types::CHANNEL_INDEXING_PREFIX;
-use codec::{Decode, Encode};
+use bridge_types::GenericNetworkId;
+use codec::Decode;
 
 use jsonrpsee::{core::RpcResult as Result, proc_macros::rpc};
 use sp_api::offchain::OffchainStorage;
 
-use sp_core::H256;
-pub use substrate_bridge_channel::outbound::Commitment;
-
 #[rpc(server, client)]
-pub trait BridgeChannelAPI {
-    #[method(name = "substrateBridgeChannel_commitment")]
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>>;
+pub trait BridgeChannelAPI<OffchainData> {
+    #[method(name = "bridgeChannel_commitment")]
+    fn commitment(
+        &self,
+        network_id: GenericNetworkId,
+        batch_nonce: u64,
+    ) -> Result<Option<OffchainData>>;
 }
 
-pub struct BridgeChannelClient<S> {
+pub struct BridgeChannelClient<S, OffchainData> {
     storage: S,
+    _phantom: std::marker::PhantomData<OffchainData>,
 }
 
-impl<S> BridgeChannelClient<S> {
+impl<S, OffchainData> BridgeChannelClient<S, OffchainData> {
     /// Construct default `Template`.
     pub fn new(storage: S) -> Self {
-        Self { storage }
+        Self {
+            storage,
+            _phantom: Default::default(),
+        }
     }
 }
 
-impl<S> BridgeChannelAPIServer for BridgeChannelClient<S>
+impl<S, OffchainData> BridgeChannelAPIServer<OffchainData> for BridgeChannelClient<S, OffchainData>
 where
     S: OffchainStorage + 'static,
+    OffchainData: Decode + 'static + Send + Sync,
 {
-    fn commitment(&self, commitment_hash: H256) -> Result<Option<Commitment>> {
-        let key = (CHANNEL_INDEXING_PREFIX, commitment_hash).encode();
+    fn commitment(
+        &self,
+        network_id: GenericNetworkId,
+        batch_nonce: u64,
+    ) -> Result<Option<OffchainData>> {
+        let key = bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
         Ok(self
             .storage
             .get(sp_offchain::STORAGE_PREFIX, &key)

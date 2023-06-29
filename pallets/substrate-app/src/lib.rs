@@ -54,12 +54,12 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-use bridge_types::substrate::{
-    MainnetAccountId, MainnetAssetId, ParachainAccountId, SubstrateAppCall,
-};
+use bridge_types::substrate::SubAssetInfo;
+use bridge_types::substrate::{ParachainAccountId, SubstrateAppCall};
 use bridge_types::traits::BridgeApp;
-use bridge_types::types::{AssetKind, BridgeAppInfo, BridgeAssetInfo, SubAssetInfo};
+use bridge_types::types::{AssetKind, BridgeAppInfo, BridgeAssetInfo};
 use bridge_types::GenericNetworkId;
+use bridge_types::{MainnetAccountId, MainnetAssetId};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
@@ -107,16 +107,18 @@ pub mod pallet {
     use super::*;
 
     use bridge_types::substrate::{
-        MainnetAccountId, MainnetAssetId, MainnetBalance, ParachainAccountId, ParachainAssetId,
-        SubstrateBridgeMessageEncode, XCMAppCall,
+        ParachainAccountId, ParachainAssetId, SubstrateBridgeMessageEncode, XCMAppCall,
     };
     use bridge_types::traits::{
         BalancePrecisionConverter, BridgeAssetRegistry, MessageStatusNotifier, OutboundChannel,
     };
     use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
-    use bridge_types::{GenericAccount, GenericNetworkId, SubNetworkId, H256};
     use frame_support::fail;
     use frame_support::pallet_prelude::{OptionQuery, *, ValueQuery};
+    use bridge_types::{
+        GenericAccount, GenericNetworkId, MainnetAccountId, MainnetAssetId, MainnetBalance,
+        SubNetworkId, H256,
+    };
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
     use traits::currency::MultiCurrency;
