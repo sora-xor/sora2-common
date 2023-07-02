@@ -39,14 +39,15 @@ use sp_std::prelude::*;
 
 use crate::{types::AssetKind, GenericTimepoint, MainnetAccountId, MainnetAssetId, MainnetBalance};
 
+pub use xcm::v3::{Junction, Junctions};
 pub use xcm::VersionedMultiLocation;
-pub use xcm::v3::{Junctions, Junction};
 
 pub type ParachainAccountId = VersionedMultiLocation;
 
 pub type ParachainAssetId = xcm::v3::AssetId;
 
-pub const PARENT_PARACHAIN_ASSET: ParachainAssetId = ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
+pub const PARENT_PARACHAIN_ASSET: ParachainAssetId =
+    ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
@@ -124,7 +125,7 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
 /// Message to InboundChannel pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum InboundChannelCall {
-    ReturnStatus(Vec<TransactionResult>),
+    ReturnStatus(Vec<DispatchStatus>),
 }
 
 impl SubstrateBridgeMessageEncode for InboundChannelCall {
@@ -150,7 +151,7 @@ impl SubstrateBridgeMessageEncode for BridgeCall {
 }
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub struct TransactionResult {
+pub struct DispatchStatus {
     pub is_successful: bool,
     pub message_id: H256,
 }

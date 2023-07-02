@@ -49,16 +49,19 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use frame_support::log::warn;
-    use frame_support::{pallet_prelude::*, Parameter};
-    use frame_support::traits::StorageVersion;
-    use frame_system::pallet_prelude::*;
-    use sp_std::prelude::*;
+    use bridge_types::substrate::DispatchStatus;
+    use bridge_types::substrate::SubstrateBridgeMessageEncode;
     use bridge_types::traits::MessageStatusNotifier;
+    use bridge_types::traits::OutboundChannel;
     use bridge_types::types::CallOriginOutput;
-    use sp_core::H256;
     use bridge_types::types::MessageStatus;
-    use bridge_types::substrate::TransactionResult;
+    use frame_support::log::warn;
+    use frame_support::traits::StorageVersion;
+    use frame_support::{pallet_prelude::*, Parameter};
+    use frame_system::pallet_prelude::*;
+    use sp_core::H256;
+    use sp_runtime::traits::Hash;
+    use sp_std::prelude::*;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
@@ -101,6 +104,10 @@ pub mod pallet {
         type AssetId: Parameter;
 
         type Balance: Parameter;
+
+        type Hashing: sp_runtime::traits::Hash<Output = H256>;
+
+        type OutboundChannel: OutboundChannel<SubNetworkId, Self::AccountId, ()>;
     }
 
     #[pallet::storage]
@@ -171,16 +178,30 @@ pub mod pallet {
                 }
             })?;
 
+            let mut dispatch_statuses: Vec<DispatchStatus> =
+                Vec::with_capacity(sub_commitment.messages.len());
             for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
                 let message_id = MessageId::inbound_batched(sub_commitment.nonce, idx as u64);
-                T::MessageDispatch::dispatch(
+                let is_successful = T::MessageDispatch::dispatch(
                     network_id,
                     message_id,
                     message.timepoint,
                     &message.payload,
                     (),
                 );
+                let message_id = message_id.using_encoded(|v| <T as Config>::Hashing::hash(v));
+                dispatch_statuses.push(DispatchStatus {
+                    message_id,
+                    is_successful,
+                });
             }
+            T::OutboundChannel::submit(
+                network_id,
+                &frame_system::RawOrigin::None,
+                &bridge_types::substrate::InboundChannelCall::ReturnStatus(dispatch_statuses)
+                    .prepare_message(),
+                (),
+            )?;
             Ok(().into())
         }
 
@@ -188,17 +209,20 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::submit())]
         pub fn batch_dispatched(
             origin: OriginFor<T>,
-            results: Vec<TransactionResult>,
+            statuses: Vec<DispatchStatus>,
         ) -> DispatchResultWithPostInfo {
-            
             let CallOriginOutput {
                 network_id,
                 timepoint,
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
 
-            for res in results {
-                let status = if res.is_successful { MessageStatus::Done } else { MessageStatus::Failed };
+            for res in statuses {
+                let status = if res.is_successful {
+                    MessageStatus::Done
+                } else {
+                    MessageStatus::Failed
+                };
                 T::MessageStatusNotifier::update_status(
                     network_id.into(),
                     res.message_id,
