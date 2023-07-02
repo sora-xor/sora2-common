@@ -121,6 +121,18 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
     }
 }
 
+/// Message to InboundChannel pallet
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum InboundChannelCall {
+    ReturnStatus(Vec<bool>),
+}
+
+impl SubstrateBridgeMessageEncode for InboundChannelCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::InboundChannel(self).encode()
+    }
+}
+
 /// Substrate bridge message payload
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
@@ -128,6 +140,7 @@ pub enum BridgeCall {
     XCMApp(XCMAppCall),
     DataSigner(DataSignerCall),
     MultisigVerifier(MultisigVerifierCall),
+    InboundChannel(InboundChannelCall),
 }
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
