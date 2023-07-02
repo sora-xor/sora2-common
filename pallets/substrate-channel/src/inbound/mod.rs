@@ -58,6 +58,7 @@ pub mod pallet {
     use bridge_types::types::CallOriginOutput;
     use sp_core::H256;
     use bridge_types::types::MessageStatus;
+    use bridge_types::substrate::TransactionResult;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
@@ -169,7 +170,7 @@ pub mod pallet {
                     Ok(())
                 }
             })?;
-            
+
             for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
                 let message_id = MessageId::inbound_batched(sub_commitment.nonce, idx as u64);
                 T::MessageDispatch::dispatch(
@@ -187,21 +188,20 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::submit())]
         pub fn batch_dispatched(
             origin: OriginFor<T>,
-            results: Vec<bool>,
+            results: Vec<TransactionResult>,
         ) -> DispatchResultWithPostInfo {
             
             let CallOriginOutput {
                 network_id,
-                message_id,
                 timepoint,
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
 
             for res in results {
-                let status = if res { MessageStatus::Done } else { MessageStatus::Failed };
+                let status = if res.is_successful { MessageStatus::Done } else { MessageStatus::Failed };
                 T::MessageStatusNotifier::update_status(
                     network_id.into(),
-                    message_id,
+                    res.message_id,
                     status,
                     timepoint,
                 );
