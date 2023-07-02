@@ -81,7 +81,7 @@ pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
         timepoint: GenericTimepoint,
         payload: &[u8],
         additional: Additional,
-    );
+    ) -> bool;
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::RuntimeEvent>;

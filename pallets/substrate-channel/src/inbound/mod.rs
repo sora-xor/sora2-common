@@ -50,10 +50,14 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use frame_support::log::warn;
-    use frame_support::pallet_prelude::*;
+    use frame_support::{pallet_prelude::*, Parameter};
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
+    use bridge_types::traits::MessageStatusNotifier;
+    use bridge_types::types::CallOriginOutput;
+    use sp_core::H256;
+    use bridge_types::types::MessageStatus;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
@@ -81,6 +85,21 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
+
+        type CallOrigin: EnsureOrigin<
+            Self::RuntimeOrigin,
+            Success = CallOriginOutput<SubNetworkId, H256, ()>,
+        >;
+
+        type MessageStatusNotifier: MessageStatusNotifier<
+            Self::AssetId,
+            Self::AccountId,
+            Self::Balance,
+        >;
+
+        type AssetId: Parameter;
+
+        type Balance: Parameter;
     }
 
     #[pallet::storage]
@@ -150,7 +169,7 @@ pub mod pallet {
                     Ok(())
                 }
             })?;
-
+            
             for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
                 let message_id = MessageId::inbound_batched(sub_commitment.nonce, idx as u64);
                 T::MessageDispatch::dispatch(
@@ -161,6 +180,33 @@ pub mod pallet {
                     (),
                 );
             }
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::submit())]
+        pub fn batch_dispatched(
+            origin: OriginFor<T>,
+            results: Vec<bool>,
+        ) -> DispatchResultWithPostInfo {
+            
+            let CallOriginOutput {
+                network_id,
+                message_id,
+                timepoint,
+                ..
+            } = T::CallOrigin::ensure_origin(origin.clone())?;
+
+            for res in results {
+                let status = if res { MessageStatus::Done } else { MessageStatus::Failed };
+                T::MessageStatusNotifier::update_status(
+                    network_id.into(),
+                    message_id,
+                    status,
+                    timepoint,
+                );
+            }
+
             Ok(().into())
         }
     }

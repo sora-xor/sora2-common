@@ -194,18 +194,18 @@ pub mod pallet {
             timepoint: GenericTimepoint,
             payload: &[u8],
             additional: T::Additional,
-        ) {
+        ) -> bool {
             let call = match <T as Config<I>>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
                     Self::deposit_event(Event::MessageDecodeFailed(message_id));
-                    return;
+                    return false;
                 }
             };
 
             if !T::CallFilter::contains(&call) {
                 Self::deposit_event(Event::MessageRejected(message_id));
-                return;
+                return false;
             }
 
             let origin = RawOrigin::new(<T::OriginOutput as traits::OriginOutput<_, _>>::new(
@@ -221,6 +221,8 @@ pub mod pallet {
                 message_id,
                 result.map(drop).map_err(|e| e.error),
             ));
+
+            result.is_ok()
         }
 
         #[cfg(feature = "runtime-benchmarks")]
