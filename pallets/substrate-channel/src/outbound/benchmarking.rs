@@ -34,6 +34,7 @@ use super::*;
 use bridge_types::substrate::BridgeMessage;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_support::traits::OnInitialize;
+use sp_std::prelude::*;
 
 const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
@@ -49,11 +50,11 @@ benchmarks! {
 
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
-            Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
-                nonce: 0u64,
-                payload,
+            MessageQueues::<T>::try_append(
+                BASE_NETWORK_ID, BridgeMessage {
+                payload: payload.try_into().unwrap(),
                 timepoint: Default::default(),
-            });
+            }).unwrap();
         }
 
         let block_number = 0u32.into();
@@ -66,13 +67,13 @@ benchmarks! {
     // Benchmark 'on_initialize` for the best case, i.e. nothing is done
     // because it's not a commitment interval.
     on_initialize_non_interval {
-        Pallet::<T>::take_message_queue(BASE_NETWORK_ID);
+        MessageQueues::<T>::take(BASE_NETWORK_ID);
         let payload: Vec<u8> = (0..).take(10).collect();
-        Pallet::<T>::append_message_queue(BASE_NETWORK_ID, BridgeMessage {
-            nonce: 0u64,
-            payload,
+        MessageQueues::<T>::try_append(
+            BASE_NETWORK_ID, BridgeMessage {
+            payload: payload.try_into().unwrap(),
             timepoint: Default::default(),
-        });
+        }).unwrap();
 
         let interval: T::BlockNumber = 10u32.into();
         Interval::<T>::put(interval);
@@ -86,7 +87,7 @@ benchmarks! {
     // Benchmark 'on_initialize` for the case where it is a commitment interval
     // but there are no messages in the queue.
     on_initialize_no_messages {
-        Pallet::<T>::take_message_queue(BASE_NETWORK_ID);
+        MessageQueues::<T>::take(BASE_NETWORK_ID);
 
         let block_number = Interval::<T>::get();
 
