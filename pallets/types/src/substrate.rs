@@ -65,15 +65,16 @@ pub enum SubstrateAppCall {
         asset_id: MainnetAssetId,
         asset_kind: AssetKind,
     },
-    VerifySuccessTransfer {
-        transaction_nonce: u128,
+    ReportXCMTransferResult {
+        message_id: H256,
+        transfer_status: XCMAppTransferStatus,
     },
-    Refund {
-        // asset_id: MainnetAssetId,
-        // recipient: MainnetAccountId,
-        // amount: MainnetBalance,
-        transaction_nonce: u128,
-    },
+}
+
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum XCMAppTransferStatus {
+    Success,
+    XCMTransferError,
 }
 
 impl SubstrateBridgeMessageEncode for SubstrateAppCall {
@@ -90,7 +91,6 @@ pub enum XCMAppCall {
         sender: MainnetAccountId,
         recipient: ParachainAccountId,
         amount: MainnetBalance,
-        transaction_nonce: u128,
     },
     RegisterAsset {
         asset_id: MainnetAssetId,
