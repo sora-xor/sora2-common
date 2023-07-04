@@ -125,7 +125,7 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
 /// Message to InboundChannel pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum InboundChannelCall {
-    ReturnStatus(Vec<DispatchStatus>),
+    ReturnStatus((u64, Vec<DispatchStatus>)),
 }
 
 impl SubstrateBridgeMessageEncode for InboundChannelCall {
@@ -149,7 +149,6 @@ impl SubstrateBridgeMessageEncode for BridgeCall {
         self.encode()
     }
 }
-
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct DispatchStatus {
     pub is_successful: bool,

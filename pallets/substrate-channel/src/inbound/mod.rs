@@ -30,6 +30,7 @@
 
 //! Channel for passing messages from ethereum to substrate.
 
+use bridge_types::substrate::InboundChannelCall;
 use bridge_types::traits::{MessageDispatch, Verifier};
 use bridge_types::types::MessageId;
 use bridge_types::SubNetworkId;
@@ -45,6 +46,17 @@ pub use weights::WeightInfo;
 mod test;
 
 pub use pallet::*;
+
+impl<T: Config> From<InboundChannelCall> for Call<T>
+{
+    fn from(value: InboundChannelCall) -> Self {
+        match value {
+            InboundChannelCall::ReturnStatus(statuses) => Call::batch_dispatched {
+                statuses
+            },
+        }
+    }
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -182,7 +194,7 @@ pub mod pallet {
                 Vec::with_capacity(sub_commitment.messages.len());
             for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
                 let message_id = MessageId::inbound_batched(sub_commitment.nonce, idx as u64);
-                let is_successful = T::MessageDispatch::dispatch(
+                let maybe_transfer_successful = T::MessageDispatch::dispatch(
                     network_id,
                     message_id,
                     message.timepoint,
@@ -190,10 +202,14 @@ pub mod pallet {
                     (),
                 );
                 let message_id = message_id.using_encoded(|v| <T as Config>::Hashing::hash(v));
-                dispatch_statuses.push(DispatchStatus {
-                    message_id,
-                    is_successful,
-                });
+                
+                if let Some(is_successful) = maybe_transfer_successful {
+                    dispatch_statuses.push(DispatchStatus {
+                        message_id,
+                        is_successful,
+                    });
+                }
+
             }
             T::OutboundChannel::submit(
                 network_id,
@@ -210,6 +226,7 @@ pub mod pallet {
         pub fn batch_dispatched(
             origin: OriginFor<T>,
             statuses: Vec<DispatchStatus>,
+            // дополнительный вид коммитмента со статусами
         ) -> DispatchResultWithPostInfo {
             let CallOriginOutput {
                 network_id,

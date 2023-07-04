@@ -172,7 +172,7 @@ impl Verifier for MockVerifier {
 pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch {
-    fn dispatch(_: SubNetworkId, _: MessageId, _: GenericTimepoint, _: &[u8], _: ()) {}
+    fn dispatch(_: SubNetworkId, _: MessageId, _: GenericTimepoint, _: &[u8], _: ()) { true }
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(

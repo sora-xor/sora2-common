@@ -125,6 +125,7 @@ impl From<Digest> for AuxiliaryDigest {
 pub enum AuxiliaryDigestItem {
     /// A batch of messages has been committed.
     Commitment(GenericNetworkId, H256),
+    CommitmentDispatched(GenericNetworkId, ),
 }
 
 impl From<AuxiliaryDigestItem> for DigestItem {

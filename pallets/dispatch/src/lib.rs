@@ -115,6 +115,7 @@ pub mod pallet {
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::Hash;
+    use bridge_types::traits::TransferDetector;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -158,6 +159,8 @@ pub mod pallet {
         /// The pallet will filter all incoming calls right before they're dispatched. If this filter
         /// rejects the call, special event (`Event::MessageRejected`) is emitted.
         type CallFilter: Contains<<Self as Config<I>>::Call>;
+
+        type TransferDetector: crate::traits::TransferDetector<<Self as Config<I>>::Call>;
     }
 
     #[pallet::hooks]
@@ -194,18 +197,18 @@ pub mod pallet {
             timepoint: GenericTimepoint,
             payload: &[u8],
             additional: T::Additional,
-        ) -> bool {
+        ) -> Option<bool> {
             let call = match <T as Config<I>>::Call::decode(&mut &payload[..]) {
                 Ok(call) => call,
                 Err(_) => {
                     Self::deposit_event(Event::MessageDecodeFailed(message_id));
-                    return false;
+                    return None;
                 }
             };
 
             if !T::CallFilter::contains(&call) {
                 Self::deposit_event(Event::MessageRejected(message_id));
-                return false;
+                return None;
             }
 
             let origin = RawOrigin::new(<T::OriginOutput as traits::OriginOutput<_, _>>::new(
@@ -215,6 +218,8 @@ pub mod pallet {
                 additional,
             ))
             .into();
+
+            let is_transfer = T::TransferDetector::is_transfer(&call);
             let result = call.dispatch(origin);
 
             Self::deposit_event(Event::MessageDispatched(
@@ -222,7 +227,7 @@ pub mod pallet {
                 result.map(drop).map_err(|e| e.error),
             ));
 
-            result.is_ok()
+            if is_transfer { Some(result.is_ok()) } else { None } 
         }
 
         #[cfg(feature = "runtime-benchmarks")]
@@ -320,6 +325,7 @@ mod tests {
         type Hashing = Keccak256;
         type Call = RuntimeCall;
         type CallFilter = CallFilter;
+        type TransferDetector = ();
     }
 
     fn new_test_ext() -> sp_io::TestExternalities {

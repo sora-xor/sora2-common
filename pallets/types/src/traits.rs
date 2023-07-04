@@ -81,7 +81,7 @@ pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
         timepoint: GenericTimepoint,
         payload: &[u8],
         additional: Additional,
-    ) -> bool;
+    ) -> Option<bool>;
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::RuntimeEvent>;
@@ -345,4 +345,14 @@ pub trait BridgeAssetLocker<AccountId> {
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult;
+}
+
+pub trait TransferDetector<I> {
+    fn is_transfer(call: &I) -> bool;
+}
+
+impl<I> TransferDetector<I> for () {
+    fn is_transfer(_: &I) -> bool {
+        false
+    }
 }
