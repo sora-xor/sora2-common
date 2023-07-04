@@ -28,11 +28,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use core::marker::PhantomData;
 use std::fs::File;
 use std::path::Path;
 
-use crate::{H128, H256, H512};
+use crate::{traits::BridgeAssetLocker, GenericNetworkId, H128, H256, H512};
 use serde::{Deserialize, Deserializer};
+use sp_runtime::{traits::Hash, AccountId32};
 
 #[derive(Clone)]
 pub struct Hex(pub Vec<u8>);
@@ -145,5 +147,59 @@ impl BlockWithProofs {
                 )
             })
             .collect()
+    }
+}
+
+pub struct BridgeAssetLockerImpl<T>(PhantomData<T>);
+
+impl<T> BridgeAssetLockerImpl<T> {
+    pub fn bridge_account(network_id: GenericNetworkId) -> AccountId32 {
+        let hash = sp_runtime::traits::BlakeTwo256::hash_of(&(b"bridge-lock-account", &network_id));
+        AccountId32::new(hash.0)
+    }
+}
+
+impl<T: traits::MultiCurrency<AccountId32>> BridgeAssetLocker<AccountId32>
+    for BridgeAssetLockerImpl<T>
+{
+    type AssetId = T::CurrencyId;
+    type Balance = T::Balance;
+
+    fn lock_asset(
+        network_id: crate::GenericNetworkId,
+        asset_kind: crate::types::AssetKind,
+        who: &AccountId32,
+        asset_id: &T::CurrencyId,
+        amount: &T::Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        match asset_kind {
+            crate::types::AssetKind::Thischain => {
+                let bridge_acc = Self::bridge_account(network_id);
+                T::transfer(*asset_id, who, &bridge_acc, *amount)?;
+            }
+            crate::types::AssetKind::Sidechain => {
+                T::withdraw(*asset_id, who, *amount)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn unlock_asset(
+        network_id: crate::GenericNetworkId,
+        asset_kind: crate::types::AssetKind,
+        who: &AccountId32,
+        asset_id: &T::CurrencyId,
+        amount: &T::Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        match asset_kind {
+            crate::types::AssetKind::Thischain => {
+                let bridge_acc = Self::bridge_account(network_id);
+                T::transfer(*asset_id, &bridge_acc, who, *amount)?;
+            }
+            crate::types::AssetKind::Sidechain => {
+                T::deposit(*asset_id, who, *amount)?;
+            }
+        }
+        Ok(())
     }
 }

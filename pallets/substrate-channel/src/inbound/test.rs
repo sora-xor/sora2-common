@@ -193,12 +193,19 @@ impl pallet_timestamp::Config for Test {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const MaxMessagePayloadSize: u32 = 128;
+    pub const MaxMessagesPerCommit: u32 = 5;
+}
+
 impl bridge_inbound_channel::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
     type MessageDispatch = MockMessageDispatch;
     type UnsignedLongevity = ConstU64<100>;
     type UnsignedPriority = ConstU64<100>;
+    type MaxMessagePayloadSize = MaxMessagePayloadSize;
+    type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type WeightInfo = ();
 }
 
@@ -226,29 +233,37 @@ fn test_submit() {
 
         // Submit message 1
         let message_1 = BridgeMessage {
-            nonce: 1,
             timepoint: Default::default(),
             payload: Default::default(),
         };
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![message_1].try_into().unwrap(),
+            });
         assert_ok!(BridgeInboundChannel::submit(
             origin.clone(),
             BASE_NETWORK_ID,
-            vec![message_1],
-            Vec::new(),
+            commitment,
+            Default::default(),
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit message 2
         let message_2 = BridgeMessage {
-            nonce: 2,
             timepoint: Default::default(),
             payload: Default::default(),
         };
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 2,
+                messages: vec![message_2].try_into().unwrap(),
+            });
         assert_ok!(BridgeInboundChannel::submit(
             origin,
             BASE_NETWORK_ID,
-            vec![message_2],
+            commitment,
             Vec::new(),
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
@@ -263,14 +278,18 @@ fn test_submit_with_invalid_nonce() {
 
         // Submit message
         let message = BridgeMessage {
-            nonce: 1,
             timepoint: Default::default(),
             payload: Default::default(),
         };
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![message].try_into().unwrap(),
+            });
         assert_ok!(BridgeInboundChannel::submit(
             origin.clone(),
             BASE_NETWORK_ID,
-            vec![message.clone()],
+            commitment.clone(),
             Vec::new(),
         ));
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
@@ -278,7 +297,7 @@ fn test_submit_with_invalid_nonce() {
 
         // Submit the same again
         assert_noop!(
-            BridgeInboundChannel::submit(origin, BASE_NETWORK_ID, vec![message], Vec::new()),
+            BridgeInboundChannel::submit(origin, BASE_NETWORK_ID, commitment, Vec::new()),
             Error::<Test>::InvalidNonce
         );
     });
@@ -291,12 +310,16 @@ fn test_submit_with_invalid_network_id() {
 
         // Submit message
         let message = BridgeMessage {
-            nonce: 1,
             timepoint: Default::default(),
             payload: Default::default(),
         };
+        let commitment =
+            bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
+                nonce: 1,
+                messages: vec![message].try_into().unwrap(),
+            });
         assert_noop!(
-            BridgeInboundChannel::submit(origin, SubNetworkId::Kusama, vec![message], Vec::new()),
+            BridgeInboundChannel::submit(origin, SubNetworkId::Kusama, commitment, Vec::new()),
             Error::<Test>::InvalidNetwork
         );
     });
