@@ -476,29 +476,6 @@ pub mod pallet {
             );
             Ok(())
         }
-
-        // #[pallet::call_index(9)]
-        // #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
-        // pub fn refund_tokens(
-        //     origin: OriginFor<T>,
-        //     transaction_nonce: u128,
-        // ) -> DispatchResult {
-        //     let CallOriginOutput {
-        //         network_id,
-        //         timepoint,
-        //         ..
-        //     } = T::CallOrigin::ensure_origin(origin.clone())?;
-        //     let Some(message_id) = Self::nonce_message_id(network_id, transaction_nonce) else {
-        //         frame_support::fail!(Error::<T>::MessageIdNotFound)
-        //     };
-        //     T::MessageStatusNotifier::update_status(
-        //         network_id.into(),
-        //         message_id,
-        //         MessageStatus::Failed,
-        //         timepoint,
-        //     );
-        //     Ok(())
-        // }
     }
 
     impl<T: Config> Pallet<T> {
