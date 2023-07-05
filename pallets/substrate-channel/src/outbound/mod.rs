@@ -97,6 +97,9 @@ pub mod pallet {
 
         type TimepointProvider: TimepointProvider;
 
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
+
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
     }
@@ -181,10 +184,6 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn make_message_id(batch_nonce: u64, message_nonce: u64) -> H256 {
-            MessageId::outbound_batched(batch_nonce, message_nonce).hash()
-        }
-
         pub(crate) fn commit(network_id: SubNetworkId) -> Weight {
             debug!("Commit substrate messages");
             let messages = MessageQueues::<T>::take(network_id);
@@ -200,7 +199,7 @@ pub mod pallet {
             for idx in 0..messages.len() as u64 {
                 T::MessageStatusNotifier::update_status(
                     GenericNetworkId::Sub(network_id),
-                    Self::make_message_id(batch_nonce, idx),
+                    MessageId::batched(T::ThisNetworkId::get(), network_id.into(), batch_nonce, idx).hash(),
                     MessageStatus::Committed,
                     GenericTimepoint::Pending,
                 );
@@ -301,7 +300,7 @@ pub mod pallet {
                 batch_nonce,
                 message_nonce: messages_count,
             });
-            Ok(Self::make_message_id(batch_nonce, messages_count))
+            Ok(MessageId::batched(T::ThisNetworkId::get(), network_id.into(), batch_nonce, messages_count).hash())
         }
     }
 }
