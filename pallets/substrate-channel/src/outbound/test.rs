@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::*;
+use bridge_types::GenericNetworkId;
 use codec::{Decode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 
@@ -177,6 +178,7 @@ parameter_types! {
 parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 128;
     pub const MaxMessagesPerCommit: u32 = 5;
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
 pub struct GenericTimepointProvider;
@@ -197,6 +199,7 @@ impl bridge_outbound_channel::Config for Test {
     type Balance = u128;
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 impl pallet_timestamp::Config for Test {

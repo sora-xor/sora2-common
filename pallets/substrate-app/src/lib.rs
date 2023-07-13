@@ -97,6 +97,13 @@ where
                 asset_id: asset_id.into(),
                 asset_kind,
             },
+            SubstrateAppCall::ReportXCMTransferResult {
+                message_id,
+                transfer_status,
+            } => Call::update_transaction_status {
+                message_id,
+                transfer_status,
+            },
         }
     }
 }
@@ -106,6 +113,7 @@ pub mod pallet {
 
     use super::*;
 
+    use bridge_types::substrate::XCMAppTransferStatus;
     use bridge_types::substrate::{
         ParachainAccountId, ParachainAssetId, SubstrateBridgeMessageEncode, XCMAppCall,
     };
@@ -114,12 +122,12 @@ pub mod pallet {
         OutboundChannel,
     };
     use bridge_types::types::{AssetKind, CallOriginOutput, MessageStatus};
-    use frame_support::fail;
-    use frame_support::pallet_prelude::{OptionQuery, *, ValueQuery};
     use bridge_types::{
         GenericAccount, GenericNetworkId, MainnetAccountId, MainnetAssetId, MainnetBalance,
         SubNetworkId, H256,
     };
+    use frame_support::fail;
+    use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
 
@@ -241,6 +249,7 @@ pub mod pallet {
         WrongAmount,
         TransferLimitReached,
         UnknownPrecision,
+        MessageIdNotFound,
         InvalidDestinationParachain,
         InvalidDestinationParams,
         RelaychainAssetNotRegistered,
@@ -409,8 +418,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            AssetKinds::<T>::get(network_id, &asset_id)
-                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+            AssetKinds::<T>::get(network_id, &asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             AllowedParachainAssets::<T>::try_mutate(network_id, para_id, |x| -> DispatchResult {
                 x.push(asset_id);
@@ -426,17 +434,42 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: SubNetworkId,
             para_id: u32,
-            asset_id: AssetIdOf<T>,     
+            asset_id: AssetIdOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
-            AssetKinds::<T>::get(network_id, &asset_id)
-                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+            AssetKinds::<T>::get(network_id, &asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             AllowedParachainAssets::<T>::try_mutate(network_id, para_id, |x| -> DispatchResult {
                 x.retain(|el| *el != asset_id);
                 Ok(())
             })?;
 
+            Ok(())
+        }
+
+        #[pallet::call_index(8)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn update_transaction_status(
+            origin: OriginFor<T>,
+            message_id: H256,
+            transfer_status: XCMAppTransferStatus,
+        ) -> DispatchResult {
+            let CallOriginOutput {
+                network_id,
+                timepoint,
+                ..
+            } = T::CallOrigin::ensure_origin(origin)?;
+
+            let message_status = match transfer_status {
+                XCMAppTransferStatus::Success => MessageStatus::Done,
+                XCMAppTransferStatus::XCMTransferError => MessageStatus::Failed,
+            };
+            T::MessageStatusNotifier::update_status(
+                network_id.into(),
+                message_id,
+                message_status,
+                timepoint,
+            );
             Ok(())
         }
     }
@@ -454,15 +487,22 @@ pub mod pallet {
             SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
 
             for paraid in allowed_parachains {
-                AllowedParachainAssets::<T>::try_mutate(network_id, paraid, |x| -> DispatchResult {
-                    x.push(asset_id.clone());
-                    Ok(())
-                })?;
+                AllowedParachainAssets::<T>::try_mutate(
+                    network_id,
+                    paraid,
+                    |x| -> DispatchResult {
+                        x.push(asset_id.clone());
+                        Ok(())
+                    },
+                )?;
             }
 
             // if it is a native relaychain asset - register it on the pallet to identify if it is transferred
             if sidechain_asset == bridge_types::substrate::PARENT_PARACHAIN_ASSET {
-                ensure!(Self::relaychain_asset(network_id).is_none(), Error::<T>::RelaychainAssetRegistered);
+                ensure!(
+                    Self::relaychain_asset(network_id).is_none(),
+                    Error::<T>::RelaychainAssetRegistered
+                );
                 RelaychainAsset::<T>::insert(network_id, asset_id.clone());
             }
 
@@ -542,8 +582,12 @@ pub mod pallet {
             Ok(Default::default())
         }
 
-        fn check_parachain_transfer_params(network_id: SubNetworkId, asset_id: AssetIdOf<T>, recipient: ParachainAccountId) -> DispatchResult {
-            use bridge_types::substrate::{VersionedMultiLocation::V3, Junction};
+        fn check_parachain_transfer_params(
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            recipient: ParachainAccountId,
+        ) -> DispatchResult {
+            use bridge_types::substrate::{Junction, VersionedMultiLocation::V3};
 
             let V3(ml) = recipient else {
                 fail!(Error::<T>::InvalidDestinationParams)
@@ -553,7 +597,7 @@ pub mod pallet {
             if ml.parents != 1 {
                 fail!(Error::<T>::InvalidDestinationParams)
             }
-            
+
             if ml.interior.len() == 1 {
                 // len == 1 is transfer to the relay chain
 
@@ -562,7 +606,10 @@ pub mod pallet {
                 };
 
                 // only native relaychain asset can be transferred to the relaychain
-                ensure!(asset_id == relaychain_asset, Error::<T>::NotRelayTransferableAsset);
+                ensure!(
+                    asset_id == relaychain_asset,
+                    Error::<T>::NotRelayTransferableAsset
+                );
             } else if ml.interior.len() == 2 {
                 // len == 2 is transfer to a parachain
 
@@ -574,10 +621,13 @@ pub mod pallet {
                 }
 
                 // Only one parachain is allowed in query
-                ensure!(parachains.len() == 1,  Error::<T>::InvalidDestinationParams);
-            
+                ensure!(parachains.len() == 1, Error::<T>::InvalidDestinationParams);
+
                 // ensure that destination para id is allowed to transfer to
-                ensure!(Self::allowed_parachain_assets(network_id, parachains[0]).contains(&asset_id), Error::<T>::InvalidDestinationParachain);
+                ensure!(
+                    Self::allowed_parachain_assets(network_id, parachains[0]).contains(&asset_id),
+                    Error::<T>::InvalidDestinationParachain
+                );
             } else {
                 fail!(Error::<T>::InvalidDestinationParams)
             }

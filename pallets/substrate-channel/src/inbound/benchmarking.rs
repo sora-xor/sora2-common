@@ -80,7 +80,7 @@ benchmarks! {
     verify {
         assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
 
-        let message_id = MessageId::inbound_batched(1, 1);
+        let message_id = MessageId::batched(SubNetworkId::Mainnet.into(), SubNetworkId::Rococo.into(), 1, 1);
         if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
             assert_last_event::<T>(event);
         }

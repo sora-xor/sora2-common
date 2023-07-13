@@ -209,6 +209,7 @@ parameter_types! {
 
 parameter_types! {
     pub const FeeCurrency: AssetId = AssetId::XOR;
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
 pub struct GenericTimepointProvider;
@@ -229,6 +230,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type Balance = u128;
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 impl pallet_timestamp::Config for Test {
