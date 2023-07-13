@@ -209,7 +209,6 @@ pub mod pallet {
             T::AccountId,
             BalanceOf<T>,
         ),
-        Done(H256),
     }
 
     #[pallet::storage]
@@ -462,10 +461,7 @@ pub mod pallet {
             } = T::CallOrigin::ensure_origin(origin)?;
 
             let message_status = match transfer_status {
-                XCMAppTransferStatus::Success => {
-                    Self::deposit_event(Event::Done(message_id));
-                    MessageStatus::Done
-                }
+                XCMAppTransferStatus::Success => MessageStatus::Done,
                 XCMAppTransferStatus::XCMTransferError => MessageStatus::Failed,
             };
             T::MessageStatusNotifier::update_status(
