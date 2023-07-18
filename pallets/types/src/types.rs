@@ -54,38 +54,28 @@ pub enum MessageDirection {
 
 #[derive(Encode, Decode, Copy, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub struct MessageId {
-    direction: MessageDirection,
+    sender: GenericNetworkId,
+    receiver: GenericNetworkId,
     batch_nonce: Option<BatchNonce>,
     message_nonce: MessageNonce,
 }
 
-impl From<(MessageDirection, BatchNonce, MessageNonce)> for MessageId {
-    fn from(
-        (direction, batch_nonce, message_nonce): (MessageDirection, BatchNonce, MessageNonce),
-    ) -> Self {
+impl MessageId {
+    /// Creates MessageId for message in batch.
+    pub fn batched(sender: GenericNetworkId, receiver: GenericNetworkId, batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
         MessageId {
-            direction,
+            sender, 
+            receiver,
             batch_nonce: Some(batch_nonce),
             message_nonce,
         }
     }
-}
 
-impl MessageId {
-    /// Creates MessageId for Outbound message in batch.
-    pub fn outbound_batched(batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
-        MessageId::from((MessageDirection::Outbound, batch_nonce, message_nonce))
-    }
-
-    /// Creates MessageId for Inbound message in batch.
-    pub fn inbound_batched(batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
-        MessageId::from((MessageDirection::Inbound, batch_nonce, message_nonce))
-    }
-
-    /// Creates MessageId for Inbound message.
-    pub fn inbound(message_nonce: MessageNonce) -> Self {
+    /// Creates MessageId for basic message.
+    pub fn basic(sender: GenericNetworkId, receiver: GenericNetworkId, message_nonce: MessageNonce) -> Self {
         MessageId {
-            direction: MessageDirection::Inbound,
+            sender, 
+            receiver,
             batch_nonce: None,
             message_nonce,
         }

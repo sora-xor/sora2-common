@@ -49,6 +49,7 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use bridge_types::GenericNetworkId;
     use frame_support::log::warn;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
@@ -72,6 +73,9 @@ pub mod pallet {
         /// A configuration for longevity of unsigned transactions.
         #[pallet::constant]
         type UnsignedLongevity: Get<u64>;
+
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
 
         /// Max bytes in a message payload
         type MaxMessagePayloadSize: Get<u32>;
@@ -152,7 +156,7 @@ pub mod pallet {
             })?;
 
             for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
-                let message_id = MessageId::inbound_batched(sub_commitment.nonce, idx as u64);
+                let message_id = MessageId::batched(network_id.into(), T::ThisNetworkId::get(), sub_commitment.nonce, idx as u64);
                 T::MessageDispatch::dispatch(
                     network_id,
                     message_id,

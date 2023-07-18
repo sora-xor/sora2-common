@@ -39,14 +39,15 @@ use sp_std::prelude::*;
 
 use crate::{types::AssetKind, GenericTimepoint, MainnetAccountId, MainnetAssetId, MainnetBalance};
 
+pub use xcm::v3::{Junction, Junctions};
 pub use xcm::VersionedMultiLocation;
-pub use xcm::v3::{Junctions, Junction};
 
 pub type ParachainAccountId = VersionedMultiLocation;
 
 pub type ParachainAssetId = xcm::v3::AssetId;
 
-pub const PARENT_PARACHAIN_ASSET: ParachainAssetId = ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
+pub const PARENT_PARACHAIN_ASSET: ParachainAssetId =
+    ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
@@ -65,6 +66,16 @@ pub enum SubstrateAppCall {
         asset_id: MainnetAssetId,
         asset_kind: AssetKind,
     },
+    ReportXCMTransferResult {
+        message_id: H256,
+        transfer_status: XCMAppTransferStatus,
+    },
+}
+
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum XCMAppTransferStatus {
+    Success,
+    XCMTransferError,
 }
 
 impl SubstrateBridgeMessageEncode for SubstrateAppCall {

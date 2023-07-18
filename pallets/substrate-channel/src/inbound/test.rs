@@ -196,6 +196,7 @@ impl pallet_timestamp::Config for Test {
 parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 128;
     pub const MaxMessagesPerCommit: u32 = 5;
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
 impl bridge_inbound_channel::Config for Test {
@@ -206,6 +207,7 @@ impl bridge_inbound_channel::Config for Test {
     type UnsignedPriority = ConstU64<100>;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
+    type ThisNetworkId = ThisNetworkId;
     type WeightInfo = ();
 }
 
