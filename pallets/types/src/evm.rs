@@ -216,6 +216,24 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
         // Structs are represented as tuples in ABI
         // https://docs.soliditylang.org/en/v0.8.15/abi-spec.html#mapping-solidity-to-abi-types
         let input = ethabi::encode(&vec![Token::Tuple(commitment)]);
-        sp_runtime::traits::Keccak256::hash_of(&input)
+        sp_runtime::traits::Keccak256::hash(&input)
     }
 }
+
+#[test]
+fn test_commitment_hash() {
+    use hex_literal::hex;
+
+    pub type MaxU32 = sp_runtime::traits::ConstU32<{ u32::MAX }>;
+
+    let commitment: Commitment<MaxU32, MaxU32> = Commitment{
+        nonce: 1,
+        total_max_gas: 123.into(),
+        messages: BoundedVec::default(),
+    };
+
+    // Value calculated on Ethereum contract with Remix IDE
+    let expected = H256::from(hex!("fe5da6b743707a6d3f8974111079fe7fb466bfed7a703d659e593c9120353bb1"));
+    assert_eq!(commitment.hash(), expected);
+}
+
