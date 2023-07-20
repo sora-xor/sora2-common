@@ -350,6 +350,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             sidechain_asset: ParachainAssetId,
             allowed_parachains: Vec<u32>,
+            min_amount: BalanceOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -359,6 +360,11 @@ pub mod pallet {
 
             let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
+            let min_amount = T::BalancePrecisionConverter::to_sidechain (&asset_id, sidechain_precision, min_amount)
+                .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(min_amount > 0, Error::<T>::WrongAmount);
+
             Self::register_asset_inner(
                 network_id,
                 asset_id,
@@ -366,6 +372,7 @@ pub mod pallet {
                 AssetKind::Thischain,
                 sidechain_precision,
                 allowed_parachains,
+                min_amount,
             )?;
 
             Ok(())
@@ -381,10 +388,15 @@ pub mod pallet {
             name: AssetNameOf<T>,
             decimals: u8,
             allowed_parachains: Vec<u32>,
+            min_amount: BalanceOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
             let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
+            let min_amount = T::BalancePrecisionConverter::to_sidechain(&asset_id, decimals, min_amount)
+                .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(min_amount > 0, Error::<T>::WrongAmount);
 
             Self::register_asset_inner(
                 network_id,
@@ -393,6 +405,7 @@ pub mod pallet {
                 AssetKind::Sidechain,
                 decimals,
                 allowed_parachains,
+                min_amount,
             )?;
             Ok(())
         }
@@ -472,6 +485,36 @@ pub mod pallet {
             );
             Ok(())
         }
+
+        #[pallet::call_index(9)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn set_minimum_xcm_incoming_asset_count(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            min_amount: BalanceOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+
+            let min_amount = T::BalancePrecisionConverter::to_sidechain (&asset_id, sidechain_precision, min_amount)
+                .ok_or(Error::<T>::WrongAmount)?;
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &XCMAppCall::SetAssetMinAmount {
+                    asset_id: T::AssetIdConverter::convert(asset_id.clone()),
+                    min_amount,
+                }
+                .prepare_message(),
+                (),
+            )?;
+
+            ensure!(min_amount > 0, Error::<T>::WrongAmount);
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -482,6 +525,7 @@ pub mod pallet {
             asset_kind: AssetKind,
             sidechain_precision: u8,
             allowed_parachains: Vec<u32>,
+            min_amount: u128,
         ) -> DispatchResult {
             T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
             SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
@@ -513,6 +557,7 @@ pub mod pallet {
                     asset_id: T::AssetIdConverter::convert(asset_id.clone()),
                     sidechain_asset,
                     asset_kind,
+                    min_amount,
                 }
                 .prepare_message(),
                 (),

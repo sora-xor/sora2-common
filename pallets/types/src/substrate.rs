@@ -97,7 +97,12 @@ pub enum XCMAppCall {
         asset_id: MainnetAssetId,
         sidechain_asset: ParachainAssetId,
         asset_kind: AssetKind,
+        min_amount: u128,
     },
+    SetAssetMinAmount {
+        asset_id: MainnetAssetId,
+        min_amount: u128,
+    }
 }
 
 impl SubstrateBridgeMessageEncode for XCMAppCall {
