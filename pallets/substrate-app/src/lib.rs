@@ -503,6 +503,8 @@ pub mod pallet {
             let min_amount = T::BalancePrecisionConverter::to_sidechain(&asset_id, sidechain_precision, min_amount)
                 .ok_or(Error::<T>::WrongAmount)?;
 
+            ensure!(min_amount > 0, Error::<T>::WrongAmount);
+
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
