@@ -31,6 +31,7 @@
 use bridge_types::traits::BalancePrecisionConverter;
 use bridge_types::traits::BridgeAssetRegistry;
 use bridge_types::traits::TimepointProvider;
+use bridge_types::GenericNetworkId;
 use codec::Decode;
 use codec::Encode;
 use codec::MaxEncodedLen;
@@ -199,17 +200,16 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-const INDEXING_PREFIX: &[u8] = b"commitment";
-
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 2048;
-    pub const MaxMessagesPerCommit: u64 = 3;
+    pub const MaxMessagePayloadSize: u32 = 2048;
+    pub const MaxMessagesPerCommit: u32 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
 
 parameter_types! {
     pub const FeeCurrency: AssetId = AssetId::XOR;
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
 pub struct GenericTimepointProvider;
@@ -221,9 +221,7 @@ impl TimepointProvider for GenericTimepointProvider {
 }
 
 impl substrate_bridge_channel::outbound::Config for Test {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MessageStatusNotifier = ();
@@ -232,6 +230,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type Balance = u128;
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -248,7 +247,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     type AssetSymbol = String;
 
     fn register_asset(
-        _owner: AccountId,
+        _network_id: GenericNetworkId,
         _name: Self::AssetName,
         _symbol: Self::AssetSymbol,
     ) -> Result<AssetId, sp_runtime::DispatchError> {
@@ -256,7 +255,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     }
 
     fn manage_asset(
-        _manager: AccountId,
+        _network_id: GenericNetworkId,
         _asset_id: AssetId,
     ) -> frame_support::pallet_prelude::DispatchResult {
         Ok(())
@@ -293,7 +292,6 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
 
 impl substrate_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type BridgeAccountId = GetBridgeAccountId;
     type MessageStatusNotifier = ();
     type CallOrigin = dispatch::EnsureAccount<
         SubNetworkId,
@@ -302,11 +300,11 @@ impl substrate_app::Config for Test {
     >;
     type OutboundChannel = BridgeOutboundChannel;
     type AssetRegistry = AssetRegistryImpl;
-    type Currency = Currencies;
     type WeightInfo = ();
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
+    type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

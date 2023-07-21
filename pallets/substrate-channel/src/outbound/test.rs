@@ -29,7 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::*;
-use codec::MaxEncodedLen;
+use bridge_types::GenericNetworkId;
+use codec::{Decode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::{OutboundChannel, TimepointProvider};
@@ -40,7 +41,7 @@ use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::{AccountId32, MultiSignature};
 use sp_std::convert::From;
 use traits::parameter_type_with_key;
@@ -75,7 +76,7 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
     Decode,
     PartialEq,
     Eq,
-    RuntimeDebug,
+    Debug,
     Clone,
     Copy,
     MaxEncodedLen,
@@ -175,8 +176,9 @@ parameter_types! {
 }
 
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 128;
-    pub const MaxMessagesPerCommit: u64 = 5;
+    pub const MaxMessagePayloadSize: u32 = 128;
+    pub const MaxMessagesPerCommit: u32 = 5;
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
 pub struct GenericTimepointProvider;
@@ -188,9 +190,7 @@ impl TimepointProvider for GenericTimepointProvider {
 }
 
 impl bridge_outbound_channel::Config for Test {
-    const INDEXING_PREFIX: &'static [u8] = b"commitment";
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MessageStatusNotifier = ();
@@ -199,6 +199,7 @@ impl bridge_outbound_channel::Config for Test {
     type Balance = u128;
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -244,6 +245,7 @@ fn test_submit() {
             &[0, 1, 2],
             ()
         ));
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 1);
 
         assert_ok!(BridgeOutboundChannel::submit(
@@ -252,6 +254,7 @@ fn test_submit() {
             &[0, 1, 2],
             ()
         ));
+        BridgeOutboundChannel::commit(BASE_NETWORK_ID);
         assert_eq!(<ChannelNonces<Test>>::get(BASE_NETWORK_ID), 2);
     });
 }
