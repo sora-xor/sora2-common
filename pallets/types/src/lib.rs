@@ -34,18 +34,17 @@ pub mod channel_abi;
 pub mod difficulty;
 pub mod ethashdata;
 pub mod ethashproof;
+pub mod evm;
 pub mod header;
 pub mod log;
 mod mpt;
 pub mod network_config;
 pub mod receipt;
 pub mod substrate;
-pub mod traits;
-pub mod types;
-
-pub mod evm;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
+pub mod traits;
+pub mod types;
 pub mod utils;
 
 use codec::{Decode, Encode};

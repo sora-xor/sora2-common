@@ -199,7 +199,13 @@ pub mod pallet {
             for idx in 0..messages.len() as u64 {
                 T::MessageStatusNotifier::update_status(
                     GenericNetworkId::Sub(network_id),
-                    MessageId::batched(T::ThisNetworkId::get(), network_id.into(), batch_nonce, idx).hash(),
+                    MessageId::batched(
+                        T::ThisNetworkId::get(),
+                        network_id.into(),
+                        batch_nonce,
+                        idx,
+                    )
+                    .hash(),
                     MessageStatus::Committed,
                     GenericTimepoint::Pending,
                 );
@@ -300,7 +306,13 @@ pub mod pallet {
                 batch_nonce,
                 message_nonce: messages_count,
             });
-            Ok(MessageId::batched(T::ThisNetworkId::get(), network_id.into(), batch_nonce, messages_count).hash())
+            Ok(MessageId::batched(
+                T::ThisNetworkId::get(),
+                network_id.into(),
+                batch_nonce,
+                messages_count,
+            )
+            .hash())
         }
     }
 }

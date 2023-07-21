@@ -36,13 +36,13 @@ use core::fmt::Debug;
 
 use crate::types::AssetKind;
 use crate::types::AuxiliaryDigestItem;
-use crate::GenericTimepoint;
 use crate::H256;
 use crate::U256;
 use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus, RawAssetInfo},
     GenericAccount, GenericNetworkId,
 };
+use crate::{EVMChainId, GenericTimepoint};
 use codec::FullCodec;
 use ethereum_types::Address;
 use frame_support::{
@@ -253,6 +253,31 @@ impl<Balance> GasTracker<Balance> for () {
         _gas_used: U256,
         _gas_price: U256,
     ) {
+    }
+}
+
+/// Trait for gas price oracle on Ethereum-based networks.
+pub trait EthereumGasPriceOracle {
+    /// Returns base fee for the block by block hash.
+    fn get_base_fee(
+        network_id: EVMChainId,
+        header_hash: H256,
+    ) -> Result<Option<U256>, DispatchError>;
+
+    /// Returns base fee for the best block.
+    fn get_best_block_base_fee(network_id: EVMChainId) -> Result<Option<U256>, DispatchError>;
+}
+
+impl EthereumGasPriceOracle for () {
+    fn get_base_fee(
+        _network_id: EVMChainId,
+        _header_hash: H256,
+    ) -> Result<Option<U256>, DispatchError> {
+        return Ok(Some(U256::zero()));
+    }
+
+    fn get_best_block_base_fee(_network_id: EVMChainId) -> Result<Option<U256>, DispatchError> {
+        return Ok(Some(U256::zero()));
     }
 }
 

@@ -226,14 +226,15 @@ fn test_commitment_hash() {
 
     pub type MaxU32 = sp_runtime::traits::ConstU32<{ u32::MAX }>;
 
-    let commitment: Commitment<MaxU32, MaxU32> = Commitment{
+    let commitment: Commitment<MaxU32, MaxU32> = Commitment {
         nonce: 1,
         total_max_gas: 123.into(),
         messages: BoundedVec::default(),
     };
 
     // Value calculated on Ethereum contract with Remix IDE
-    let expected = H256::from(hex!("fe5da6b743707a6d3f8974111079fe7fb466bfed7a703d659e593c9120353bb1"));
+    let expected = H256::from(hex!(
+        "fe5da6b743707a6d3f8974111079fe7fb466bfed7a703d659e593c9120353bb1"
+    ));
     assert_eq!(commitment.hash(), expected);
 }
-
