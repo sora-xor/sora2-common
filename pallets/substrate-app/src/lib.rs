@@ -496,9 +496,11 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_root(origin)?;
 
-            let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+            let Some(sidechain_precision) = Self::sidechain_precision(network_id, &asset_id) else {
+                fail!(Error::<T>::UnknownPrecision);
+            };
 
-            let min_amount = T::BalancePrecisionConverter::to_sidechain (&asset_id, sidechain_precision, min_amount)
+            let min_amount = T::BalancePrecisionConverter::to_sidechain(&asset_id, sidechain_precision, min_amount)
                 .ok_or(Error::<T>::WrongAmount)?;
 
             T::OutboundChannel::submit(
