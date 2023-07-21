@@ -360,8 +360,12 @@ pub mod pallet {
 
             let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
-            let min_amount = T::BalancePrecisionConverter::to_sidechain (&asset_id, sidechain_precision, min_amount)
-                .ok_or(Error::<T>::WrongAmount)?;
+            let min_amount = T::BalancePrecisionConverter::to_sidechain(
+                &asset_id,
+                sidechain_precision,
+                min_amount,
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
 
             ensure!(min_amount > 0, Error::<T>::WrongAmount);
 
@@ -393,8 +397,9 @@ pub mod pallet {
             ensure_root(origin)?;
 
             let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
-            let min_amount = T::BalancePrecisionConverter::to_sidechain(&asset_id, decimals, min_amount)
-                .ok_or(Error::<T>::WrongAmount)?;
+            let min_amount =
+                T::BalancePrecisionConverter::to_sidechain(&asset_id, decimals, min_amount)
+                    .ok_or(Error::<T>::WrongAmount)?;
 
             ensure!(min_amount > 0, Error::<T>::WrongAmount);
 
@@ -500,8 +505,12 @@ pub mod pallet {
                 fail!(Error::<T>::UnknownPrecision);
             };
 
-            let min_amount = T::BalancePrecisionConverter::to_sidechain(&asset_id, sidechain_precision, min_amount)
-                .ok_or(Error::<T>::WrongAmount)?;
+            let min_amount = T::BalancePrecisionConverter::to_sidechain(
+                &asset_id,
+                sidechain_precision,
+                min_amount,
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
 
             ensure!(min_amount > 0, Error::<T>::WrongAmount);
 
