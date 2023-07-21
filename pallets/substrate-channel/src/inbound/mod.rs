@@ -156,7 +156,12 @@ pub mod pallet {
             })?;
 
             for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
-                let message_id = MessageId::batched(network_id.into(), T::ThisNetworkId::get(), sub_commitment.nonce, idx as u64);
+                let message_id = MessageId::batched(
+                    network_id.into(),
+                    T::ThisNetworkId::get(),
+                    sub_commitment.nonce,
+                    idx as u64,
+                );
                 T::MessageDispatch::dispatch(
                     network_id,
                     message_id,

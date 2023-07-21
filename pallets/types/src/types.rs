@@ -62,9 +62,14 @@ pub struct MessageId {
 
 impl MessageId {
     /// Creates MessageId for message in batch.
-    pub fn batched(sender: GenericNetworkId, receiver: GenericNetworkId, batch_nonce: BatchNonce, message_nonce: MessageNonce) -> Self {
+    pub fn batched(
+        sender: GenericNetworkId,
+        receiver: GenericNetworkId,
+        batch_nonce: BatchNonce,
+        message_nonce: MessageNonce,
+    ) -> Self {
         MessageId {
-            sender, 
+            sender,
             receiver,
             batch_nonce: Some(batch_nonce),
             message_nonce,
@@ -72,9 +77,13 @@ impl MessageId {
     }
 
     /// Creates MessageId for basic message.
-    pub fn basic(sender: GenericNetworkId, receiver: GenericNetworkId, message_nonce: MessageNonce) -> Self {
+    pub fn basic(
+        sender: GenericNetworkId,
+        receiver: GenericNetworkId,
+        message_nonce: MessageNonce,
+    ) -> Self {
         MessageId {
-            sender, 
+            sender,
             receiver,
             batch_nonce: None,
             message_nonce,
