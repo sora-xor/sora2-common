@@ -49,13 +49,11 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::substrate::BridgeMessage;
+    use bridge_types::GenericNetworkId;
     use frame_support::log::warn;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_system::pallet_prelude::*;
-    use sp_runtime::traits::Hash;
-    use sp_runtime::traits::Keccak256;
     use sp_std::prelude::*;
 
     #[pallet::config]
@@ -75,6 +73,15 @@ pub mod pallet {
         /// A configuration for longevity of unsigned transactions.
         #[pallet::constant]
         type UnsignedLongevity: Get<u64>;
+
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
+
+        /// Max bytes in a message payload
+        type MaxMessagePayloadSize: Get<u32>;
+
+        /// Max number of messages that can be queued and committed in one go for a given channel.
+        type MaxMessagesPerCommit: Get<u32>;
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
@@ -106,8 +113,8 @@ pub mod pallet {
         InvalidNetwork,
         /// Message came from an invalid outbound channel on the Ethereum side.
         InvalidSourceChannel,
-        /// Message has an invalid envelope.
-        InvalidEnvelope,
+        /// Submitted invalid commitment type.
+        InvalidCommitment,
         /// Message has an unexpected nonce.
         InvalidNonce,
         /// Incorrect reward fraction
@@ -125,28 +132,36 @@ pub mod pallet {
         pub fn submit(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
-            messages: Vec<BridgeMessage>,
+            commitment: bridge_types::GenericCommitment<
+                T::MaxMessagesPerCommit,
+                T::MaxMessagePayloadSize,
+            >,
             proof: <T::Verifier as Verifier>::Proof,
         ) -> DispatchResultWithPostInfo {
             ensure_none(origin)?;
-            // submit message to verifier for verification
-            let message_hash = Keccak256::hash_of(&messages);
-            T::Verifier::verify(network_id.into(), message_hash, &proof)?;
+            let commitment_hash = commitment.hash();
+            let bridge_types::GenericCommitment::Sub(sub_commitment) = commitment else {
+                frame_support::fail!(Error::<T>::InvalidCommitment);
+            };
+            // submit commitment to verifier for verification
+            T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
+            // Verify batch nonce
+            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                if sub_commitment.nonce != *nonce + 1 {
+                    Err(Error::<T>::InvalidNonce.into())
+                } else {
+                    *nonce += 1;
+                    Ok(())
+                }
+            })?;
 
-            for message in messages {
-                // Verify message nonce
-                <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                    if message.nonce != *nonce + 1 {
-                        Err(Error::<T>::InvalidNonce.into())
-                    } else {
-                        *nonce += 1;
-                        Ok(())
-                    }
-                })?;
-
-                // Self::handle_fee(message.fee.unique_saturated_into(), &relayer);
-
-                let message_id = MessageId::inbound(message.nonce);
+            for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
+                let message_id = MessageId::batched(
+                    network_id.into(),
+                    T::ThisNetworkId::get(),
+                    sub_commitment.nonce,
+                    idx as u64,
+                );
                 T::MessageDispatch::dispatch(
                     network_id,
                     message_id,
@@ -166,17 +181,17 @@ pub mod pallet {
         fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
             if let Call::submit {
                 network_id,
-                messages,
+                commitment,
                 proof,
             } = call
             {
                 let nonce = ChannelNonces::<T>::get(network_id);
                 // If messages array is empty or messages already submitted
-                if messages.get(0).ok_or(InvalidTransaction::BadProof)?.nonce <= nonce {
+                if commitment.nonce() <= nonce {
                     return InvalidTransaction::BadProof.into();
                 }
-                let message_hash = Keccak256::hash_of(&messages);
-                T::Verifier::verify(network_id.clone().into(), message_hash, &proof).map_err(
+                let commitment_hash = commitment.hash();
+                T::Verifier::verify(network_id.clone().into(), commitment_hash, &proof).map_err(
                     |e| {
                         warn!("Bad submit proof received: {:?}", e);
                         InvalidTransaction::BadProof
@@ -185,7 +200,7 @@ pub mod pallet {
                 ValidTransaction::with_tag_prefix("SubstrateBridgeChannelSubmit")
                     .priority(T::UnsignedPriority::get())
                     .longevity(T::UnsignedLongevity::get())
-                    .and_provides((network_id, message_hash))
+                    .and_provides((network_id, commitment_hash))
                     .propagate(true)
                     .build()
             } else {

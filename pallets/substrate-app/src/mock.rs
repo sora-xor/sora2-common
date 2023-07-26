@@ -28,8 +28,10 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::traits::BalancePrecisionConverter;
 use bridge_types::traits::BridgeAssetRegistry;
 use bridge_types::traits::TimepointProvider;
+use bridge_types::GenericNetworkId;
 use codec::Decode;
 use codec::Encode;
 use codec::MaxEncodedLen;
@@ -198,17 +200,16 @@ impl dispatch::Config for Test {
     type CallFilter = Everything;
 }
 
-const INDEXING_PREFIX: &[u8] = b"commitment";
-
 parameter_types! {
-    pub const MaxMessagePayloadSize: u64 = 2048;
-    pub const MaxMessagesPerCommit: u64 = 3;
+    pub const MaxMessagePayloadSize: u32 = 2048;
+    pub const MaxMessagesPerCommit: u32 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
 
 parameter_types! {
     pub const FeeCurrency: AssetId = AssetId::XOR;
+    pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
 pub struct GenericTimepointProvider;
@@ -220,9 +221,7 @@ impl TimepointProvider for GenericTimepointProvider {
 }
 
 impl substrate_bridge_channel::outbound::Config for Test {
-    const INDEXING_PREFIX: &'static [u8] = INDEXING_PREFIX;
     type RuntimeEvent = RuntimeEvent;
-    type Hashing = Keccak256;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MessageStatusNotifier = ();
@@ -231,6 +230,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type Balance = u128;
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
+    type ThisNetworkId = ThisNetworkId;
 }
 
 impl pallet_timestamp::Config for Test {
@@ -245,21 +245,53 @@ pub struct AssetRegistryImpl;
 impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
     type AssetName = String;
     type AssetSymbol = String;
-    type Decimals = u8;
 
     fn register_asset(
-        _owner: AccountId,
+        _network_id: GenericNetworkId,
         _name: Self::AssetName,
         _symbol: Self::AssetSymbol,
-        _decimals: Self::Decimals,
     ) -> Result<AssetId, sp_runtime::DispatchError> {
         Ok(AssetId::Custom)
+    }
+
+    fn manage_asset(
+        _network_id: GenericNetworkId,
+        _asset_id: AssetId,
+    ) -> frame_support::pallet_prelude::DispatchResult {
+        Ok(())
+    }
+
+    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        bridge_types::types::RawAssetInfo {
+            name: Default::default(),
+            symbol: Default::default(),
+            precision: 18,
+        }
+    }
+}
+
+pub struct BalancePrecisionConverterImpl;
+
+impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionConverterImpl {
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount * 10)
+    }
+
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount / 10)
     }
 }
 
 impl substrate_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type BridgeAccountId = GetBridgeAccountId;
     type MessageStatusNotifier = ();
     type CallOrigin = dispatch::EnsureAccount<
         SubNetworkId,
@@ -268,11 +300,11 @@ impl substrate_app::Config for Test {
     >;
     type OutboundChannel = BridgeOutboundChannel;
     type AssetRegistry = AssetRegistryImpl;
-    type Currency = Currencies;
     type WeightInfo = ();
     type AccountIdConverter = sp_runtime::traits::ConvertInto;
     type AssetIdConverter = ();
-    type BalanceConverter = ();
+    type BalancePrecisionConverter = BalancePrecisionConverterImpl;
+    type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

@@ -34,14 +34,15 @@
 
 use core::fmt::Debug;
 
+use crate::types::AssetKind;
 use crate::types::AuxiliaryDigestItem;
-use crate::GenericTimepoint;
 use crate::H256;
 use crate::U256;
 use crate::{
-    types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus},
+    types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus, RawAssetInfo},
     GenericAccount, GenericNetworkId,
 };
+use crate::{EVMChainId, GenericTimepoint};
 use codec::FullCodec;
 use ethereum_types::Address;
 use frame_support::{
@@ -50,6 +51,8 @@ use frame_support::{
 };
 use frame_system::{Config, RawOrigin};
 use scale_info::TypeInfo;
+use sp_runtime::traits::AtLeast32BitUnsigned;
+use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::prelude::*;
 
 /// A trait for verifying messages.
@@ -253,6 +256,31 @@ impl<Balance> GasTracker<Balance> for () {
     }
 }
 
+/// Trait for gas price oracle on Ethereum-based networks.
+pub trait EthereumGasPriceOracle {
+    /// Returns base fee for the block by block hash.
+    fn get_base_fee(
+        network_id: EVMChainId,
+        header_hash: H256,
+    ) -> Result<Option<U256>, DispatchError>;
+
+    /// Returns base fee for the best block.
+    fn get_best_block_base_fee(network_id: EVMChainId) -> Result<Option<U256>, DispatchError>;
+}
+
+impl EthereumGasPriceOracle for () {
+    fn get_base_fee(
+        _network_id: EVMChainId,
+        _header_hash: H256,
+    ) -> Result<Option<U256>, DispatchError> {
+        return Ok(Some(U256::zero()));
+    }
+
+    fn get_best_block_base_fee(_network_id: EVMChainId) -> Result<Option<U256>, DispatchError> {
+        return Ok(Some(U256::zero()));
+    }
+}
+
 /// Trait that every origin (like Ethereum origin or Parachain origin) should implement
 pub trait OriginOutput<NetworkId, Additional> {
     /// Construct new origin
@@ -267,14 +295,16 @@ pub trait OriginOutput<NetworkId, Additional> {
 pub trait BridgeAssetRegistry<AccountId, AssetId> {
     type AssetName: Parameter;
     type AssetSymbol: Parameter;
-    type Decimals: Parameter;
 
     fn register_asset(
-        owner: AccountId,
+        network_id: GenericNetworkId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
-        decimals: Self::Decimals,
     ) -> Result<AssetId, DispatchError>;
+
+    fn manage_asset(network_id: GenericNetworkId, asset_id: AssetId) -> DispatchResult;
+
+    fn get_raw_info(asset_id: AssetId) -> RawAssetInfo;
 }
 
 pub trait AuxiliaryDigestHandler {
@@ -285,6 +315,59 @@ impl AuxiliaryDigestHandler for () {
     fn add_item(_item: AuxiliaryDigestItem) {}
 }
 
+pub trait BalancePrecisionConverter<AssetId, Balance, SidechainBalance> {
+    fn to_sidechain(
+        asset_id: &AssetId,
+        sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<SidechainBalance>;
+
+    fn from_sidechain(
+        asset_id: &AssetId,
+        sidechain_precision: u8,
+        amount: SidechainBalance,
+    ) -> Option<Balance>;
+}
+
+impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance, Balance> for () {
+    fn to_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount)
+    }
+
+    fn from_sidechain(
+        _asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<Balance> {
+        Some(amount)
+    }
+}
+
 pub trait TimepointProvider {
     fn get_timepoint() -> GenericTimepoint;
+}
+
+pub trait BridgeAssetLocker<AccountId> {
+    type AssetId: Parameter + MaybeSerializeDeserialize;
+    type Balance: Parameter + AtLeast32BitUnsigned + MaybeSerializeDeserialize;
+
+    fn lock_asset(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        who: &AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> DispatchResult;
+
+    fn unlock_asset(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        who: &AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> DispatchResult;
 }

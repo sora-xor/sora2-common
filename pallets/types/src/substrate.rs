@@ -30,27 +30,24 @@
 #![allow(clippy::large_enum_variant)]
 
 use codec::{Decode, Encode};
-use ethereum_types::H256;
-use sp_core::ecdsa;
-use sp_runtime::{AccountId32, RuntimeDebug};
+use derivative::Derivative;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
+use sp_core::{ecdsa, Get, H256};
+use sp_runtime::{traits::Hash, BoundedVec, RuntimeDebug};
 use sp_std::prelude::*;
 
-use crate::{
-    types::{AssetKind, MessageNonce},
-    GenericTimepoint,
-};
+use crate::{types::AssetKind, GenericTimepoint, MainnetAccountId, MainnetAssetId, MainnetBalance};
 
-pub type ParachainAccountId = xcm::VersionedMultiLocation;
+pub use xcm::v3::{Junction, Junctions};
+pub use xcm::VersionedMultiLocation;
+
+pub type ParachainAccountId = VersionedMultiLocation;
 
 pub type ParachainAssetId = xcm::v3::AssetId;
 
-// Use predefined types to ensure data compatability
-
-pub type MainnetAssetId = H256;
-
-pub type MainnetAccountId = AccountId32;
-
-pub type MainnetBalance = u128;
+pub const PARENT_PARACHAIN_ASSET: ParachainAssetId =
+    ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
@@ -69,6 +66,16 @@ pub enum SubstrateAppCall {
         asset_id: MainnetAssetId,
         asset_kind: AssetKind,
     },
+    ReportXCMTransferResult {
+        message_id: H256,
+        transfer_status: XCMAppTransferStatus,
+    },
+}
+
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum XCMAppTransferStatus {
+    Success,
+    XCMTransferError,
 }
 
 impl SubstrateBridgeMessageEncode for SubstrateAppCall {
@@ -141,10 +148,60 @@ impl SubstrateBridgeMessageEncode for BridgeCall {
 }
 
 /// Substrate bridge message.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-pub struct BridgeMessage {
-    pub payload: Vec<u8>,
-    pub nonce: MessageNonce,
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct BridgeMessage<MaxPayload: Get<u32>> {
+    pub payload: BoundedVec<u8, MaxPayload>,
     pub timepoint: GenericTimepoint,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+/// Substrate bridge asset info
+pub struct SubAssetInfo {
+    /// Thischain asset info
+    pub asset_id: MainnetAssetId,
+    pub asset_kind: AssetKind,
+    pub precision: u8,
+}
+
+/// Wire-format for commitment
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxMessages, MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    /// Messages passed through the channel in the current commit.
+    pub messages: BoundedVec<BridgeMessage<MaxPayload>, MaxMessages>,
+    pub nonce: u64,
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPayload> {
+    pub fn hash(&self) -> H256 {
+        sp_runtime::traits::Keccak256::hash_of(self)
+    }
 }

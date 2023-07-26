@@ -1,5 +1,5 @@
 [package]
-name = "substrate-bridge-channel-rpc"
+name = "bridge-channel-rpc"
 version = "0.1.0"
 edition = "2018"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
@@ -21,5 +21,4 @@ sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 sp-offchain = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 anyhow = "1.0"
 
-substrate-bridge-channel = { path = "../" }
 bridge-types = { path = "../../types" }

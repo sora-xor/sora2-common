@@ -34,28 +34,33 @@ pub mod channel_abi;
 pub mod difficulty;
 pub mod ethashdata;
 pub mod ethashproof;
+pub mod evm;
 pub mod header;
 pub mod log;
 mod mpt;
 pub mod network_config;
 pub mod receipt;
 pub mod substrate;
-pub mod traits;
-pub mod types;
-
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
+pub mod traits;
+pub mod types;
 pub mod utils;
 
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
 use frame_support::RuntimeDebug;
+use sp_core::Get;
 use sp_std::vec;
 use sp_std::vec::Vec;
 
 pub use header::{Header, HeaderId};
 pub use log::Log;
 pub use receipt::Receipt;
+
+use derivative::Derivative;
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -93,6 +98,7 @@ pub type EVMChainId = U256;
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum SubNetworkId {
     Mainnet,
     Kusama,
@@ -113,10 +119,16 @@ pub enum SubNetworkId {
     codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericNetworkId {
-    #[cfg_attr(feature = "std", serde(with = "serde_u256"))]
+    // deserializes value either from hex or decimal
+    #[cfg_attr(
+        feature = "std",
+        serde(deserialize_with = "deserialize_u256", rename = "evm")
+    )]
     EVM(EVMChainId),
     Sub(SubNetworkId),
+    #[cfg_attr(feature = "std", serde(rename = "evmLegacy"))]
     EVMLegacy(u32),
 }
 
@@ -166,18 +178,12 @@ pub enum GenericAccount<AccountId> {
 }
 
 #[derive(
-    Encode,
-    Decode,
-    Copy,
-    Clone,
-    PartialEq,
-    Eq,
-    RuntimeDebug,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
+    Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericTimepoint {
+    #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(u64),
     Sora(u32),
     Parachain(u32),
@@ -191,7 +197,45 @@ impl Default for GenericTimepoint {
     }
 }
 
-pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"commitment";
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxMessages, MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    Sub(substrate::Commitment<MaxMessages, MaxPayload>),
+    #[cfg_attr(feature = "std", serde(rename = "evm"))]
+    EVM(evm::Commitment<MaxMessages, MaxPayload>),
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages, MaxPayload> {
+    pub fn hash(&self) -> H256 {
+        match self {
+            GenericCommitment::EVM(commitment) => commitment.hash(),
+            GenericCommitment::Sub(commitment) => commitment.hash(),
+        }
+    }
+
+    pub fn nonce(&self) -> u64 {
+        match self {
+            GenericCommitment::Sub(commitment) => commitment.nonce,
+            GenericCommitment::EVM(commitment) => commitment.nonce,
+        }
+    }
+}
+
+// Use predefined types to ensure data compatability
+
+pub type MainnetAssetId = H256;
+
+pub type MainnetAccountId = sp_runtime::AccountId32;
+
+pub type MainnetBalance = u128;
 
 pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
 where
@@ -204,31 +248,44 @@ where
     digest
 }
 
+/// Deserializes U256 from either hex or decimal string.
 #[cfg(feature = "std")]
-mod serde_u256 {
-    use serde::{Deserialize, Serialize};
-    use sp_core::U256;
-
-    pub fn deserialize<'de, D>(deserializer: D) -> core::result::Result<U256, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let network_id = String::deserialize(deserializer)?;
-        if network_id.starts_with("0x") {
-            let network_id =
-                U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
-            Ok(network_id)
-        } else {
-            let network_id =
-                U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
-            Ok(network_id)
-        }
+fn deserialize_u256<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let network_id = String::deserialize(deserializer)?;
+    if network_id.starts_with("0x") {
+        let network_id =
+            U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
+        Ok(network_id)
+    } else {
+        let network_id = U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
+        Ok(network_id)
     }
+}
 
-    pub fn serialize<S>(value: &U256, serializer: S) -> core::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        value.0.serialize(serializer)
-    }
+#[test]
+fn test_serde_generic_network_id() {
+    // MAX_CHAIN_ID from https://github.com/ethereum/EIPs/issues/2294
+    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
+    let json = serde_json::to_string(&expected).expect("must serialize");
+    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_generic_network_id_deserialization_hex() {
+    let json = String::from("{\"evm\":\"0x7fffffffffffffdb\"}");
+    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
+    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
+    assert_eq!(actual, expected);
+}
+
+#[test]
+fn test_generic_network_id_deserialization_dec() {
+    let json = String::from("{\"evm\":\"9223372036854775771\"}");
+    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
+    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
+    assert_eq!(actual, expected);
 }
