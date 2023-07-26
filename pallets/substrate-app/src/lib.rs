@@ -261,6 +261,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Internal calls to be used from Parachain side.
 
+        // TODO: make benchmarks
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -312,6 +313,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn finalize_asset_registration(
@@ -326,6 +328,7 @@ pub mod pallet {
 
         // Common exstrinsics
 
+        // TODO: make benchmarks
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
@@ -342,6 +345,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn register_thischain_asset(
@@ -382,6 +386,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn register_sidechain_asset(
@@ -416,6 +421,7 @@ pub mod pallet {
         }
 
         /// Limits amount of tokens to transfer with limit precision
+        // TODO: make benchmarks
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn set_transfer_limit(
@@ -427,6 +433,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn add_assetid_paraid(
@@ -446,6 +453,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn remove_assetid_paraid(
@@ -465,6 +473,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn update_transaction_status(
@@ -491,6 +500,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
         pub fn set_minimum_xcm_incoming_asset_count(
@@ -519,7 +529,7 @@ pub mod pallet {
                 &RawOrigin::Root,
                 &XCMAppCall::SetAssetMinAmount {
                     asset_id: T::AssetIdConverter::convert(asset_id.clone()),
-                    min_amount: minimal_xcm_amount,
+                    minimal_xcm_amount,
                 }
                 .prepare_message(),
                 (),
@@ -570,7 +580,7 @@ pub mod pallet {
                     asset_id: T::AssetIdConverter::convert(asset_id.clone()),
                     sidechain_asset,
                     asset_kind,
-                    min_amount: minimal_xcm_amount,
+                    minimal_xcm_amount,
                 }
                 .prepare_message(),
                 (),
