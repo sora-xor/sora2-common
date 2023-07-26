@@ -15,6 +15,7 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
   "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
+bridge-common = { path = "../bridge-common", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -33,6 +34,7 @@ hex-literal = { version = "0.3.1" }
 [features]
 default = ["std"]
 std = [
+  "bridge-common/std",
   "serde",
   "codec/std",
   "scale-info/std",
