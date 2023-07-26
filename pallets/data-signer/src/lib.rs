@@ -43,7 +43,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod weights;
+pub mod weights;
 
 pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 

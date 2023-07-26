@@ -58,7 +58,7 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-mod weights;
+pub mod weights;
 
 pub use pallet::*;
 
