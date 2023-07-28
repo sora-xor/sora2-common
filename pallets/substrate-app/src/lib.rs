@@ -261,6 +261,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Internal calls to be used from Parachain side.
 
+        // TODO: make benchmarks
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -312,6 +313,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
         pub fn finalize_asset_registration(
@@ -330,6 +332,7 @@ pub mod pallet {
 
         // Common exstrinsics
 
+        // TODO: make benchmarks
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
@@ -346,6 +349,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(allowed_parachains.len() as u32))]
         pub fn register_thischain_asset(
@@ -354,6 +358,7 @@ pub mod pallet {
             asset_id: AssetIdOf<T>,
             sidechain_asset: ParachainAssetId,
             allowed_parachains: Vec<u32>,
+            minimal_xcm_amount: BalanceOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -363,6 +368,15 @@ pub mod pallet {
 
             let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
+            let minimal_xcm_amount = T::BalancePrecisionConverter::to_sidechain(
+                &asset_id,
+                sidechain_precision,
+                minimal_xcm_amount,
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(minimal_xcm_amount > 0, Error::<T>::WrongAmount);
+
             Self::register_asset_inner(
                 network_id,
                 asset_id,
@@ -370,11 +384,13 @@ pub mod pallet {
                 AssetKind::Thischain,
                 sidechain_precision,
                 allowed_parachains,
+                minimal_xcm_amount,
             )?;
 
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(allowed_parachains.len() as u32))]
         pub fn register_sidechain_asset(
@@ -385,10 +401,16 @@ pub mod pallet {
             name: AssetNameOf<T>,
             decimals: u8,
             allowed_parachains: Vec<u32>,
+            minimal_xcm_amount: BalanceOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
 
             let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
+            let minimal_xcm_amount =
+                T::BalancePrecisionConverter::to_sidechain(&asset_id, decimals, minimal_xcm_amount)
+                    .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(minimal_xcm_amount > 0, Error::<T>::WrongAmount);
 
             Self::register_asset_inner(
                 network_id,
@@ -397,11 +419,13 @@ pub mod pallet {
                 AssetKind::Sidechain,
                 decimals,
                 allowed_parachains,
+                minimal_xcm_amount,
             )?;
             Ok(())
         }
 
         /// Limits amount of tokens to transfer with limit precision
+        // TODO: make benchmarks
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::set_transfer_limit())]
         pub fn set_transfer_limit(
@@ -413,6 +437,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::add_assetid_paraid())]
         pub fn add_assetid_paraid(
@@ -432,6 +457,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_assetid_paraid())]
         pub fn remove_assetid_paraid(
@@ -451,6 +477,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO: make benchmarks
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
@@ -476,6 +503,45 @@ pub mod pallet {
             );
             Ok(())
         }
+
+        // TODO: make benchmarks
+        #[pallet::call_index(9)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        pub fn set_minimum_xcm_incoming_asset_count(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            minimal_xcm_amount: BalanceOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let Some(sidechain_precision) = Self::sidechain_precision(network_id, &asset_id) else {
+                fail!(Error::<T>::UnknownPrecision);
+            };
+
+            let minimal_xcm_amount = T::BalancePrecisionConverter::to_sidechain(
+                &asset_id,
+                sidechain_precision,
+                minimal_xcm_amount,
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(minimal_xcm_amount > 0, Error::<T>::WrongAmount);
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &XCMAppCall::SetAssetMinAmount {
+                    asset_id: T::AssetIdConverter::convert(asset_id.clone()),
+                    minimal_xcm_amount,
+                }
+                .prepare_message(),
+                (),
+            )?;
+
+            ensure!(minimal_xcm_amount > 0, Error::<T>::WrongAmount);
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -486,6 +552,7 @@ pub mod pallet {
             asset_kind: AssetKind,
             sidechain_precision: u8,
             allowed_parachains: Vec<u32>,
+            minimal_xcm_amount: u128,
         ) -> DispatchResult {
             T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
             SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
@@ -517,6 +584,7 @@ pub mod pallet {
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset,
                     asset_kind,
+                    minimal_xcm_amount,
                 }
                 .prepare_message(),
                 (),

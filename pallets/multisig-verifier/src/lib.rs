@@ -58,6 +58,8 @@ mod tests;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
+pub mod weights;
+
 pub use pallet::*;
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
@@ -96,6 +98,8 @@ pub mod pallet {
 
         #[pallet::constant]
         type MaxPeers: Get<u32>;
+
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::pallet]
@@ -173,7 +177,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::initialize())]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -193,7 +197,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
             frame_support::log::info!("Call add_peer {:?} by {:?}", peer, output);
@@ -224,7 +228,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(2)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_peer())]
         pub fn remove_peer(
             origin: OriginFor<T>,
             peer: ecdsa::Public,
@@ -340,4 +344,12 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
     fn valid_proof() -> Option<Self::Proof> {
         None
     }
+}
+
+pub trait WeightInfo {
+    fn initialize() -> Weight;
+
+    fn add_peer() -> Weight;
+
+    fn remove_peer() -> Weight;
 }

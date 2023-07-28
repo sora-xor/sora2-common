@@ -97,6 +97,11 @@ pub enum XCMAppCall {
         asset_id: MainnetAssetId,
         sidechain_asset: ParachainAssetId,
         asset_kind: AssetKind,
+        minimal_xcm_amount: MainnetBalance,
+    },
+    SetAssetMinAmount {
+        asset_id: MainnetAssetId,
+        minimal_xcm_amount: MainnetBalance,
     },
 }
 

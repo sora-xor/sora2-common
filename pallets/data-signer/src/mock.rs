@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate as trusted_verifier;
+use crate as data_signer;
 use bridge_types::{traits::OutboundChannel, SubNetworkId};
 use frame_support::{parameter_types, traits::Everything};
 use frame_system as system;
@@ -36,6 +36,7 @@ use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
+    transaction_validity::TransactionPriority,
 };
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
@@ -49,14 +50,15 @@ frame_support::construct_runtime!(
         UncheckedExtrinsic = UncheckedExtrinsic,
     {
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        TrustedVerifier: trusted_verifier::{Pallet, Call, Storage, Event<T>},
+        DataSigner: data_signer::{Pallet, Call, Storage, Event<T>},
     }
 );
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const SS58Prefix: u8 = 42;
-    pub const SidechainRandomnessNetwork: SubNetworkId = SubNetworkId::Mainnet;
+    pub const TestUnsignedPriority: TransactionPriority = 100;
+    pub const TestUnsignedLongevity: u64 = 100;
     pub const BridgeMaxPeers: u32 = 50;
 }
 
@@ -89,10 +91,12 @@ impl system::Config for Test {
     type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
-impl trusted_verifier::Config for Test {
+impl data_signer::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type CallOrigin = TestCallOrigin;
     type OutboundChannel = TestOutboundChannel;
+    type CallOrigin = TestCallOrigin;
+    type UnsignedPriority = TestUnsignedPriority;
+    type UnsignedLongevity = TestUnsignedLongevity;
     type MaxPeers = BridgeMaxPeers;
     type WeightInfo = ();
 }
@@ -106,10 +110,6 @@ impl OutboundChannel<SubNetworkId, AccountId, ()> for TestOutboundChannel {
         _additional: (),
     ) -> Result<H256, sp_runtime::DispatchError> {
         Ok([1; 32].into())
-    }
-
-    fn submit_weight() -> frame_support::weights::Weight {
-        Default::default()
     }
 }
 
