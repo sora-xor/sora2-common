@@ -147,6 +147,7 @@ pub mod pallet {
         NoSuchPeer,
         InvalidNetworkId,
         CommitmentNotFoundInDigest,
+        DuplicatedPeer,
     }
 
     #[pallet::hooks]
@@ -272,11 +273,28 @@ pub mod pallet {
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
-            let signatures = signatures.into_iter()
-                .map(|x| x.0)
-                .collect::<BTreeSet<_>>();
-            
-            let len = signatures.len() as u32;
+            let mut unique_peers = BTreeSet::new();
+
+            // Insure that every sighnature exists in the storage
+            for sign in signatures {
+                let Ok(rec_sign) = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign.0, &hash.0) else {
+                    frame_support::log::error!("verify_signatures: cannot recover: {:?}", sign);
+                    fail!(Error::<T>::InvalidSignature)
+                };
+                let rec_sign = ecdsa::Public::from_raw(rec_sign);
+                if !unique_peers.insert(rec_sign) {
+                    fail!(Error::<T>::DuplicatedPeer);
+                }
+                ensure!(peers.contains(&rec_sign), {
+                    frame_support::log::error!(
+                        "verify_signatures: not trusted signatures: {:?}",
+                        sign
+                    );
+                    Error::<T>::NotTrustedPeerSignature
+                });
+            }
+
+            let len = unique_peers.len() as u32;
             let treshold = bridge_types::utils::threshold(peers.len() as u32);
             ensure!(len >= treshold, {
                 frame_support::log::error!(
@@ -286,22 +304,6 @@ pub mod pallet {
                 );
                 Error::<T>::InvalidNumberOfSignatures
             });
-
-            // Insure that every sighnature exists in the storage
-            for sign in signatures {
-                let Ok(rec_sign) = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign, &hash.0) else {
-                    frame_support::log::error!("verify_signatures: cannot recover: {:?}", sign);
-                    fail!(Error::<T>::InvalidSignature)
-                };
-                let rec_sign = ecdsa::Public::from_raw(rec_sign);
-                ensure!(peers.contains(&rec_sign), {
-                    frame_support::log::error!(
-                        "verify_signatures: not trusted signatures: {:?}",
-                        sign
-                    );
-                    Error::<T>::NotTrustedPeerSignature
-                });
-            }
 
             Self::deposit_event(Event::VerificationSuccessful(network_id));
 
