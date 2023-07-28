@@ -40,7 +40,7 @@ pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 macro_rules! log {
 	($level:tt, $patter:expr $(, $values:expr)* $(,)?) => {
 		frame_support::log::$level!(
-			target: crate::LOG_TARGET,
+			target: $crate::LOG_TARGET,
 			concat!("[{:?}] 💸 ", $patter), <frame_system::Pallet<T>>::block_number() $(, $values)*
 		)
 	};
@@ -218,7 +218,7 @@ pub mod pallet {
             data: H256,
             signature: ecdsa::Signature,
         ) -> DispatchResultWithPostInfo {
-            let _who = ensure_none(origin)?;
+            ensure_none(origin)?;
             let public = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&signature.0, &data.0)
                 .map_err(|_| Error::<T>::FailedToVerifySignature)?;
             let public = ecdsa::Public::from_raw(public);

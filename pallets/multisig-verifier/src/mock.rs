@@ -110,6 +110,10 @@ impl OutboundChannel<SubNetworkId, AccountId, ()> for TestOutboundChannel {
         ]
         .into())
     }
+
+    fn submit_weight() -> frame_support::weights::Weight {
+        Default::default()
+    }
 }
 
 pub struct TestCallOrigin;

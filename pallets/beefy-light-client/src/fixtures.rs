@@ -31,6 +31,7 @@
 
 use bridge_types::{H160, H256};
 use mmr_lib::MMRStore;
+#[cfg(feature = "std")]
 use rand::prelude::*;
 use sp_core::{DeriveJunction, Pair};
 use sp_runtime::traits::{Convert, Hash};
@@ -49,6 +50,7 @@ struct ValidatorSet {
 }
 
 impl ValidatorSet {
+    #[cfg(feature = "std")]
     fn generate(id: u64, count: usize) -> AnyResult<Self> {
         let (initial_pair, _phrase, _seed) = sp_core::ecdsa::Pair::generate_with_phrase(None);
         let mut validators = vec![];
@@ -73,6 +75,7 @@ impl ValidatorSet {
         })
     }
 
+    #[cfg(feature = "std")]
     fn sign_commitment<R: Rng>(
         &self,
         rng: &mut R,
@@ -288,6 +291,7 @@ pub struct Fixture {
     pub leaf: Vec<u8>,
 }
 
+#[cfg(feature = "std")]
 pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture> {
     let mut rng = thread_rng();
     let validator_set = ValidatorSet::generate(0, validators)?;

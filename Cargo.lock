@@ -3656,6 +3656,7 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "substrate-bridge-channel",
+ "xcm",
 ]
 
 [[package]]

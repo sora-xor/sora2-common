@@ -51,9 +51,11 @@ log = "0.4.14"
 default = ["std"]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
+	"bridge-types/runtime-benchmarks",
 	"log",
 	"anyhow",
 ]
+
 std = [
 	"codec/std",
 	"serde/std",

@@ -246,7 +246,7 @@ pub mod pallet {
             )?;
 
             T::OutboundChannel::submit(
-                output.network_id.into(),
+                output.network_id,
                 &frame_system::RawOrigin::Root,
                 &bridge_types::substrate::DataSignerCall::RemovePeer { peer }.prepare_message(),
                 (),
@@ -297,7 +297,7 @@ pub mod pallet {
             }
             Self::deposit_event(Event::VerificationSuccessful(network_id));
 
-            Ok(().into())
+            Ok(())
         }
     }
 }
@@ -330,5 +330,14 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         ensure!(count == 1, Error::<T>::CommitmentNotFoundInDigest);
 
         Ok(())
+    }
+
+    fn verify_weight(_proof: &Self::Proof) -> Weight {
+        Default::default()
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        None
     }
 }

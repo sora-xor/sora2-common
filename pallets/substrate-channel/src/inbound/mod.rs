@@ -36,6 +36,7 @@ use bridge_types::SubNetworkId;
 use frame_support::dispatch::DispatchResult;
 use frame_support::traits::Get;
 
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
 pub mod weights;
@@ -53,6 +54,7 @@ pub mod pallet {
     use frame_support::log::warn;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
+    use frame_support::weights::Weight;
     use frame_system::pallet_prelude::*;
     use sp_std::prelude::*;
 
@@ -125,10 +127,37 @@ pub mod pallet {
         CallEncodeFailed,
     }
 
+    impl<T: Config> Pallet<T> {
+        fn submit_weight(
+            commitment: &bridge_types::GenericCommitment<
+                T::MaxMessagesPerCommit,
+                T::MaxMessagePayloadSize,
+            >,
+            proof: &<T::Verifier as Verifier>::Proof,
+        ) -> Weight {
+            let commitment_weight = match commitment {
+                bridge_types::GenericCommitment::EVM(_) => {
+                    <T as frame_system::Config>::BlockWeights::get().max_block
+                }
+                bridge_types::GenericCommitment::Sub(commitment) => commitment
+                    .messages
+                    .iter()
+                    .map(|m| T::MessageDispatch::dispatch_weight(&m.payload))
+                    .fold(Weight::zero(), |acc, w| acc.saturating_add(w)),
+            };
+
+            let proof_weight = T::Verifier::verify_weight(proof);
+
+            <T as Config>::WeightInfo::submit()
+                .saturating_add(commitment_weight)
+                .saturating_add(proof_weight)
+        }
+    }
+
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(<T as Config>::WeightInfo::submit())]
+        #[pallet::weight(Pallet::<T>::submit_weight(commitment, proof))]
         pub fn submit(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -191,12 +220,10 @@ pub mod pallet {
                     return InvalidTransaction::BadProof.into();
                 }
                 let commitment_hash = commitment.hash();
-                T::Verifier::verify(network_id.clone().into(), commitment_hash, &proof).map_err(
-                    |e| {
-                        warn!("Bad submit proof received: {:?}", e);
-                        InvalidTransaction::BadProof
-                    },
-                )?;
+                T::Verifier::verify((*network_id).into(), commitment_hash, proof).map_err(|e| {
+                    warn!("Bad submit proof received: {:?}", e);
+                    InvalidTransaction::BadProof
+                })?;
                 ValidTransaction::with_tag_prefix("SubstrateBridgeChannelSubmit")
                     .priority(T::UnsignedPriority::get())
                     .longevity(T::UnsignedLongevity::get())
