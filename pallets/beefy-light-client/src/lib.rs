@@ -105,6 +105,7 @@ impl<T: Config, N: Get<SubNetworkId>> Randomness<sp_core::H256, T::BlockNumber>
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;

@@ -108,6 +108,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -506,7 +507,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(9)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn set_minimum_xcm_incoming_asset_count(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -538,8 +539,6 @@ pub mod pallet {
                 .prepare_message(),
                 (),
             )?;
-
-            ensure!(minimal_xcm_amount > 0, Error::<T>::WrongAmount);
             Ok(())
         }
     }

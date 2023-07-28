@@ -71,14 +71,14 @@ benchmarks! {
     register_thischain_asset {
         let a in 1..100;
         let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
-    }: _(RawOrigin::Root, BASE_NETWORK_ID, asset_id.clone(), [0u8; 32].into(), (0..a).collect::<Vec<_>>())
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, asset_id.clone(), [0u8; 32].into(), (0..a).collect::<Vec<_>>(), 1u32.into())
     verify {
         assert_eq!(SidechainPrecision::<T>::get(BASE_NETWORK_ID, asset_id).unwrap(), 18);
     }
 
     register_sidechain_asset {
         let a in 1..100;
-    }: _(RawOrigin::Root, BASE_NETWORK_ID, [0u8; 32].into(), Default::default(), Default::default(), 18, (0..a).collect::<Vec<_>>())
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, [0u8; 32].into(), Default::default(), Default::default(), 18, (0..a).collect::<Vec<_>>(), 1u32.into())
     verify {
         assert_eq!(SidechainPrecision::<T>::iter_prefix(BASE_NETWORK_ID).count(), 1);
     }
@@ -91,7 +91,7 @@ benchmarks! {
 
     add_assetid_paraid {
         let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
     }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id.clone())
     verify {
@@ -100,7 +100,7 @@ benchmarks! {
 
     remove_assetid_paraid {
         let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
         SubstrateApp::<T>::add_assetid_paraid(RawOrigin::Root.into(), BASE_NETWORK_ID, 1, asset_id.clone())?;
     }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id.clone())
@@ -116,7 +116,7 @@ benchmarks! {
     mint {
         let who = whitelisted_caller();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
         Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
         T::BridgeAssetLocker::lock_asset(BASE_NETWORK_ID.into(), AssetKind::Thischain, &who, &asset_id, &1000u32.into())?;
@@ -130,7 +130,7 @@ benchmarks! {
     burn {
         let who = whitelisted_caller();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
         Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
     }: _(RawOrigin::Signed(
@@ -146,7 +146,7 @@ benchmarks! {
 
     finalize_asset_registration {
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
     }: {
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
     }

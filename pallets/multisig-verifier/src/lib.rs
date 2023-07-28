@@ -59,6 +59,7 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
+use weights::WeightInfo;
 
 pub use pallet::*;
 
@@ -336,20 +337,12 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         Ok(())
     }
 
-    fn verify_weight(_proof: &Self::Proof) -> Weight {
-        Default::default()
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        <T as Config>::WeightInfo::verifier_verify(proof.proof.len() as u32)
     }
 
     #[cfg(feature = "runtime-benchmarks")]
     fn valid_proof() -> Option<Self::Proof> {
         None
     }
-}
-
-pub trait WeightInfo {
-    fn initialize() -> Weight;
-
-    fn add_peer() -> Weight;
-
-    fn remove_peer() -> Weight;
 }

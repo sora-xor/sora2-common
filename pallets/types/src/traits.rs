@@ -177,6 +177,7 @@ impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, Ass
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
     fn update_status(
         network_id: GenericNetworkId,

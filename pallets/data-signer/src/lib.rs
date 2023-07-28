@@ -31,7 +31,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use bridge_types::substrate::DataSignerCall;
-use frame_support::weights::Weight;
 pub use pallet::*;
 
 #[cfg(test)]
@@ -44,6 +43,7 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
+use weights::WeightInfo;
 
 pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 
@@ -226,7 +226,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::approve())]
         pub fn approve(
             origin: OriginFor<T>,
             network_id: GenericNetworkId,
@@ -408,16 +408,4 @@ pub mod pallet {
             }
         }
     }
-}
-
-pub trait WeightInfo {
-    fn register_network() -> Weight;
-
-    fn add_peer() -> Weight;
-
-    fn remove_peer() -> Weight;
-
-    fn finish_remove_peer() -> Weight;
-
-    fn finish_add_peer() -> Weight;
 }
