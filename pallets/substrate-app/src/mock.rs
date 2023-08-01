@@ -28,8 +28,11 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::substrate::ParachainAssetId;
+use bridge_types::substrate::PARENT_PARACHAIN_ASSET;
 use bridge_types::traits::BalancePrecisionConverter;
 use bridge_types::traits::BridgeAssetRegistry;
+use bridge_types::traits::OriginOutput;
 use bridge_types::traits::TimepointProvider;
 use bridge_types::GenericNetworkId;
 use codec::Decode;
@@ -46,6 +49,7 @@ use frame_support::Deserialize;
 use frame_support::RuntimeDebug;
 use frame_support::Serialize;
 use frame_system as system;
+use frame_system::Origin;
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
@@ -53,6 +57,10 @@ use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
 use sp_runtime::{AccountId32, MultiSignature};
 use traits::parameter_type_with_key;
+use xcm::v3::Junction::GeneralKey;
+use xcm::v3::Junction::Parachain;
+use xcm::v3::Junctions::X2;
+use xcm::v3::MultiLocation;
 
 use crate as substrate_app;
 
@@ -78,7 +86,7 @@ pub enum AssetId {
     XOR,
     ETH,
     DAI,
-    Custom,
+    Custom(u8),
 }
 
 pub type Balance = u128;
@@ -104,8 +112,6 @@ frame_support::construct_runtime!(
 pub type Signature = MultiSignature;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-pub const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -202,7 +208,7 @@ impl dispatch::Config for Test {
 
 parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 2048;
-    pub const MaxMessagesPerCommit: u32 = 3;
+    pub const MaxMessagesPerCommit: u32 = 5;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
@@ -248,10 +254,14 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 
     fn register_asset(
         _network_id: GenericNetworkId,
-        _name: Self::AssetName,
+        name: Self::AssetName,
         _symbol: Self::AssetSymbol,
     ) -> Result<AssetId, sp_runtime::DispatchError> {
-        Ok(AssetId::Custom)
+        match name.as_str() {
+            "XOR" => Ok(AssetId::XOR),
+            "KSM" => Ok(AssetId::Custom(1)),
+            _ => Ok(AssetId::Custom(0)),
+        }
     }
 
     fn manage_asset(
@@ -261,11 +271,23 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
         Ok(())
     }
 
-    fn get_raw_info(_asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
-        bridge_types::types::RawAssetInfo {
-            name: Default::default(),
-            symbol: Default::default(),
-            precision: 18,
+    fn get_raw_info(asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
+        match asset_id {
+            AssetId::XOR => bridge_types::types::RawAssetInfo {
+                name: "XOR".to_owned().into(),
+                symbol: "XOR".to_owned().into(),
+                precision: 18,
+            },
+            AssetId::Custom(1) => bridge_types::types::RawAssetInfo {
+                name: "KSM".to_owned().into(),
+                symbol: "KSM".to_owned().into(),
+                precision: 12,
+            },
+            _ => bridge_types::types::RawAssetInfo {
+                name: Default::default(),
+                symbol: Default::default(),
+                precision: 18,
+            },
         }
     }
 }
@@ -307,14 +329,20 @@ impl substrate_app::Config for Test {
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
 }
 
+pub const PARA_A: u32 = 2000;
+pub const PARA_B: u32 = 2001;
+pub const PARA_C: u32 = 2002;
+
 pub fn new_tester() -> sp_io::TestExternalities {
     let mut storage = system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();
 
-    let bob: AccountId = Keyring::Bob.into();
     pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bob, 1_000_000_000_000_000_000)],
+        balances: vec![
+            (Keyring::Bob.into(), 1_000_000_000_000_000_000),
+            (Keyring::Alice.into(), 1_000_000_000_000_000_000),
+        ],
     }
     .assimilate_storage(&mut storage)
     .unwrap();
@@ -325,13 +353,82 @@ pub fn new_tester() -> sp_io::TestExternalities {
     )
     .unwrap();
 
+    let mut ext: sp_io::TestExternalities = storage.into();
+    ext.execute_with(|| System::set_block_number(1));
+    let minimal_xcm_amount = 10;
+    let sidechain_asset = ParachainAssetId::Concrete(MultiLocation::new(
+        1,
+        X2(
+            Parachain(1),
+            GeneralKey {
+                length: 32,
+                data: [0u8; 32],
+            },
+        ),
+    ));
+    let allowed_parachains = vec![PARA_A, PARA_B, PARA_C];
+    ext.execute_with(|| {
+        // register assets
+        SubstrateApp::register_thischain_asset(
+            Origin::<Test>::Root.into(),
+            SubNetworkId::Kusama,
+            AssetId::XOR,
+            sidechain_asset,
+            allowed_parachains.clone(),
+            minimal_xcm_amount,
+        )
+        .expect("XOR registration failed");
+        SubstrateApp::register_sidechain_asset(
+            Origin::<Test>::Root.into(),
+            SubNetworkId::Kusama,
+            PARENT_PARACHAIN_ASSET,
+            "KSM".to_owned(),
+            "KSM".to_owned(),
+            12,
+            allowed_parachains.clone(),
+            minimal_xcm_amount,
+        )
+        .expect("KSM registration failed");
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+            SubNetworkId::Kusama,
+            H256([0; 32]),
+            bridge_types::GenericTimepoint::Unknown,
+            (),
+        ))
+        .into();
+        SubstrateApp::finalize_asset_registration(
+            origin_kusama.clone(),
+            AssetId::XOR,
+            AssetKind::Thischain,
+        )
+        .expect("XOR registration finalization failed");
+        let kusama_asset = substrate_app::RelaychainAsset::<Test>::get(SubNetworkId::Kusama);
+        SubstrateApp::finalize_asset_registration(
+            origin_kusama,
+            kusama_asset.unwrap(),
+            AssetKind::Sidechain,
+        )
+        .expect("KSM registration finalization failed");
+    });
+    ext
+}
+
+pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
+    let mut storage = system::GenesisConfig::default()
+        .build_storage::<Test>()
+        .unwrap();
+
+    pallet_balances::GenesisConfig::<Test> {
+        balances: vec![
+            (Keyring::Bob.into(), 1_000_000_000_000_000_000),
+            (Keyring::Alice.into(), 1_000_000_000_000_000_000),
+        ],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
     GenesisBuild::<Test>::assimilate_storage(
-        &substrate_app::GenesisConfig {
-            assets: vec![
-                (BASE_NETWORK_ID, AssetId::XOR, AssetKind::Thischain),
-                (BASE_NETWORK_ID, AssetId::DAI, AssetKind::Sidechain),
-            ],
-        },
+        &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
         &mut storage,
     )
     .unwrap();
