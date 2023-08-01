@@ -40,31 +40,31 @@ use bridge_common::{EXTRINSIC_FIXED_WEIGHT, FIXED_TIME};
 pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> crate::WeightInfo for WeightInfo<T> {
     fn register_network() -> Weight {
-        Weight::from_ref_time(22_000_000)
+        Weight::from_parts(22_000_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
 
     fn add_peer() -> Weight {
-		Weight::from_ref_time(22_000_000)
+		Weight::from_parts(22_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
     }
 
     fn remove_peer() -> Weight {
-		Weight::from_ref_time(22_000_000)
+		Weight::from_parts(22_000_000, 0)
 			.saturating_add(T::DbWeight::get().reads(1))
 			.saturating_add(T::DbWeight::get().writes(1))
     }
 
     fn finish_remove_peer() -> Weight {
-        Weight::from_ref_time(22_000_000)
+        Weight::from_parts(22_000_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }
 
     fn finish_add_peer() -> Weight {
-        Weight::from_ref_time(22_000_000)
+        Weight::from_parts(22_000_000, 0)
             .saturating_add(T::DbWeight::get().reads(1))
             .saturating_add(T::DbWeight::get().writes(1))
     }

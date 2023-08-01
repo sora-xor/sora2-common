@@ -67,7 +67,7 @@ impl<T: Config> From<DataSignerCall> for Call<T> {
     }
 }
 
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
     #![allow(missing_docs)]
 
@@ -91,7 +91,6 @@ pub mod pallet {
 
     /// BEEFY-MMR pallet.
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
     /// The module's configuration trait.

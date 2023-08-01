@@ -38,7 +38,7 @@ use derivative::Derivative;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
+use sp_consensus_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use sp_core::Get;
 use sp_runtime::traits::Hash;
 use sp_runtime::{Digest, DigestItem};

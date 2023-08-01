@@ -47,7 +47,8 @@ pub mod pallet {
     use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem, LeafExtraData};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
-    use sp_beefy::mmr::BeefyDataProvider;
+    use frame_system::pallet_prelude::*;
+    use sp_consensus_beefy::mmr::BeefyDataProvider;
     use sp_runtime::traits;
     use sp_runtime::traits::Hash;
     use sp_std::prelude::*;
@@ -59,7 +60,6 @@ pub mod pallet {
 
     /// BEEFY-MMR pallet.
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -89,7 +89,7 @@ pub mod pallet {
             + scale_info::TypeInfo
             + MaxEncodedLen;
 
-        type Randomness: Randomness<RandomnessOutputOf<Self>, Self::BlockNumber>;
+        type Randomness: Randomness<RandomnessOutputOf<Self>, BlockNumberFor<Self>>;
     }
 
     #[pallet::event]

@@ -79,12 +79,12 @@ pub trait WeightInfo {
 // For backwards compatibility and tests
 impl WeightInfo for () {
 	fn burn() -> Weight {
-		Weight::from_ref_time(71_837_000)
+		Weight::from_parts(71_837_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(8))
 			.saturating_add(RocksDbWeight::get().writes(6))
 	}
 	fn mint() -> Weight {
-		Weight::from_ref_time(30_615_000)
+		Weight::from_parts(30_615_000, 0)
 			.saturating_add(RocksDbWeight::get().reads(3))
 			.saturating_add(RocksDbWeight::get().writes(2))
 	}

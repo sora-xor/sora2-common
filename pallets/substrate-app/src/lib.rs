@@ -127,7 +127,7 @@ pub mod pallet {
         SubNetworkId, H256,
     };
     use frame_support::fail;
-    use frame_support::pallet_prelude::{OptionQuery, ValueQuery, *};
+    use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
 
@@ -149,7 +149,6 @@ pub mod pallet {
     >>::AssetSymbol;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -718,7 +717,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             for (network_id, asset_id, asset_kind) in &self.assets {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);

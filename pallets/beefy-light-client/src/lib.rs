@@ -88,10 +88,10 @@ fn recover_signature(sig: &[u8; 65], msg_hash: &H256) -> Option<EthAddress> {
 
 pub struct SidechainRandomness<T, N>(sp_std::marker::PhantomData<(T, N)>);
 
-impl<T: Config, N: Get<SubNetworkId>> Randomness<sp_core::H256, T::BlockNumber>
+impl<T: Config, N: Get<SubNetworkId>> Randomness<sp_core::H256, BlockNumberFor<T>>
     for SidechainRandomness<T, N>
 {
-    fn random(subject: &[u8]) -> (sp_core::H256, T::BlockNumber) {
+    fn random(subject: &[u8]) -> (sp_core::H256, BlockNumberFor<T>) {
         let (seed, block) = Self::random_seed();
         (
             sp_runtime::traits::Keccak256::hash_of(&(subject, seed)),
@@ -99,13 +99,13 @@ impl<T: Config, N: Get<SubNetworkId>> Randomness<sp_core::H256, T::BlockNumber>
         )
     }
 
-    fn random_seed() -> (sp_core::H256, T::BlockNumber) {
+    fn random_seed() -> (sp_core::H256, BlockNumberFor<T>) {
         let network_id = N::get();
         LatestRandomSeed::<T>::get(network_id)
     }
 }
 
-#[frame_support::pallet]
+#[frame_support::pallet(dev_mode)]
 pub mod pallet {
     use super::*;
     use bridge_types::SubNetworkId;
@@ -116,11 +116,10 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-        type Randomness: frame_support::traits::Randomness<Self::Hash, Self::BlockNumber>;
+        type Randomness: frame_support::traits::Randomness<Self::Hash, BlockNumberFor<Self>>;
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -136,13 +135,8 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn latest_random_seed)]
-    pub type LatestRandomSeed<T> = StorageMap<
-        _,
-        Twox64Concat,
-        SubNetworkId,
-        (H256, <T as frame_system::Config>::BlockNumber),
-        ValueQuery,
-    >;
+    pub type LatestRandomSeed<T> =
+        StorageMap<_, Twox64Concat, SubNetworkId, (H256, BlockNumberFor<T>), ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn current_validator_set)]
@@ -265,7 +259,7 @@ pub mod pallet {
             Self::verify_commitment(network_id, &commitment, &validator_proof, vset)?;
             let payload = commitment
                 .payload
-                .get_decoded::<H256>(&sp_beefy::known_payloads::MMR_ROOT_ID)
+                .get_decoded::<H256>(&sp_consensus_beefy::known_payloads::MMR_ROOT_ID)
                 .ok_or(Error::<T>::MMRPayloadNotFound)?;
             Self::verify_newest_mmr_leaf(&latest_mmr_leaf, &payload, &proof)?;
             Self::process_payload(network_id, payload, commitment.block_number.into())?;
@@ -290,22 +284,24 @@ pub mod pallet {
     }
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig {
+    pub struct GenesisConfig<T: Config> {
         /// Network id for current network
         pub network_id: SubNetworkId,
+        _phantom: core::marker::PhantomData<T>,
     }
 
     #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
+    impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 network_id: SubNetworkId::Mainnet,
+                _phantom: Default::default(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ThisNetworkId::<T>::put(self.network_id);
         }
@@ -598,7 +594,7 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResultWithPostInfo {
         let current_validator_set_len = vset.len;
         ensure!(
-            beefy_merkle_tree::verify_proof::<sp_runtime::traits::Keccak256, _, _>(
+            binary_merkle_tree::verify_proof::<sp_runtime::traits::Keccak256, _, _>(
                 &vset.root,
                 proof.iter().cloned(),
                 current_validator_set_len as usize,

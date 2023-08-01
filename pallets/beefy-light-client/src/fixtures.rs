@@ -104,7 +104,7 @@ impl ValidatorSet {
     }
 
     pub fn validator_pubkey_proof(&self, pos: usize) -> Vec<H256> {
-        let proof = beefy_merkle_tree::merkle_proof::<sp_runtime::traits::Keccak256, _, _>(
+        let proof = binary_merkle_tree::merkle_proof::<sp_runtime::traits::Keccak256, _, _>(
             self.addresses.clone(),
             pos,
         )
@@ -129,7 +129,7 @@ impl ValidatorSet {
     }
 
     pub fn root(&self) -> H256 {
-        let root = beefy_merkle_tree::merkle_root::<sp_runtime::traits::Keccak256, _>(
+        let root = binary_merkle_tree::merkle_root::<sp_runtime::traits::Keccak256, _>(
             self.addresses.clone(),
         );
         root
