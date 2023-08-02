@@ -159,6 +159,12 @@ fn it_works_delete_peer() {
             ().into()
         );
 
+        // check if already deleted
+        assert_noop!(
+            TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
+            Error::<Test>::NoSuchPeer
+        );
+
         assert!(
             !TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(
                 SubNetworkId::Mainnet,
@@ -177,36 +183,6 @@ fn it_fails_delete_peer_not_initialized() {
         assert_noop!(
             TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
             Error::<Test>::NetworkNotInitialized
-        );
-    });
-}
-
-#[test]
-fn it_fails_delete_peer_not_existing() {
-    new_test_ext().execute_with(|| {
-        let peers = test_peers();
-        assert_ok!(
-            TrustedVerifier::initialize(
-                RuntimeOrigin::root(),
-                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                peers.clone().try_into().unwrap(),
-            ),
-            ().into()
-        );
-
-        let key = peers.last().unwrap().clone();
-
-        assert_ok!(
-            TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
-            ().into()
-        );
-
-        assert!(
-            !TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(
-                SubNetworkId::Mainnet,
-            ))
-            .expect("it_works_add_peer: error reading pallet storage")
-            .contains(&key)
         );
     });
 }
