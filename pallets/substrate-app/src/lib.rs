@@ -285,6 +285,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::UnknownPrecision)?;
             let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
                 .ok_or(Error::<T>::WrongAmount)?;
+            ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
 
             T::BridgeAssetLocker::unlock_asset(
                 network_id.into(),
@@ -601,10 +602,10 @@ pub mod pallet {
                 ensure!(amount <= limit, Error::<T>::TransferLimitReached);
             }
 
-            Self::check_parachain_transfer_params(network_id, asset_id.clone(), recipient.clone())?;
-
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
+
+            Self::check_parachain_transfer_params(network_id, asset_id.clone(), recipient.clone())?;
 
             let precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::UnknownPrecision)?;

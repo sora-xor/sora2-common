@@ -366,7 +366,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
             },
         ),
     ));
-    let allowed_parachains = vec![PARA_A, PARA_B, PARA_C];
+    let allowed_parachains = vec![PARA_A, PARA_B];
     ext.execute_with(|| {
         // register assets
         SubstrateApp::register_thischain_asset(
