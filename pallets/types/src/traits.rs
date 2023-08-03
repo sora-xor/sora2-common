@@ -371,3 +371,42 @@ pub trait BridgeAssetLocker<AccountId> {
         amount: &Self::Balance,
     ) -> DispatchResult;
 }
+
+/// Temporary trait for Hashi bridge to handle asset lock and unlock
+pub trait BridgeAssetLockChecker<AssetId, Balance> {
+    /// Perform additional checks and operations before asset lock.
+    fn before_asset_lock(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        asset_id: &AssetId,
+        amount: &Balance,
+    ) -> DispatchResult;
+
+    /// Perform additional checks and operations before asset unlock.
+    fn before_asset_unlock(
+        network_id: GenericNetworkId,
+        asset_kind: AssetKind,
+        asset_id: &AssetId,
+        amount: &Balance,
+    ) -> DispatchResult;
+}
+
+impl<AssetId, Balance> BridgeAssetLockChecker<AssetId, Balance> for () {
+    fn before_asset_lock(
+        _network_id: GenericNetworkId,
+        _asset_kind: AssetKind,
+        _asset_id: &AssetId,
+        _amount: &Balance,
+    ) -> DispatchResult {
+        Ok(())
+    }
+
+    fn before_asset_unlock(
+        _network_id: GenericNetworkId,
+        _asset_kind: AssetKind,
+        _asset_id: &AssetId,
+        _amount: &Balance,
+    ) -> DispatchResult {
+        Ok(())
+    }
+}
