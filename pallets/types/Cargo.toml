@@ -1,11 +1,13 @@
 [package]
 name = "bridge-types"
 version = "0.1.0"
-authors = ["Snowfork <contact@snowfork.com>"]
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
 edition = "2021"
 
 [dependencies]
-enum-iterator = "0.6.0"
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
   "derive",
 ] }
@@ -20,7 +22,7 @@ ethereum-types = { version = "0.14.1", default-features = false, features = [
   "serialize",
 ] }
 hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
-hex-literal = { version = "0.3.1", default-features = false }
+hex-literal = { version = "0.4.1", default-features = false }
 libsecp256k1 = { version = "0.7", default-features = false }
 parity-bytes = { version = "0.1.2", default-features = false }
 rlp = { version = "0.5", default-features = false }
@@ -44,7 +46,7 @@ derivative = { version = "2.2.0", features = ["use_core"] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.19"
-rand = "0.7.3"
+rand = "0.8.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
@@ -69,7 +71,6 @@ std = [
   "sp-std/std",
   "sp-beefy/std",
   "xcm/std",
-  "traits/std",
 ]
 
 runtime-benchmarks = [

@@ -10,3 +10,5 @@ members = [
     "pallets/beefy-light-client/runtime-api",
     "pallets/beefy-light-client/rpc",
 ]
+
+resolver = "2"
