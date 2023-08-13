@@ -31,24 +31,31 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use crate::Pallet as BridgeDataSighner;
+use crate::Pallet as BridgeDataSigner;
 use bridge_types::GenericNetworkId;
+use core::fmt::Write;
 use frame_benchmarking::benchmarks;
 use frame_support::assert_ok;
+use frame_support::traits::EnsureOrigin;
 use frame_system::{self, RawOrigin};
-use sp_core::{bounded::BoundedVec, ecdsa, Get, Pair};
+use sp_core::bounded::BoundedBTreeMap;
+use sp_core::{bounded::BoundedVec, ecdsa, Get, H256};
+use sp_std::prelude::*;
 
 fn initial_peers<T: Config>(n: usize) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers> {
     let mut keys = Vec::new();
     for i in 0..n {
-        keys.push(
-            ecdsa::Pair::generate_with_phrase(Some(format!("key{}", i).as_str()))
-                .0
-                .into(),
-        );
+        let key = generate_key(i);
+        keys.push(key);
     }
 
     keys.try_into().unwrap()
+}
+
+fn generate_key(i: usize) -> ecdsa::Public {
+    let mut seed = sp_std::Writer::default();
+    core::write!(seed, "//TestPeer//p-{}", i).unwrap();
+    sp_io::crypto::ecdsa_generate(sp_core::crypto::key_types::DUMMY, Some(seed.into_inner()))
 }
 
 fn initialize_network<T: Config>(
@@ -56,7 +63,7 @@ fn initialize_network<T: Config>(
     n: usize,
 ) -> BoundedVec<ecdsa::Public, <T as Config>::MaxPeers> {
     let keys = initial_peers::<T>(n);
-    assert_ok!(BridgeDataSighner::<T>::register_network(
+    assert_ok!(BridgeDataSigner::<T>::register_network(
         RawOrigin::Root.into(),
         network_id,
         keys.clone()
@@ -82,7 +89,7 @@ benchmarks! {
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
         initialize_network::<T>(network_id, 3);
-        let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
+        let key = generate_key(3);
     }: _(RawOrigin::Root, network_id, key)
     verify {
         assert!(PendingPeerUpdate::<T>::get(network_id));
@@ -102,12 +109,14 @@ benchmarks! {
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
         let peers = initialize_network::<T>(network_id, 3);
-        let key = ecdsa::Pair::generate_with_phrase(Some("Alice")).0.into();
-        BridgeDataSighner::<T>::add_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error adding peer");
-    }: _(RawOrigin::Root, key)
+        let key = generate_key(3);
+        BridgeDataSigner::<T>::add_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error adding peer");
+    }: {
+        BridgeDataSigner::<T>::finish_add_peer(T::CallOrigin::try_successful_origin().unwrap(), key)?;
+    }
     verify {
         assert!(!PendingPeerUpdate::<T>::get(network_id));
-        assert!(BridgeDataSighner::<T>::peers(network_id).expect("add_peer: key found").contains(&key));
+        assert!(BridgeDataSigner::<T>::peers(network_id).expect("add_peer: key found").contains(&key));
     }
 
     finish_remove_peer {
@@ -115,12 +124,27 @@ benchmarks! {
 
         let peers = initialize_network::<T>(network_id, 3);
         let key = peers[0];
-        BridgeDataSighner::<T>::remove_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error removing peer");
-    }: _(RawOrigin::Root, key)
+        BridgeDataSigner::<T>::remove_peer(RawOrigin::Root.into(), network_id, key).expect("remove_peer: Error removing peer");
+    }: {
+        BridgeDataSigner::<T>::finish_remove_peer(T::CallOrigin::try_successful_origin().unwrap(), key)?;
+    }
     verify {
         assert!(!PendingPeerUpdate::<T>::get(network_id));
-        assert!(!BridgeDataSighner::<T>::peers(network_id).expect("remove_peer: No key found").contains(&key));
+        assert!(!BridgeDataSigner::<T>::peers(network_id).expect("remove_peer: No key found").contains(&key));
     }
 
-    impl_benchmark_test_suite!(BridgeDataSighner, crate::mock::new_test_ext(), mock::Test)
+    approve {
+        let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
+        let peers = initialize_network::<T>(network_id, 3);
+        let key = peers[0];
+        let data = [3u8; 32];
+        let signature = sp_io::crypto::ecdsa_sign_prehashed(sp_core::crypto::key_types::DUMMY, &key, &data).unwrap();
+        let mut expected = BoundedBTreeMap::<ecdsa::Public, ecdsa::Signature, T::MaxPeers>::new();
+        expected.try_insert(key, signature.clone()).unwrap();
+    }: _(RawOrigin::None, network_id, data.into(), signature)
+    verify {
+        assert_eq!(Approvals::<T>::get(network_id, H256::from(data)), expected);
+    }
+
+    impl_benchmark_test_suite!(BridgeDataSigner, crate::mock::new_test_ext(), mock::Test)
 }

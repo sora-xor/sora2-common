@@ -396,6 +396,7 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
+ "sp-keystore",
  "sp-runtime",
  "sp-std",
 ]
@@ -1986,6 +1987,7 @@ dependencies = [
  "sp-beefy",
  "sp-core",
  "sp-io",
+ "sp-keystore",
  "sp-runtime",
  "sp-std",
  "test-case",
@@ -3270,6 +3272,7 @@ dependencies = [
  "parity-scale-codec",
  "parking_lot",
  "schnorrkel",
+ "serde",
  "sp-core",
  "sp-externalities",
  "thiserror",

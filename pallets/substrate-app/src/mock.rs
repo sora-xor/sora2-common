@@ -196,14 +196,13 @@ parameter_types! {
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type NetworkId = SubNetworkId;
-    type Additional = ();
     type OriginOutput = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
     type Origin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
     type Call = RuntimeCall;
     type CallFilter = Everything;
+    type WeightInfo = ();
 }
 
 parameter_types! {
@@ -296,30 +295,35 @@ pub struct BalancePrecisionConverterImpl;
 
 impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionConverterImpl {
     fn to_sidechain(
-        _asset_id: &AssetId,
+        asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
     ) -> Option<Balance> {
-        Some(amount * 10)
+        if matches!(asset_id, AssetId::Custom) {
+            Some(amount)
+        } else {
+            Some(amount * 10)
+        }
     }
 
     fn from_sidechain(
-        _asset_id: &AssetId,
+        asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
     ) -> Option<Balance> {
-        Some(amount / 10)
+        if matches!(asset_id, AssetId::Custom) {
+            Some(amount)
+        } else {
+            Some(amount / 10)
+        }
     }
 }
 
 impl substrate_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type MessageStatusNotifier = ();
-    type CallOrigin = dispatch::EnsureAccount<
-        SubNetworkId,
-        (),
-        bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>,
-    >;
+    type CallOrigin =
+        dispatch::EnsureAccount<bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>>;
     type OutboundChannel = BridgeOutboundChannel;
     type AssetRegistry = AssetRegistryImpl;
     type WeightInfo = ();

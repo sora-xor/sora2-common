@@ -222,7 +222,7 @@ pub fn calc_difficulty(
 
     if let Some(bomb_delay) = bomb_delay {
         // Subtract 1 less since we're using the parent block
-        let fake_block_number = parent.number.saturating_sub(bomb_delay as u64 - 1);
+        let fake_block_number = parent.number.saturating_sub(bomb_delay - 1);
         let period_count = fake_block_number / EXP_DIFFICULTY_PERIOD;
 
         // If period_count < 2, exp is fractional and we can skip adding it
