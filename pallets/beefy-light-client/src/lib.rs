@@ -65,7 +65,7 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(test)]
 mod fixtures;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -105,6 +105,7 @@ impl<T: Config, N: Get<SubNetworkId>> Randomness<sp_core::H256, T::BlockNumber>
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -343,6 +344,15 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         ensure!(count == 1, Error::<T>::CommitmentNotFoundInDigest);
 
         Ok(())
+    }
+
+    fn verify_weight(_proof: &Self::Proof) -> Weight {
+        Default::default()
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        None
     }
 }
 

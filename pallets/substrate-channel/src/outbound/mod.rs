@@ -314,5 +314,9 @@ pub mod pallet {
             )
             .hash())
         }
+
+        fn submit_weight() -> Weight {
+            Default::default()
+        }
     }
 }
