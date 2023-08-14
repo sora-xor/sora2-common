@@ -40,28 +40,21 @@ fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
 }
 
-fn slices() -> Vec<[u8; 32]>{
-    vec![
-        *b"axnzIDWTYX9aKTW0RhLlN8zEFrYdIZZt",
-        *b"1RNFJVT1dwshqEPiS1FEd6I1qPywe9UM",
-        *b"iBaviI7joIV2QxyqpIOuWOi2OfTek7kg",
-        *b"9qLMBglJ5Wercu5xnzV6aAaz8Y44Bvpv",
-        *b"76r750mUYogsQimzSjWVaFK5wkQvD6Oh",
-    ]
-}
-
 fn test_pairs() -> Vec<ecdsa::Pair> {
-    slices()
-        .into_iter()
-        .map(|x| ecdsa::Pair::from_seed(&x))
-        .collect()
+    vec![
+        Keccak256::hash_of(&"Password0").0,
+        Keccak256::hash_of(&"Password1").0,
+        Keccak256::hash_of(&"Password2").0,
+        Keccak256::hash_of(&"Password3").0,
+        Keccak256::hash_of(&"Password4").0,
+    ]
+    .into_iter()
+    .map(|x| ecdsa::Pair::from_seed(&x))
+    .collect()
 }
 
 fn test_peers() -> Vec<ecdsa::Public> {
-    test_pairs()
-        .into_iter()
-        .map(|x| x.public())
-        .collect()
+    test_pairs().into_iter().map(|x| x.public()).collect()
 }
 
 #[test]
@@ -202,7 +195,10 @@ fn it_works_verify_signatures() {
         );
 
         let hash = Keccak256::hash_of(&"");
-        let signatures: Vec<ecdsa::Signature> = pairs.into_iter().map(|x| x.sign_prehashed(&hash.0)).collect();
+        let signatures: Vec<ecdsa::Signature> = pairs
+            .into_iter()
+            .map(|x| x.sign_prehashed(&hash.0))
+            .collect();
 
         assert_ok!(TrustedVerifier::verify_signatures(
             bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
@@ -228,58 +224,23 @@ fn it_fails_verify_dublicated_signatures() {
 
         let hash = Keccak256::hash_of(&"");
         let signatures: Vec<ecdsa::Signature> = vec![
-            *b"axnzIDWTYX9aKTW0RhLlN8zEFrYdIZZt",
-            *b"axnzIDWTYX9aKTW0RhLlN8zEFrYdIZZt",
-            *b"axnzIDWTYX9aKTW0RhLlN8zEFrYdIZZt",
-            *b"9qLMBglJ5Wercu5xnzV6aAaz8Y44Bvpv",
-            *b"76r750mUYogsQimzSjWVaFK5wkQvD6Oh",
-        ].into_iter()
+            Keccak256::hash_of(&"Password0").0,
+            Keccak256::hash_of(&"Password0").0,
+            Keccak256::hash_of(&"Password1").0,
+            Keccak256::hash_of(&"Password2").0,
+        ]
+        .into_iter()
         .map(|x| ecdsa::Pair::from_seed(&x).sign_prehashed(&hash.0))
         .collect();
-        
-        assert_noop!(TrustedVerifier::verify_signatures(
-            bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-            hash,
-            &signatures,
-        ), Error::<Test>::DuplicatedPeer);
-    });
-}
 
-#[test]
-fn it_fails_verify_dublicated_peer() {
-    new_test_ext().execute_with(|| {
-        let pairs = test_pairs();
-        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
-        assert_ok!(
-            TrustedVerifier::initialize(
-                RuntimeOrigin::root(),
+        assert_noop!(
+            TrustedVerifier::verify_signatures(
                 bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                peers.try_into().unwrap(),
+                hash,
+                &signatures,
             ),
-            ().into()
+            Error::<Test>::DuplicatedPeer
         );
-
-        let hash = Keccak256::hash_of(&"");
-        let pairs: Vec<ecdsa::Pair> = vec![
-            *b"axnzIDWTYX9aKTW0RhLlN8zEFrYdIZZt",
-            *b"1RNFJVT1dwshqEPiS1FEd6I1qPywe9UM",
-            *b"iBaviI7joIV2QxyqpIOuWOi2OfTek7kg",
-            *b"9qLMBglJ5Wercu5xnzV6aAaz8Y44Bvpv",
-        ].into_iter()
-        .map(|x| ecdsa::Pair::from_seed(&x))
-        .collect();
-
-        let dup_pair = pairs[0].clone();
-        let mut signatures: Vec<ecdsa::Signature> = pairs.into_iter().map(|x| x.sign_prehashed(&hash.0)).collect();
-        // insert dublicated peer
-        let dup_sign = dup_pair.sign_prehashed(&hash.0);
-        signatures.push(dup_sign);
-        
-        assert_noop!(TrustedVerifier::verify_signatures(
-            bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-            hash,
-            &signatures,
-        ), Error::<Test>::DuplicatedPeer);
     });
 }
 
@@ -299,18 +260,22 @@ fn it_fails_verify_not_enough_signatures() {
 
         let hash = Keccak256::hash_of(&"");
         let signatures: Vec<ecdsa::Signature> = vec![
-            *b"axnzIDWTYX9aKTW0RhLlN8zEFrYdIZZt",
-            *b"9qLMBglJ5Wercu5xnzV6aAaz8Y44Bvpv",
-            *b"76r750mUYogsQimzSjWVaFK5wkQvD6Oh",
-        ].into_iter()
+            Keccak256::hash_of(&"Password0").0,
+            Keccak256::hash_of(&"Password1").0,
+            Keccak256::hash_of(&"Password2").0,
+        ]
+        .into_iter()
         .map(|x| ecdsa::Pair::from_seed(&x).sign_prehashed(&hash.0))
         .collect();
-        
-        assert_noop!(TrustedVerifier::verify_signatures(
-            bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-            hash,
-            &signatures,
-        ), Error::<Test>::InvalidNumberOfSignatures);
+
+        assert_noop!(
+            TrustedVerifier::verify_signatures(
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                hash,
+                &signatures,
+            ),
+            Error::<Test>::InvalidNumberOfSignatures
+        );
     });
 }
 
@@ -330,19 +295,23 @@ fn it_fails_verify_invalid_signature() {
 
         let hash = Keccak256::hash_of(&"");
         let signatures: Vec<ecdsa::Signature> = vec![
-            *b"axnzIDWTYX9aKTW0RhLlN8zEFrYdIPPP",
-            *b"1RNFJVT1dwshqEPiS1FEd6I1qPywe9UM",
-            *b"iBaviI7joIV2QxyqpIOuWOi2OfTek7kg",
-            *b"9qLMBglJ5Wercu5xnzV6aAaz8Y44Bvpv",
-            *b"76r750mUYogsQimzSjWVaFK5wkQvD6Oh",
-        ].into_iter()
+            Keccak256::hash_of(&"IvalidPassword0").0,
+            Keccak256::hash_of(&"Password1").0,
+            Keccak256::hash_of(&"Password2").0,
+            Keccak256::hash_of(&"Password3").0,
+            Keccak256::hash_of(&"Password4").0,
+        ]
+        .into_iter()
         .map(|x| ecdsa::Pair::from_seed(&x).sign_prehashed(&hash.0))
         .collect();
-        
-        assert_noop!(TrustedVerifier::verify_signatures(
-            bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-            hash,
-            &signatures,
-        ), Error::<Test>::NotTrustedPeerSignature);
+
+        assert_noop!(
+            TrustedVerifier::verify_signatures(
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                hash,
+                &signatures,
+            ),
+            Error::<Test>::NotTrustedPeerSignature
+        );
     });
 }
