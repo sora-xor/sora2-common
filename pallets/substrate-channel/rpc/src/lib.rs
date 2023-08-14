@@ -69,7 +69,7 @@ where
         network_id: GenericNetworkId,
         batch_nonce: u64,
     ) -> Result<Option<OffchainData>> {
-        let key = bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
+        let key = bridge_types::utils::make_offchain_key(network_id, batch_nonce);
         Ok(self
             .storage
             .get(sp_offchain::STORAGE_PREFIX, &key)

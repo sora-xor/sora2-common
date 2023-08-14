@@ -96,10 +96,12 @@ pub type EVMChainId = U256;
     RuntimeDebug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    Default,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum SubNetworkId {
+    #[default]
     Mainnet,
     Kusama,
     Polkadot,
@@ -178,7 +180,16 @@ pub enum GenericAccount<AccountId> {
 }
 
 #[derive(
-    Encode, Decode, Copy, Clone, PartialEq, Eq, Debug, scale_info::TypeInfo, codec::MaxEncodedLen,
+    Encode,
+    Decode,
+    Copy,
+    Clone,
+    PartialEq,
+    Eq,
+    Debug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+    Default,
 )]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
@@ -188,13 +199,8 @@ pub enum GenericTimepoint {
     Sora(u32),
     Parachain(u32),
     Pending,
+    #[default]
     Unknown,
-}
-
-impl Default for GenericTimepoint {
-    fn default() -> Self {
-        GenericTimepoint::Unknown
-    }
 }
 
 #[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
@@ -255,9 +261,8 @@ where
     D: serde::Deserializer<'de>,
 {
     let network_id = String::deserialize(deserializer)?;
-    if network_id.starts_with("0x") {
-        let network_id =
-            U256::from_str_radix(&network_id[2..], 16).map_err(serde::de::Error::custom)?;
+    if let Some(network_id) = network_id.strip_prefix("0x") {
+        let network_id = U256::from_str_radix(network_id, 16).map_err(serde::de::Error::custom)?;
         Ok(network_id)
     } else {
         let network_id = U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;

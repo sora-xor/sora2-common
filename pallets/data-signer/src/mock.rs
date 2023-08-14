@@ -30,6 +30,7 @@
 
 use crate as data_signer;
 use bridge_types::{traits::OutboundChannel, SubNetworkId};
+use frame_support::weights::Weight;
 use frame_support::{parameter_types, traits::Everything};
 use frame_system as system;
 use sp_core::H256;
@@ -111,10 +112,20 @@ impl OutboundChannel<SubNetworkId, AccountId, ()> for TestOutboundChannel {
     ) -> Result<H256, sp_runtime::DispatchError> {
         Ok([1; 32].into())
     }
+
+    fn submit_weight() -> Weight {
+        Default::default()
+    }
+}
+
+impl Default for RuntimeOrigin {
+    fn default() -> Self {
+        RuntimeOrigin::root()
+    }
 }
 
 pub struct TestCallOrigin;
-impl<OuterOrigin> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallOrigin {
+impl<OuterOrigin: Default> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallOrigin {
     type Success = bridge_types::types::CallOriginOutput<SubNetworkId, H256, ()>;
 
     fn try_origin(_o: OuterOrigin) -> Result<Self::Success, OuterOrigin> {
@@ -128,14 +139,19 @@ impl<OuterOrigin> frame_support::traits::EnsureOrigin<OuterOrigin> for TestCallO
 
     #[cfg(feature = "runtime-benchmarks")]
     fn try_successful_origin() -> Result<OuterOrigin, ()> {
-        todo!()
+        Ok(Default::default())
     }
 }
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    system::GenesisConfig::default()
+    let mut ext: sp_io::TestExternalities = system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap()
-        .into()
+        .into();
+    ext.register_extension(sp_keystore::KeystoreExt(std::sync::Arc::new(
+        sp_keystore::testing::KeyStore::new(),
+    )));
+
+    ext
 }

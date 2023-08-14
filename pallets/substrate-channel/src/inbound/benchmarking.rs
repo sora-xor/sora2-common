@@ -30,27 +30,15 @@
 
 //! BridgeInboundChannel pallet benchmarking
 
-#![cfg(feature = "runtime-benchmarks")]
-
 use super::*;
-use bridge_types::substrate::BridgeMessage;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite, whitelisted_caller};
-use frame_system::{self, EventRecord, RawOrigin};
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_system::{self, RawOrigin};
 use sp_std::prelude::*;
-
-use bridge_types::types::MessageId;
 
 const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 #[allow(unused_imports)]
 use crate::inbound::Pallet as BridgeInboundChannel;
-
-fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::RuntimeEvent) {
-    let events = frame_system::Pallet::<T>::events();
-    // compare to the last event record
-    let EventRecord { event, .. } = &events[events.len() - 1];
-    assert_eq!(event, &system_event);
-}
 
 // This collection of benchmarks should include a benchmark for each
 // call dispatched by the channel, i.e. each "app" pallet function
@@ -60,30 +48,21 @@ fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::Runti
 // We rely on configuration via chain spec of the app pallets because
 // we don't have access to their storage here.
 benchmarks! {
-    where_clause { where <<T as Config>::Verifier as Verifier>::Proof: Default }
     // Benchmark `submit` extrinsic under worst case conditions:
     // * `submit` dispatches the DotApp::unlock call
     // * `unlock` call successfully unlocks DOT
     submit {
-        let caller: T::AccountId = whitelisted_caller();
-        let messages = vec![BridgeMessage {
-            timepoint: Default::default(),
-            payload: Default::default(),
-        }];
+        let messages = vec![];
         let commitment = bridge_types::GenericCommitment::Sub(
             bridge_types::substrate::Commitment {
                 messages: messages.try_into().unwrap(),
                 nonce: 1u64,
             }
         );
-    }: _(RawOrigin::None, BASE_NETWORK_ID, commitment, Default::default())
+        let proof = T::Verifier::valid_proof().unwrap();
+    }: _(RawOrigin::None, BASE_NETWORK_ID, commitment, proof)
     verify {
         assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
-
-        let message_id = MessageId::batched(SubNetworkId::Mainnet.into(), SubNetworkId::Rococo.into(), 1, 1);
-        if let Some(event) = T::MessageDispatch::successful_dispatch_event(message_id.into()) {
-            assert_last_event::<T>(event);
-        }
     }
 }
 

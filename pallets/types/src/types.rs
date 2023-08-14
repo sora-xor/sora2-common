@@ -286,9 +286,12 @@ pub struct CallOriginOutput<NetworkId, MessageId, Additional> {
     pub additional: Additional,
 }
 
-impl<NetworkId, Additional> crate::traits::OriginOutput<NetworkId, Additional>
+impl<NetworkId: Default, Additional: Default> crate::traits::BridgeOriginOutput
     for CallOriginOutput<NetworkId, H256, Additional>
 {
+    type NetworkId = NetworkId;
+    type Additional = Additional;
+
     fn new(
         network_id: NetworkId,
         message_id: H256,
@@ -301,6 +304,16 @@ impl<NetworkId, Additional> crate::traits::OriginOutput<NetworkId, Additional>
             timepoint,
             additional,
         }
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn try_successful_origin() -> Result<Self, ()> {
+        Ok(Self {
+            network_id: Default::default(),
+            message_id: Default::default(),
+            timepoint: Default::default(),
+            additional: Default::default(),
+        })
     }
 }
 
