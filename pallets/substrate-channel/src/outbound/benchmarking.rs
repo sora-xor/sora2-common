@@ -32,8 +32,11 @@
 use super::*;
 
 use bridge_types::substrate::BridgeMessage;
-use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use bridge_types::traits::OutboundChannel;
+use frame_benchmarking::benchmarks;
 use frame_support::traits::OnInitialize;
+use frame_system::EventRecord;
+use frame_system::RawOrigin;
 use sp_std::prelude::*;
 
 const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
@@ -41,7 +44,18 @@ const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BridgeOutboundChannel;
 
+fn assert_last_event<T: Config>(system_event: <T as frame_system::Config>::RuntimeEvent) {
+    let events = frame_system::Pallet::<T>::events();
+    // compare to the last event record
+    let EventRecord { event, .. } = &events[events.len() - 1];
+    assert_eq!(event, &system_event);
+}
+
 benchmarks! {
+    where_clause {
+        where crate::outbound::Event::<T>: Into<<T as frame_system::Config>::RuntimeEvent>
+    }
+
     // Benchmark `on_initialize` under worst case conditions, i.e. messages
     // in queue are committed.
     on_initialize {
@@ -92,10 +106,23 @@ benchmarks! {
         let block_number = Interval::<T>::get();
 
     }: { BridgeOutboundChannel::<T>::on_initialize(block_number.into()) }
-}
 
-impl_benchmark_test_suite!(
-    BridgeOutboundChannel,
-    crate::outbound::test::new_tester(),
-    crate::outbound::test::Test,
-);
+    submit {
+
+    }: {
+        BridgeOutboundChannel::<T>::submit(SubNetworkId::Rococo, &RawOrigin::Root, &[0u8; 128], ()).unwrap()
+    }
+    verify {
+        assert_last_event::<T>(crate::outbound::Event::<T>::MessageAccepted {
+            network_id: SubNetworkId::Rococo,
+            batch_nonce: 1,
+            message_nonce: 0
+        }.into());
+    }
+
+    impl_benchmark_test_suite!(
+        BridgeOutboundChannel,
+        crate::outbound::test::new_tester(),
+        crate::outbound::test::Test,
+    );
+}

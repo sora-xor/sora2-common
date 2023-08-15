@@ -203,7 +203,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
             .map(|message| {
                 Token::Tuple(vec![
                     Token::Address(message.target),
-                    Token::Uint(message.max_gas.into()),
+                    Token::Uint(message.max_gas),
                     Token::Bytes(message.payload.clone().into()),
                 ])
             })
@@ -215,7 +215,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
         ];
         // Structs are represented as tuples in ABI
         // https://docs.soliditylang.org/en/v0.8.15/abi-spec.html#mapping-solidity-to-abi-types
-        let input = ethabi::encode(&vec![Token::Tuple(commitment)]);
+        let input = ethabi::encode(&[Token::Tuple(commitment)]);
         sp_runtime::traits::Keccak256::hash(&input)
     }
 }

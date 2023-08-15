@@ -45,6 +45,7 @@ use crate::{
 use crate::{EVMChainId, GenericTimepoint};
 use codec::FullCodec;
 use ethereum_types::Address;
+use frame_support::weights::Weight;
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
     Parameter,
@@ -60,7 +61,16 @@ use sp_std::prelude::*;
 /// This trait should be implemented by runtime modules that wish to provide message verification functionality.
 pub trait Verifier {
     type Proof: FullCodec + TypeInfo + Clone + Debug + PartialEq;
+
+    /// Verify hashed message with given proof
     fn verify(network_id: GenericNetworkId, message: H256, proof: &Self::Proof) -> DispatchResult;
+
+    /// The weight of the message verification function
+    fn verify_weight(proof: &Self::Proof) -> Weight;
+
+    /// Valid proof for this Verifier, used for benchmarking
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof>;
 }
 
 /// Outbound submission for applications
@@ -71,6 +81,8 @@ pub trait OutboundChannel<NetworkId, AccountId, Additional> {
         payload: &[u8],
         additional: Additional,
     ) -> Result<H256, DispatchError>;
+
+    fn submit_weight() -> Weight;
 }
 
 /// Dispatch a message
@@ -82,6 +94,8 @@ pub trait MessageDispatch<T: Config, NetworkId, MessageId, Additional> {
         payload: &[u8],
         additional: Additional,
     );
+
+    fn dispatch_weight(payload: &[u8]) -> Weight;
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(id: MessageId) -> Option<<T as Config>::RuntimeEvent>;
@@ -163,6 +177,7 @@ impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, Ass
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
     fn update_status(
         network_id: GenericNetworkId,
@@ -273,23 +288,32 @@ impl EthereumGasPriceOracle for () {
         _network_id: EVMChainId,
         _header_hash: H256,
     ) -> Result<Option<U256>, DispatchError> {
-        return Ok(Some(U256::zero()));
+        Ok(Some(U256::zero()))
     }
 
     fn get_best_block_base_fee(_network_id: EVMChainId) -> Result<Option<U256>, DispatchError> {
-        return Ok(Some(U256::zero()));
+        Ok(Some(U256::zero()))
     }
 }
 
 /// Trait that every origin (like Ethereum origin or Parachain origin) should implement
-pub trait OriginOutput<NetworkId, Additional> {
+pub trait BridgeOriginOutput: Sized {
+    /// The Id of the network (i.e. Ethereum network id).
+    type NetworkId: Default;
+
+    /// The additional data for origin.
+    type Additional: Default;
+
     /// Construct new origin
     fn new(
-        network_id: NetworkId,
+        network_id: Self::NetworkId,
         message_id: H256,
         timepoint: GenericTimepoint,
-        additional: Additional,
+        additional: Self::Additional,
     ) -> Self;
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn try_successful_origin() -> Result<Self, ()>;
 }
 
 pub trait BridgeAssetRegistry<AccountId, AssetId> {

@@ -59,11 +59,7 @@ log = "0.4.14"
 default = ["std"]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
-	"rand",
-	"mmr-lib",
-	"log",
-	"anyhow",
-	"pallet-beefy-mmr"
+	"bridge-types/runtime-benchmarks",
 ]
 std = [
 	"codec/std",
@@ -79,5 +75,7 @@ std = [
 	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
+	"rand",
+	"anyhow",
 ]
 try-runtime = ["frame-support/try-runtime"]

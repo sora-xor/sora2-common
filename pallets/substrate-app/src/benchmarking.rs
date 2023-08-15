@@ -28,8 +28,131 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! ERC20App pallet benchmarking
+//! SubstrateApp pallet benchmarking
 
-// benchmarks! {
-//     impl_benchmark_test_suite!(Pallet, crate::mock::new_tester(), crate::mock::Test,);
-// }
+use super::*;
+use bridge_types::substrate::XCMAppTransferStatus;
+use bridge_types::substrate::PARENT_PARACHAIN_ASSET;
+use bridge_types::traits::BridgeAssetRegistry;
+use bridge_types::types::AssetKind;
+use bridge_types::GenericNetworkId;
+use bridge_types::SubNetworkId;
+use frame_benchmarking::benchmarks;
+use frame_benchmarking::whitelisted_caller;
+use frame_system::RawOrigin;
+use sp_std::prelude::*;
+use traits::MultiCurrency;
+
+const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
+
+#[allow(unused_imports)]
+use crate::Pallet as SubstrateApp;
+use currencies::Pallet as Currencies;
+
+// This collection of benchmarks should include a benchmark for each
+// call dispatched by the channel, i.e. each "app" pallet function
+// that can be invoked by MessageDispatch. The most expensive call
+// should be used in the `submit` benchmark.
+//
+// We rely on configuration via chain spec of the app pallets because
+// we don't have access to their storage here.
+benchmarks! {
+    where_clause {
+        where
+            AssetNameOf<T>: Default,
+            AssetSymbolOf<T>: Default,
+            T: currencies::Config,
+            Currencies<T>: MultiCurrency<T::AccountId, CurrencyId = AssetIdOf<T>>
+
+    }
+// Benchmark `submit` extrinsic under worst case conditions:
+// * `submit` dispatches the DotApp::unlock call
+// * `unlock` call successfully unlocks DOT
+    register_thischain_asset {
+        let a in 1..100;
+        let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, asset_id.clone(), [0u8; 32].into(), (0..a).collect::<Vec<_>>(), 1u32.into())
+    verify {
+        assert_eq!(SidechainPrecision::<T>::get(BASE_NETWORK_ID, asset_id).unwrap(), 18);
+    }
+
+    register_sidechain_asset {
+        let a in 1..100;
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, [0u8; 32].into(), Default::default(), Default::default(), 18, (0..a).collect::<Vec<_>>(), 1u32.into())
+    verify {
+        assert_eq!(SidechainPrecision::<T>::iter_prefix(BASE_NETWORK_ID).count(), 1);
+    }
+
+    set_transfer_limit {
+    }: _(RawOrigin::Root, Some(11u32.into()))
+    verify {
+        assert_eq!(BridgeTransferLimit::<T>::get(), Some(11u32.into()));
+    }
+
+    add_assetid_paraid {
+        let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id.clone())
+    verify {
+        assert_eq!(AllowedParachainAssets::<T>::get(BASE_NETWORK_ID, 1), vec![asset_id]);
+    }
+
+    remove_assetid_paraid {
+        let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        SubstrateApp::<T>::add_assetid_paraid(RawOrigin::Root.into(), BASE_NETWORK_ID, 1, asset_id.clone())?;
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id.clone())
+    verify {
+        assert_eq!(AllowedParachainAssets::<T>::get(BASE_NETWORK_ID, 1), vec![]);
+    }
+
+    update_transaction_status {
+    }: {
+        SubstrateApp::<T>::update_transaction_status(<T as Config>::CallOrigin::try_successful_origin().unwrap(), Default::default(), XCMAppTransferStatus::Success)?;
+    }
+
+    mint {
+        let who = whitelisted_caller();
+        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
+        T::BridgeAssetLocker::lock_asset(BASE_NETWORK_ID.into(), AssetKind::Thischain, &who, &asset_id, &1000u32.into())?;
+    }: {
+        SubstrateApp::<T>::mint(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), None, who.clone(), 1000)?;
+    }
+    verify {
+        assert_eq!(Currencies::<T>::free_balance(asset_id, &who), 1000u32.into());
+    }
+
+    burn {
+        let who = whitelisted_caller();
+        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
+    }: _(RawOrigin::Signed(
+            who.clone()),
+            BASE_NETWORK_ID,
+            asset_id.clone(),
+            ParachainAccountId::V3(xcm::v3::MultiLocation::parent().pushed_with_interior([0u8; 32]).unwrap()),
+            1000u32.into()
+        )
+    verify {
+        assert_eq!(Currencies::<T>::free_balance(asset_id, &who), 0u32.into());
+    }
+
+    finalize_asset_registration {
+        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+    }: {
+        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+    }
+    verify {
+        assert_eq!(AssetKinds::<T>::get(BASE_NETWORK_ID, asset_id), Some(AssetKind::Thischain));
+    }
+
+    impl_benchmark_test_suite!(SubstrateApp, crate::mock::new_tester(), crate::mock::Test,);
+}

@@ -166,6 +166,15 @@ impl Verifier for MockVerifier {
             Err(Error::<Test>::InvalidNetwork.into())
         }
     }
+
+    fn verify_weight(_proof: &Self::Proof) -> frame_support::weights::Weight {
+        Default::default()
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        Some(Default::default())
+    }
 }
 
 // Mock Dispatch
@@ -173,6 +182,10 @@ pub struct MockMessageDispatch;
 
 impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch {
     fn dispatch(_: SubNetworkId, _: MessageId, _: GenericTimepoint, _: &[u8], _: ()) {}
+
+    fn dispatch_weight(_: &[u8]) -> frame_support::weights::Weight {
+        Default::default()
+    }
 
     #[cfg(feature = "runtime-benchmarks")]
     fn successful_dispatch_event(

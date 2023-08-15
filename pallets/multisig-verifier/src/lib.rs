@@ -59,6 +59,7 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
+use weights::WeightInfo;
 
 pub use pallet::*;
 
@@ -250,7 +251,7 @@ pub mod pallet {
             )?;
 
             T::OutboundChannel::submit(
-                output.network_id.into(),
+                output.network_id,
                 &frame_system::RawOrigin::Root,
                 &bridge_types::substrate::DataSignerCall::RemovePeer { peer }.prepare_message(),
                 (),
@@ -301,7 +302,7 @@ pub mod pallet {
             }
             Self::deposit_event(Event::VerificationSuccessful(network_id));
 
-            Ok(().into())
+            Ok(())
         }
     }
 }
@@ -335,12 +336,13 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
 
         Ok(())
     }
-}
 
-pub trait WeightInfo {
-    fn initialize() -> Weight;
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        <T as Config>::WeightInfo::verifier_verify(proof.proof.len() as u32)
+    }
 
-    fn add_peer() -> Weight;
-
-    fn remove_peer() -> Weight;
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        None
+    }
 }

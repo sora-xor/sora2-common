@@ -108,6 +108,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -315,13 +316,17 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
         pub fn finalize_asset_registration(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             asset_kind: AssetKind,
         ) -> DispatchResult {
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+            ensure!(
+                SidechainPrecision::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenIsNotRegistered
+            );
             AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             Ok(())
         }
@@ -347,7 +352,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(allowed_parachains.len() as u32))]
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -388,7 +393,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(allowed_parachains.len() as u32))]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -423,7 +428,7 @@ pub mod pallet {
         /// Limits amount of tokens to transfer with limit precision
         // TODO: make benchmarks
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::set_transfer_limit())]
         pub fn set_transfer_limit(
             origin: OriginFor<T>,
             limit_count: Option<BalanceOf<T>>,
@@ -435,7 +440,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::add_assetid_paraid())]
         pub fn add_assetid_paraid(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -455,7 +460,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::remove_assetid_paraid())]
         pub fn remove_assetid_paraid(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -475,7 +480,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
             message_id: H256,
@@ -502,7 +507,7 @@ pub mod pallet {
 
         // TODO: make benchmarks
         #[pallet::call_index(9)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn set_minimum_xcm_incoming_asset_count(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -534,8 +539,6 @@ pub mod pallet {
                 .prepare_message(),
                 (),
             )?;
-
-            ensure!(minimal_xcm_amount > 0, Error::<T>::WrongAmount);
             Ok(())
         }
     }
@@ -577,7 +580,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &XCMAppCall::RegisterAsset {
-                    asset_id: T::AssetIdConverter::convert(asset_id.clone()),
+                    asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset,
                     asset_kind,
                     minimal_xcm_amount,
@@ -775,7 +778,7 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
         let GenericNetworkId::Sub(network_id) = network_id else {
             return vec![];
         };
-        let assets = AssetKinds::<T>::iter_prefix(network_id)
+        AssetKinds::<T>::iter_prefix(network_id)
             .map(|(asset_id, asset_kind)| {
                 let asset_id = T::AssetIdConverter::convert(asset_id);
                 BridgeAssetInfo::Sub(SubAssetInfo {
@@ -784,15 +787,14 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
                     precision: 18,
                 })
             })
-            .collect();
-        assets
+            .collect()
     }
 
     fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
         AssetKinds::<T>::iter_keys()
             .map(|(network_id, _asset_id)| BridgeAppInfo::Sub(network_id.into()))
             .fold(vec![], |mut acc, value| {
-                if acc.iter().find(|x| value == **x).is_none() {
+                if !acc.iter().any(|x| value == *x) {
                     acc.push(value);
                 }
                 acc
