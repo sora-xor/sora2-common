@@ -28,30 +28,33 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::{mock::*, Error, Proof};
-use bridge_types::{types::AuxiliaryDigest, SubNetworkId};
+use crate::{mock::*, Error};
+use bridge_types::SubNetworkId;
 
 use codec::Decode;
 use frame_support::{assert_noop, assert_ok};
-use sp_core::{ecdsa, ConstU32, Pair};
+use sp_core::{ecdsa, Pair};
 use sp_runtime::traits::{Hash, Keccak256};
 
 fn alice<T: crate::Config>() -> T::AccountId {
     T::AccountId::decode(&mut [0u8; 32].as_slice()).unwrap()
 }
 
-fn test_peers() -> Vec<ecdsa::Public> {
+fn test_pairs() -> Vec<ecdsa::Pair> {
     vec![
-        ecdsa::Pair::generate_with_phrase(Some("password")),
-        ecdsa::Pair::generate_with_phrase(Some("password1")),
-        ecdsa::Pair::generate_with_phrase(Some("password2")),
-        ecdsa::Pair::generate_with_phrase(Some("password3")),
-        ecdsa::Pair::generate_with_phrase(Some("password4")),
-        ecdsa::Pair::generate_with_phrase(Some("password5")),
+        Keccak256::hash_of(&"Password0").0,
+        Keccak256::hash_of(&"Password1").0,
+        Keccak256::hash_of(&"Password2").0,
+        Keccak256::hash_of(&"Password3").0,
+        Keccak256::hash_of(&"Password4").0,
     ]
     .into_iter()
-    .map(|(x, _, _)| x.public())
+    .map(|x| ecdsa::Pair::from_seed(&x))
     .collect()
+}
+
+fn test_peers() -> Vec<ecdsa::Public> {
+    test_pairs().into_iter().map(|x| x.public()).collect()
 }
 
 #[test]
@@ -149,6 +152,12 @@ fn it_works_delete_peer() {
             ().into()
         );
 
+        // check if already deleted
+        assert_noop!(
+            TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
+            Error::<Test>::NoSuchPeer
+        );
+
         assert!(
             !TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(
                 SubNetworkId::Mainnet,
@@ -172,39 +181,10 @@ fn it_fails_delete_peer_not_initialized() {
 }
 
 #[test]
-fn it_fails_delete_peer_not_existing() {
+fn it_works_verify_signatures() {
     new_test_ext().execute_with(|| {
-        let peers = test_peers();
-        assert_ok!(
-            TrustedVerifier::initialize(
-                RuntimeOrigin::root(),
-                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
-                peers.clone().try_into().unwrap(),
-            ),
-            ().into()
-        );
-
-        let key = peers.last().unwrap().clone();
-
-        assert_ok!(
-            TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
-            ().into()
-        );
-
-        assert!(
-            !TrustedVerifier::get_peer_keys(bridge_types::GenericNetworkId::Sub(
-                SubNetworkId::Mainnet,
-            ))
-            .expect("it_works_add_peer: error reading pallet storage")
-            .contains(&key)
-        );
-    });
-}
-
-#[test]
-fn it_works_verify() {
-    new_test_ext().execute_with(|| {
-        let peers = test_peers();
+        let pairs = test_pairs();
+        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
         assert_ok!(
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
@@ -213,22 +193,125 @@ fn it_works_verify() {
             ),
             ().into()
         );
-        let proof = Proof {
-            digest: AuxiliaryDigest { logs: Vec::new() },
-            proof: Vec::new(),
-        };
-        let mes = bridge_types::substrate::BridgeMessage::<ConstU32<64>> {
-            payload: Default::default(),
-            timepoint: Default::default(),
-        };
 
-        let messages = vec![mes];
-        let hash = Keccak256::hash_of(&messages);
-        // finish this test
-        let _ = <TrustedVerifier as bridge_types::traits::Verifier>::verify(
+        let hash = Keccak256::hash_of(&"");
+        let signatures: Vec<ecdsa::Signature> = pairs
+            .into_iter()
+            .map(|x| x.sign_prehashed(&hash.0))
+            .collect();
+
+        assert_ok!(TrustedVerifier::verify_signatures(
             bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
             hash,
-            &proof,
+            &signatures,
+        ));
+    });
+}
+
+#[test]
+fn it_fails_verify_dublicated_signatures() {
+    new_test_ext().execute_with(|| {
+        let pairs = test_pairs();
+        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                peers.try_into().unwrap(),
+            ),
+            ().into()
+        );
+
+        let hash = Keccak256::hash_of(&"");
+        let signatures: Vec<ecdsa::Signature> = vec![
+            Keccak256::hash_of(&"Password0").0,
+            Keccak256::hash_of(&"Password0").0,
+            Keccak256::hash_of(&"Password1").0,
+            Keccak256::hash_of(&"Password2").0,
+        ]
+        .into_iter()
+        .map(|x| ecdsa::Pair::from_seed(&x).sign_prehashed(&hash.0))
+        .collect();
+
+        assert_noop!(
+            TrustedVerifier::verify_signatures(
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                hash,
+                &signatures,
+            ),
+            Error::<Test>::DuplicatedPeer
+        );
+    });
+}
+
+#[test]
+fn it_fails_verify_not_enough_signatures() {
+    new_test_ext().execute_with(|| {
+        let pairs = test_pairs();
+        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                peers.try_into().unwrap(),
+            ),
+            ().into()
+        );
+
+        let hash = Keccak256::hash_of(&"");
+        let signatures: Vec<ecdsa::Signature> = vec![
+            Keccak256::hash_of(&"Password0").0,
+            Keccak256::hash_of(&"Password1").0,
+            Keccak256::hash_of(&"Password2").0,
+        ]
+        .into_iter()
+        .map(|x| ecdsa::Pair::from_seed(&x).sign_prehashed(&hash.0))
+        .collect();
+
+        assert_noop!(
+            TrustedVerifier::verify_signatures(
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                hash,
+                &signatures,
+            ),
+            Error::<Test>::InvalidNumberOfSignatures
+        );
+    });
+}
+
+#[test]
+fn it_fails_verify_invalid_signature() {
+    new_test_ext().execute_with(|| {
+        let pairs = test_pairs();
+        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                peers.try_into().unwrap(),
+            ),
+            ().into()
+        );
+
+        let hash = Keccak256::hash_of(&"");
+        let signatures: Vec<ecdsa::Signature> = vec![
+            Keccak256::hash_of(&"IvalidPassword0").0,
+            Keccak256::hash_of(&"Password1").0,
+            Keccak256::hash_of(&"Password2").0,
+            Keccak256::hash_of(&"Password3").0,
+            Keccak256::hash_of(&"Password4").0,
+        ]
+        .into_iter()
+        .map(|x| ecdsa::Pair::from_seed(&x).sign_prehashed(&hash.0))
+        .collect();
+
+        assert_noop!(
+            TrustedVerifier::verify_signatures(
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                hash,
+                &signatures,
+            ),
+            Error::<Test>::NotTrustedPeerSignature
         );
     });
 }
