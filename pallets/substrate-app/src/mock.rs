@@ -32,7 +32,7 @@ use bridge_types::substrate::ParachainAssetId;
 use bridge_types::substrate::PARENT_PARACHAIN_ASSET;
 use bridge_types::traits::BalancePrecisionConverter;
 use bridge_types::traits::BridgeAssetRegistry;
-use bridge_types::traits::OriginOutput;
+use bridge_types::traits::BridgeOriginOutput;
 use bridge_types::traits::TimepointProvider;
 use bridge_types::GenericNetworkId;
 use codec::Decode;
@@ -299,7 +299,7 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
         _sidechain_precision: u8,
         amount: Balance,
     ) -> Option<Balance> {
-        if matches!(asset_id, AssetId::Custom) {
+        if matches!(asset_id, AssetId::Custom(_)) {
             Some(amount)
         } else {
             Some(amount * 10)
@@ -311,7 +311,7 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
         _sidechain_precision: u8,
         amount: Balance,
     ) -> Option<Balance> {
-        if matches!(asset_id, AssetId::Custom) {
+        if matches!(asset_id, AssetId::Custom(_)) {
             Some(amount)
         } else {
             Some(amount / 10)
@@ -393,7 +393,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
             minimal_xcm_amount,
         )
         .expect("KSM registration failed");
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,

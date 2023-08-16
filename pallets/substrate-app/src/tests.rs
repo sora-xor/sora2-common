@@ -36,7 +36,7 @@ use crate::mock::{AssetId, SubstrateApp, Test};
 use crate::{Error, RelaychainAsset};
 use bridge_types::substrate::{ParachainAssetId, PARENT_PARACHAIN_ASSET};
 use bridge_types::test_utils::BridgeAssetLockerImpl;
-use bridge_types::traits::{BalancePrecisionConverter, OriginOutput};
+use bridge_types::traits::{BalancePrecisionConverter, BridgeOriginOutput};
 use bridge_types::types::AssetKind;
 use bridge_types::{
     substrate::{Junction, VersionedMultiLocation},
@@ -53,7 +53,7 @@ use xcm::v3::{Junction::Parachain, Junctions::X2, MultiLocation};
 #[test]
 fn it_works_mint() {
     new_tester().execute_with(|| {
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,
@@ -84,7 +84,7 @@ fn it_works_mint() {
 #[test]
 fn it_fails_mint_not_registered() {
     new_tester().execute_with(|| {
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,
@@ -106,7 +106,7 @@ fn it_fails_mint_not_registered() {
 #[test]
 fn it_fails_mint_no_precision() {
     new_tester().execute_with(|| {
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,
@@ -130,7 +130,7 @@ fn it_fails_mint_no_precision() {
 #[test]
 fn it_fails_mint_wrong_amount() {
     new_tester().execute_with(|| {
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,
@@ -185,7 +185,7 @@ fn it_works_burn() {
 
         // send relaychain asset (KSM)
         let relay_asset = RelaychainAsset::<Test>::get(network_id).unwrap();
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,
@@ -347,7 +347,7 @@ fn it_fails_burn_relaychain_asset_not_registered() {
                 },
             ),
         ));
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,
@@ -414,7 +414,7 @@ fn it_fails_not_relay_transferable_asset() {
             100,
         )
         .expect("DAI registration failed");
-        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(OriginOutput::new(
+        let origin_kusama: RuntimeOrigin = dispatch::RawOrigin::new(BridgeOriginOutput::new(
             SubNetworkId::Kusama,
             H256([0; 32]),
             bridge_types::GenericTimepoint::Unknown,
