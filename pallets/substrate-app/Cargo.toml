@@ -44,6 +44,7 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies" }
 hex-literal = { version = "0.3.1" }
 bridge-types = { path = "../types", features = ["test"] }
+xcm = { git = "https://github.com/paritytech/polkadot.git", branch = "release-v0.9.38", default-features = false }
 
 [features]
 default = ["std"]
