@@ -70,7 +70,7 @@ benchmarks_instance_pallet! {
     }: {
         crate::Pallet::<T, I>::dispatch(
             1.into(),
-            message_id.clone(),
+            message_id,
             Default::default(),
             // system.remark()
             &[0, 0, 0],
@@ -88,7 +88,7 @@ benchmarks_instance_pallet! {
     }: {
         crate::Pallet::<T, I>::dispatch(
             1.into(),
-            message_id.clone(),
+            message_id,
             Default::default(),
             &[],
             AdditionalEVMInboundData {
