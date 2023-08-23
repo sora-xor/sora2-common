@@ -59,8 +59,8 @@ benchmarks! {
     // Benchmark `on_initialize` under worst case conditions, i.e. messages
     // in queue are committed.
     on_initialize {
-        let m in 1 .. T::MaxMessagesPerCommit::get() as u32;
-        let p in 0 .. T::MaxMessagePayloadSize::get() as u32;
+        let m in 1 .. T::MaxMessagesPerCommit::get();
+        let p in 0 .. T::MaxMessagePayloadSize::get();
 
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
@@ -105,7 +105,7 @@ benchmarks! {
 
         let block_number = Interval::<T>::get();
 
-    }: { BridgeOutboundChannel::<T>::on_initialize(block_number.into()) }
+    }: { BridgeOutboundChannel::<T>::on_initialize(block_number) }
 
     submit {
 

@@ -103,7 +103,7 @@ benchmarks! {
         SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
         SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
         SubstrateApp::<T>::add_assetid_paraid(RawOrigin::Root.into(), BASE_NETWORK_ID, 1, asset_id.clone())?;
-    }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id.clone())
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id)
     verify {
         assert_eq!(AllowedParachainAssets::<T>::get(BASE_NETWORK_ID, 1), vec![]);
     }
