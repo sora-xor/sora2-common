@@ -1,11 +1,10 @@
 [package]
 name = "bridge-common"
-authors = ["Anonymous"]
-description = "FRAME pallet template for defining custom runtime logic."
+description = "Bridge Common Pallet"
 version = "0.1.0"
-license = "Unlicense"
-homepage = "https://substrate.io"
-repository = "https://github.com/paritytech/substrate/"
+license = "BSD-4-Clause"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+repository = "https://github.com/sora-xor/sora2-common"
 edition = "2021"
 
 [package.metadata.docs.rs]
@@ -42,7 +41,7 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 [dev-dependencies]
 # Substrate
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-hex-literal = "0.3.1"
+hex-literal = "0.4.1"
 serde_json = "1.0.73"
 
 [features]

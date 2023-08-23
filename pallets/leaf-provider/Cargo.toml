@@ -3,7 +3,7 @@ name = "leaf-provider"
 description = "Leaf provider"
 version = "0.1.1"
 edition = "2018"
-authors = ["Snowfork <contact@snowfork.com>"]
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 repository = "https://github.com/sora-xor/sora2-common"
 
 [package.metadata.docs.rs]
@@ -35,7 +35,7 @@ ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0
 
 [dev-dependencies]
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
-hex-literal = { version = "0.3.1" }
+hex-literal = { version = "0.4.1" }
 
 [features]
 default = ["std"]
