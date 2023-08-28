@@ -1,9 +1,11 @@
 [package]
 name = "multisig-verifier"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
-license = "BSD-4-Clause"
+description = "Multisig verifier for bridge messages"
 version = "0.1.0"
-repository = "https://github.com/sora-xor/sora2-common"
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
 edition = "2021"
 
 [package.metadata.docs.rs]
