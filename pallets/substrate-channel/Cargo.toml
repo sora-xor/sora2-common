@@ -1,10 +1,10 @@
 [package]
 name = "substrate-bridge-channel"
-description = "EVM Bridge Channel"
+description = "Substrate Bridge Channel"
 version = "0.1.1"
 edition = "2021"
-authors = ["Snowfork <contact@snowfork.com>"]
-repository = "https://github.com/Snowfork/snowbridge"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+repository = "https://github.com/sora-xor/sora2-common"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -15,7 +15,7 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = { version = "0.3.1", optional = true }
+hex-literal = { version = "0.4.1", optional = true }
 rlp = { version = "0.5", default-features = false, optional = true }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
@@ -26,7 +26,6 @@ sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
@@ -41,7 +40,6 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies" }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
-hex-literal = { version = "0.3.1" }
 rlp = { version = "0.5" }
 
 [features]
@@ -58,7 +56,6 @@ std = [
     "sp-io/std",
     "bridge-types/std",
     "ethabi/std",
-    "traits/std",
 ]
 runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",

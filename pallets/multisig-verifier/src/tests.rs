@@ -29,7 +29,11 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate::{mock::*, Error};
-use bridge_types::SubNetworkId;
+use bridge_types::{
+    traits::Verifier,
+    types::{AuxiliaryDigest, AuxiliaryDigestItem},
+    SubNetworkId,
+};
 
 use codec::Decode;
 use frame_support::{assert_noop, assert_ok};
@@ -41,7 +45,7 @@ fn alice<T: crate::Config>() -> T::AccountId {
 }
 
 fn test_pairs() -> Vec<ecdsa::Pair> {
-    vec![
+    [
         Keccak256::hash_of(&"Password0").0,
         Keccak256::hash_of(&"Password1").0,
         Keccak256::hash_of(&"Password2").0,
@@ -68,6 +72,20 @@ fn it_works_initialize_pallet() {
             ),
             ().into()
         )
+    });
+}
+
+#[test]
+fn it_fails_initialize_pallet_not_root() {
+    new_test_ext().execute_with(|| {
+        assert_noop!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::signed(1),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                test_peers().try_into().unwrap(),
+            ),
+            frame_support::error::BadOrigin
+        );
     });
 }
 
@@ -310,6 +328,47 @@ fn it_fails_verify_invalid_signature() {
                 bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
                 hash,
                 &signatures,
+            ),
+            Error::<Test>::NotTrustedPeerSignature
+        );
+    });
+}
+
+#[test]
+fn it_works_verify() {
+    new_test_ext().execute_with(|| {
+        let pairs = test_pairs();
+        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
+        assert_ok!(
+            TrustedVerifier::initialize(
+                RuntimeOrigin::root(),
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                peers.try_into().unwrap(),
+            ),
+            ().into()
+        );
+
+        let hash = Keccak256::hash_of(&"");
+        let signatures: Vec<ecdsa::Signature> = pairs
+            .into_iter()
+            .map(|x| x.sign_prehashed(&hash.0))
+            .collect();
+
+        let proof = crate::Proof {
+            digest: AuxiliaryDigest {
+                logs: vec![AuxiliaryDigestItem::Commitment(
+                    bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                    hash,
+                )],
+            },
+            proof: signatures,
+        };
+
+        assert_noop!(
+            TrustedVerifier::verify(
+                bridge_types::GenericNetworkId::Sub(SubNetworkId::Mainnet),
+                hash,
+                &proof,
             ),
             Error::<Test>::NotTrustedPeerSignature
         );

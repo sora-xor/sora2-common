@@ -185,7 +185,11 @@ pub fn convert_to_simplified_mmr_proof<T: Clone>(
                     merkle_proof.push(proof_item.clone());
                 }
             } else {
-                for proof_item in proof_items.iter().take(proof_items.len() - 1).skip(proof_item_position) {
+                for proof_item in proof_items
+                    .iter()
+                    .take(proof_items.len() - 1)
+                    .skip(proof_item_position)
+                {
                     merkle_proof.push(proof_item.clone());
                 }
                 optional_right_bagged_peak = Some(proof_items[proof_items.len() - 1].clone());
