@@ -64,8 +64,9 @@ use bridge_types::{MainnetAccountId, MainnetAssetId};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
+use frame_support::weights::Weight;
 use frame_system::ensure_signed;
-use sp_runtime::traits::{Convert, Zero};
+use sp_runtime::traits::{Convert, Get, Zero};
 use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
@@ -799,5 +800,17 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
                 }
                 acc
             })
+    }
+
+    fn is_asset_supported_weight() -> Weight {
+        T::DbWeight::get().reads(1)
+    }
+
+    fn refund_weight() -> Weight {
+        <T as Config>::WeightInfo::refund()
+    }
+
+    fn transfer_weight() -> Weight {
+        <T as Config>::WeightInfo::burn()
     }
 }

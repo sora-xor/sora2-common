@@ -154,5 +154,19 @@ benchmarks! {
         assert_eq!(AssetKinds::<T>::get(BASE_NETWORK_ID, asset_id), Some(AssetKind::Thischain));
     }
 
+    refund {
+        let who = whitelisted_caller();
+        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
+        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
+        T::BridgeAssetLocker::lock_asset(BASE_NETWORK_ID.into(), AssetKind::Thischain, &who, &asset_id, &1000u32.into())?;
+    }: {
+        SubstrateApp::<T>::refund(BASE_NETWORK_ID.into(), Default::default(), who.clone(), asset_id.clone(), 1000u32.into())?;
+    }
+    verify {
+        assert_eq!(Currencies::<T>::free_balance(asset_id, &who), 1000u32.into());
+    }
+
     impl_benchmark_test_suite!(SubstrateApp, crate::mock::new_tester(), crate::mock::Test,);
 }

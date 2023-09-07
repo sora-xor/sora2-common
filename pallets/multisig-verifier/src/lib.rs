@@ -59,7 +59,7 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
-use weights::WeightInfo;
+pub use weights::WeightInfo;
 
 pub use pallet::*;
 

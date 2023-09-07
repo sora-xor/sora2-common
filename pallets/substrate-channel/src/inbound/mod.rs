@@ -215,8 +215,8 @@ pub mod pallet {
             } = call
             {
                 let nonce = ChannelNonces::<T>::get(network_id);
-                // If messages array is empty or messages already submitted
-                if commitment.nonce() <= nonce {
+                // If messages batch already submitted
+                if commitment.nonce() == nonce + 1 {
                     return InvalidTransaction::BadProof.into();
                 }
                 let commitment_hash = commitment.hash();
