@@ -32,15 +32,18 @@ use super::*;
 use bridge_types::substrate::BridgeMessage;
 use codec::{Decode, Encode, MaxEncodedLen};
 
-use frame_support::traits::Everything;
+use frame_support::traits::{Everything, UnfilteredDispatchable};
 use frame_support::{
-    assert_noop, assert_ok, parameter_types, Deserialize, RuntimeDebug, Serialize,
+    assert_err, assert_noop, assert_ok, parameter_types, Deserialize, RuntimeDebug, Serialize,
 };
 use scale_info::TypeInfo;
 use sp_core::{ConstU64, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
-use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, ValidateUnsigned, Verify};
+use sp_runtime::transaction_validity::{
+    InvalidTransaction, TransactionSource, TransactionValidityError,
+};
 use sp_runtime::MultiSignature;
 use sp_std::convert::From;
 
@@ -256,12 +259,19 @@ fn test_submit() {
                 nonce: 1,
                 messages: vec![message_1].try_into().unwrap(),
             });
-        assert_ok!(BridgeInboundChannel::submit(
-            origin.clone(),
-            BASE_NETWORK_ID,
-            commitment,
-            Default::default(),
+
+        let call = Call::<Test>::submit {
+            network_id: BASE_NETWORK_ID,
+            commitment: commitment.clone(),
+            proof: vec![],
+        };
+
+        assert_ok!(Pallet::<Test>::validate_unsigned(
+            TransactionSource::External,
+            &call
         ));
+        assert_ok!(call.clone().dispatch_bypass_filter(origin.clone()));
+
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
@@ -275,12 +285,19 @@ fn test_submit() {
                 nonce: 2,
                 messages: vec![message_2].try_into().unwrap(),
             });
-        assert_ok!(BridgeInboundChannel::submit(
-            origin,
-            BASE_NETWORK_ID,
-            commitment,
-            Vec::new(),
+
+        let call = Call::<Test>::submit {
+            network_id: BASE_NETWORK_ID,
+            commitment: commitment.clone(),
+            proof: vec![],
+        };
+
+        assert_ok!(Pallet::<Test>::validate_unsigned(
+            TransactionSource::External,
+            &call
         ));
+        assert_ok!(call.clone().dispatch_bypass_filter(origin.clone()));
+
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
     });
@@ -301,18 +318,29 @@ fn test_submit_with_invalid_nonce() {
                 nonce: 1,
                 messages: vec![message].try_into().unwrap(),
             });
-        assert_ok!(BridgeInboundChannel::submit(
-            origin.clone(),
-            BASE_NETWORK_ID,
-            commitment.clone(),
-            Vec::new(),
+
+        let call = Call::<Test>::submit {
+            network_id: BASE_NETWORK_ID,
+            commitment: commitment.clone(),
+            proof: vec![],
+        };
+
+        assert_ok!(Pallet::<Test>::validate_unsigned(
+            TransactionSource::External,
+            &call
         ));
+        assert_ok!(call.clone().dispatch_bypass_filter(origin.clone()));
+
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
 
         // Submit the same again
+        assert_err!(
+            Pallet::<Test>::validate_unsigned(TransactionSource::External, &call),
+            TransactionValidityError::Invalid(InvalidTransaction::BadProof)
+        );
         assert_noop!(
-            BridgeInboundChannel::submit(origin, BASE_NETWORK_ID, commitment, Vec::new()),
+            call.clone().dispatch_bypass_filter(origin.clone()),
             Error::<Test>::InvalidNonce
         );
     });
@@ -333,8 +361,19 @@ fn test_submit_with_invalid_network_id() {
                 nonce: 1,
                 messages: vec![message].try_into().unwrap(),
             });
+
+        let call = Call::<Test>::submit {
+            network_id: SubNetworkId::Kusama,
+            commitment: commitment.clone(),
+            proof: vec![],
+        };
+
+        assert_err!(
+            Pallet::<Test>::validate_unsigned(TransactionSource::External, &call),
+            TransactionValidityError::Invalid(InvalidTransaction::BadProof)
+        );
         assert_noop!(
-            BridgeInboundChannel::submit(origin, SubNetworkId::Kusama, commitment, Vec::new()),
+            call.clone().dispatch_bypass_filter(origin.clone()),
             Error::<Test>::InvalidNetwork
         );
     });
