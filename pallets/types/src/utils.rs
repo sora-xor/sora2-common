@@ -35,6 +35,7 @@ use sp_std::prelude::*;
 
 pub const CHANNEL_INDEXING_PREFIX: &[u8] = b"bridge-commitment";
 
+// https://github.com/paritytech/substrate/blob/25993e877897bdd97b8dcdea6eb123c0ba78baa4/client/consensus/beefy/src/round.rs#L54
 pub fn threshold(peers: u32) -> u32 {
     let faulty = peers.saturating_sub(1) / 3;
     peers - faulty

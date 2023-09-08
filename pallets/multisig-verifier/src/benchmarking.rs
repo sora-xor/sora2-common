@@ -80,7 +80,7 @@ benchmarks! {
         let a = <T as Config>::MaxPeers::get();
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
         let keys = initial_keys::<T>(a as usize);
-    }: _(RawOrigin::Root, network_id, keys.into())
+    }: _(RawOrigin::Root, network_id, keys)
     verify {
         assert_last_event::<T>(Event::NetworkInitialized(network_id).into())
     }
@@ -89,7 +89,7 @@ benchmarks! {
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
         initialize_network::<T>(network_id, 3);
-        let key = generate_key(3).into();
+        let key = generate_key(3);
     }: {
         MultisigVerifier::<T>::add_peer(T::CallOrigin::try_successful_origin().unwrap(), key)?;
     }
@@ -101,7 +101,7 @@ benchmarks! {
         let network_id = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 
         initialize_network::<T>(network_id, 3);
-        let key = generate_key(2).into();
+        let key = generate_key(2);
     }: {
         MultisigVerifier::<T>::remove_peer(T::CallOrigin::try_successful_origin().unwrap(), key)?;
     }
@@ -122,7 +122,7 @@ benchmarks! {
         };
         let digest_hash = Keccak256::hash_of(&digest);
         let signatures = peers.iter().map(|k| {
-            sp_io::crypto::ecdsa_sign_prehashed(sp_core::crypto::key_types::DUMMY, &k, &digest_hash.0).unwrap()
+            sp_io::crypto::ecdsa_sign_prehashed(sp_core::crypto::key_types::DUMMY, k, &digest_hash.0).unwrap()
         }).collect::<Vec<_>>();
         let key = peers[0];
     }: {

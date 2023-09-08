@@ -1,11 +1,11 @@
 [package]
 name = "multisig-verifier"
-authors = ["Anonymous"]
-description = ""
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+description = "Multisig verifier for bridge messages"
 version = "0.1.0"
-license = "Unlicense"
-homepage = "https://substrate.io"
-repository = "https://github.com/paritytech/substrate/"
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
 edition = "2021"
 
 [package.metadata.docs.rs]
@@ -33,15 +33,14 @@ sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkado
 sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
-sp-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 [dev-dependencies]
 # Substrate
 sp-keystore = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 
 serde_json = "1.0.73"
-hex-literal = "0.3.1"
-test-case = "2.2.2"
+hex-literal = "0.4.1"
+test-case = "3.1.0"
 anyhow = "1.0"
 log = "0.4.14"
 
@@ -60,6 +59,7 @@ std = [
 	"sp-core/std",
 	"sp-io/std",
 	"sp-std/std",
+	"sp-runtime/std",
 	"scale-info/std",
 	"frame-benchmarking/std",
 	"frame-support/std",

@@ -181,12 +181,16 @@ pub fn convert_to_simplified_mmr_proof<T: Clone>(
         if (i == 0 || leaf_pos > peaks[i - 1]) && leaf_pos <= peaks[i] {
             merkle_root_peak_position = i;
             if i == peaks.len() - 1 {
-                for i in proof_item_position..proof_items.len() {
-                    merkle_proof.push(proof_items[i].clone());
+                for proof_item in proof_items.iter().skip(proof_item_position) {
+                    merkle_proof.push(proof_item.clone());
                 }
             } else {
-                for i in proof_item_position..proof_items.len() - 1 {
-                    merkle_proof.push(proof_items[i].clone());
+                for proof_item in proof_items
+                    .iter()
+                    .take(proof_items.len() - 1)
+                    .skip(proof_item_position)
+                {
+                    merkle_proof.push(proof_item.clone());
                 }
                 optional_right_bagged_peak = Some(proof_items[proof_items.len() - 1].clone());
                 break;

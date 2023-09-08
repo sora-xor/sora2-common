@@ -330,6 +330,7 @@ pub trait BridgeOriginOutput: Sized {
         additional: Self::Additional,
     ) -> Self;
 
+    #[allow(clippy::result_unit_err)]
     #[cfg(feature = "runtime-benchmarks")]
     fn try_successful_origin() -> Result<Self, ()>;
 }
