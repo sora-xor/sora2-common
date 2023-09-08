@@ -40,6 +40,7 @@ mod mock;
 mod benchmarking;
 
 pub mod weights;
+pub use weights::WeightInfo;
 
 use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
 use frame_support::traits::{Contains, EnsureOrigin};

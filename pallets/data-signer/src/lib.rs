@@ -43,7 +43,7 @@ mod tests;
 mod benchmarking;
 
 pub mod weights;
-use weights::WeightInfo;
+pub use weights::WeightInfo;
 
 pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 

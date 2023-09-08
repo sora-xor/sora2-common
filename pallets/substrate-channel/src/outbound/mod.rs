@@ -316,7 +316,7 @@ pub mod pallet {
         }
 
         fn submit_weight() -> Weight {
-            Default::default()
+            <T as Config>::WeightInfo::submit()
         }
     }
 }

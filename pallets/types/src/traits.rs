@@ -139,6 +139,12 @@ pub trait BridgeApp<AccountId, Recipient, AssetId, Balance> {
     fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo>;
 
     fn list_apps() -> Vec<BridgeAppInfo>;
+
+    fn transfer_weight() -> Weight;
+
+    fn refund_weight() -> Weight;
+
+    fn is_asset_supported_weight() -> Weight;
 }
 
 impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, AssetId, Balance>
@@ -174,6 +180,18 @@ impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, Ass
 
     fn list_apps() -> Vec<BridgeAppInfo> {
         vec![]
+    }
+
+    fn is_asset_supported_weight() -> Weight {
+        Default::default()
+    }
+
+    fn transfer_weight() -> Weight {
+        Default::default()
+    }
+
+    fn refund_weight() -> Weight {
+        Default::default()
     }
 }
 
