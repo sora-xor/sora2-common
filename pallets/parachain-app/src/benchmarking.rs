@@ -28,7 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! SubstrateApp pallet benchmarking
+//! ParachainApp pallet benchmarking
 
 use super::*;
 use bridge_types::substrate::XCMAppTransferStatus;
@@ -46,7 +46,7 @@ use traits::MultiCurrency;
 const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 #[allow(unused_imports)]
-use crate::Pallet as SubstrateApp;
+use crate::Pallet as ParachainApp;
 use currencies::Pallet as Currencies;
 
 // This collection of benchmarks should include a benchmark for each
@@ -91,8 +91,8 @@ benchmarks! {
 
     add_assetid_paraid {
         let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
-        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        ParachainApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
     }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id.clone())
     verify {
         assert_eq!(AllowedParachainAssets::<T>::get(BASE_NETWORK_ID, 1), vec![asset_id]);
@@ -100,9 +100,9 @@ benchmarks! {
 
     remove_assetid_paraid {
         let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
-        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
-        SubstrateApp::<T>::add_assetid_paraid(RawOrigin::Root.into(), BASE_NETWORK_ID, 1, asset_id.clone())?;
+        ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        ParachainApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        ParachainApp::<T>::add_assetid_paraid(RawOrigin::Root.into(), BASE_NETWORK_ID, 1, asset_id.clone())?;
     }: _(RawOrigin::Root, BASE_NETWORK_ID, 1, asset_id)
     verify {
         assert_eq!(AllowedParachainAssets::<T>::get(BASE_NETWORK_ID, 1), vec![]);
@@ -110,18 +110,18 @@ benchmarks! {
 
     update_transaction_status {
     }: {
-        SubstrateApp::<T>::update_transaction_status(<T as Config>::CallOrigin::try_successful_origin().unwrap(), Default::default(), XCMAppTransferStatus::Success)?;
+        ParachainApp::<T>::update_transaction_status(<T as Config>::CallOrigin::try_successful_origin().unwrap(), Default::default(), XCMAppTransferStatus::Success)?;
     }
 
     mint {
         let who = whitelisted_caller();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
-        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        ParachainApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
         Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
         T::BridgeAssetLocker::lock_asset(BASE_NETWORK_ID.into(), AssetKind::Thischain, &who, &asset_id, &1000u32.into())?;
     }: {
-        SubstrateApp::<T>::mint(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), None, who.clone(), 1000)?;
+        ParachainApp::<T>::mint(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), None, who.clone(), 1000)?;
     }
     verify {
         assert_eq!(Currencies::<T>::free_balance(asset_id, &who), 1000u32.into());
@@ -130,8 +130,8 @@ benchmarks! {
     burn {
         let who = whitelisted_caller();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
-        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        ParachainApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
         Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
     }: _(RawOrigin::Signed(
             who.clone()),
@@ -146,9 +146,9 @@ benchmarks! {
 
     finalize_asset_registration {
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
     }: {
-        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        ParachainApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
     }
     verify {
         assert_eq!(AssetKinds::<T>::get(BASE_NETWORK_ID, asset_id), Some(AssetKind::Thischain));
@@ -157,16 +157,16 @@ benchmarks! {
     refund {
         let who = whitelisted_caller();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), Default::default(), Default::default())?;
-        SubstrateApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
-        SubstrateApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
+        ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
+        ParachainApp::<T>::finalize_asset_registration(<T as Config>::CallOrigin::try_successful_origin().unwrap(), asset_id.clone(), AssetKind::Thischain)?;
         Currencies::<T>::deposit(asset_id.clone(), &who, 1000u32.into())?;
         T::BridgeAssetLocker::lock_asset(BASE_NETWORK_ID.into(), AssetKind::Thischain, &who, &asset_id, &1000u32.into())?;
     }: {
-        SubstrateApp::<T>::refund(BASE_NETWORK_ID.into(), Default::default(), who.clone(), asset_id.clone(), 1000u32.into())?;
+        ParachainApp::<T>::refund(BASE_NETWORK_ID.into(), Default::default(), who.clone(), asset_id.clone(), 1000u32.into())?;
     }
     verify {
         assert_eq!(Currencies::<T>::free_balance(asset_id, &who), 1000u32.into());
     }
 
-    impl_benchmark_test_suite!(SubstrateApp, crate::mock::new_tester(), crate::mock::Test,);
+    impl_benchmark_test_suite!(ParachainApp, crate::mock::new_tester(), crate::mock::Test,);
 }

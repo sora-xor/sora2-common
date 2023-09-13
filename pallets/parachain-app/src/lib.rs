@@ -55,7 +55,7 @@ mod mock;
 mod tests;
 
 use bridge_types::substrate::SubAssetInfo;
-use bridge_types::substrate::{ParachainAccountId, SubstrateAppCall};
+use bridge_types::substrate::{ParachainAccountId, ParachainAppCall};
 use bridge_types::traits::BridgeApp;
 use bridge_types::traits::BridgeAssetLocker;
 use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo};
@@ -73,14 +73,14 @@ pub use weights::WeightInfo;
 
 pub use pallet::*;
 
-impl<T: Config> From<SubstrateAppCall> for Call<T>
+impl<T: Config> From<ParachainAppCall> for Call<T>
 where
     T::AccountId: From<MainnetAccountId>,
     AssetIdOf<T>: From<MainnetAssetId>,
 {
-    fn from(value: SubstrateAppCall) -> Self {
+    fn from(value: ParachainAppCall) -> Self {
         match value {
-            SubstrateAppCall::Transfer {
+            ParachainAppCall::Transfer {
                 sender,
                 recipient,
                 amount,
@@ -91,14 +91,14 @@ where
                 asset_id: asset_id.into(),
                 amount,
             },
-            SubstrateAppCall::FinalizeAssetRegistration {
+            ParachainAppCall::FinalizeAssetRegistration {
                 asset_id,
                 asset_kind,
             } => Call::finalize_asset_registration {
                 asset_id: asset_id.into(),
                 asset_kind,
             },
-            SubstrateAppCall::ReportXCMTransferResult {
+            ParachainAppCall::ReportXCMTransferResult {
                 message_id,
                 transfer_status,
             } => Call::update_transaction_status {

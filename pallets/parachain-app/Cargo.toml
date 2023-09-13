@@ -1,5 +1,5 @@
 [package]
-name = "substrate-bridge-app"
+name = "parachain-bridge-app"
 version = "0.1.1"
 edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
