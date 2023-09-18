@@ -105,7 +105,7 @@ frame_support::construct_runtime!(
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
         BridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
-        SubstrateApp: substrate_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        ParachainApp: substrate_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -373,7 +373,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     let allowed_parachains = vec![PARA_A, PARA_B];
     ext.execute_with(|| {
         // register assets
-        SubstrateApp::register_thischain_asset(
+        ParachainApp::register_thischain_asset(
             Origin::<Test>::Root.into(),
             SubNetworkId::Kusama,
             AssetId::XOR,
@@ -382,7 +382,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
             minimal_xcm_amount,
         )
         .expect("XOR registration failed");
-        SubstrateApp::register_sidechain_asset(
+        ParachainApp::register_sidechain_asset(
             Origin::<Test>::Root.into(),
             SubNetworkId::Kusama,
             PARENT_PARACHAIN_ASSET,
@@ -400,14 +400,14 @@ pub fn new_tester() -> sp_io::TestExternalities {
             (),
         ))
         .into();
-        SubstrateApp::finalize_asset_registration(
+        ParachainApp::finalize_asset_registration(
             origin_kusama.clone(),
             AssetId::XOR,
             AssetKind::Thischain,
         )
         .expect("XOR registration finalization failed");
         let kusama_asset = substrate_app::RelaychainAsset::<Test>::get(SubNetworkId::Kusama);
-        SubstrateApp::finalize_asset_registration(
+        ParachainApp::finalize_asset_registration(
             origin_kusama,
             kusama_asset.unwrap(),
             AssetKind::Sidechain,

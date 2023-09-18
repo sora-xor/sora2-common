@@ -53,9 +53,9 @@ pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;
 }
 
-/// Message to SubstrateApp pallet
+/// Message to ParachainApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
-pub enum SubstrateAppCall {
+pub enum ParachainAppCall {
     Transfer {
         asset_id: MainnetAssetId,
         sender: Option<ParachainAccountId>,
@@ -78,9 +78,9 @@ pub enum XCMAppTransferStatus {
     XCMTransferError,
 }
 
-impl SubstrateBridgeMessageEncode for SubstrateAppCall {
+impl SubstrateBridgeMessageEncode for ParachainAppCall {
     fn prepare_message(self) -> Vec<u8> {
-        BridgeCall::SubstrateApp(self).encode()
+        BridgeCall::ParachainApp(self).encode()
     }
 }
 
@@ -140,7 +140,7 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
 /// Substrate bridge message payload
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
-    SubstrateApp(SubstrateAppCall),
+    ParachainApp(ParachainAppCall),
     XCMApp(XCMAppCall),
     DataSigner(DataSignerCall),
     MultisigVerifier(MultisigVerifierCall),
