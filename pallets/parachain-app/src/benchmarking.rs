@@ -83,12 +83,6 @@ benchmarks! {
         assert_eq!(SidechainPrecision::<T>::iter_prefix(BASE_NETWORK_ID).count(), 1);
     }
 
-    set_transfer_limit {
-    }: _(RawOrigin::Root, Some(11u32.into()))
-    verify {
-        assert_eq!(BridgeTransferLimit::<T>::get(), Some(11u32.into()));
-    }
-
     add_assetid_paraid {
         let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
         ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;
