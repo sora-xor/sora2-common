@@ -56,6 +56,12 @@ log = "0.4.14"
 
 [features]
 default = ["std"]
-runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks", "mmr-lib", "log", "anyhow", "pallet-beefy-mmr"]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"bridge-types/runtime-benchmarks",
+	"mmr-lib",
+	"log",
+	"anyhow",
+]
 std = ["codec/std", "serde/std", "bridge-common/std", "bridge-types/std", "beefy-merkle-tree/std", "sp-beefy/std", "sp-core/std", "sp-io/std", "sp-std/std", "scale-info/std", "frame-benchmarking/std", "frame-support/std", "frame-system/std"]
 try-runtime = ["frame-support/try-runtime"]
