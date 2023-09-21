@@ -222,50 +222,6 @@ fn it_works_burn() {
 }
 
 #[test]
-fn it_fails_burn_limit_reached() {
-    new_tester().execute_with(|| {
-        let limit = 1_000_000;
-        ParachainApp::set_transfer_limit(Origin::<Test>::Root.into(), Some(limit))
-            .expect("set transfer limit failed");
-
-        let location = MultiLocation::new(
-            1,
-            X2(
-                Parachain(PARA_A),
-                Junction::AccountId32 {
-                    network: None,
-                    id: Keyring::Bob.into(),
-                },
-            ),
-        );
-        let origin = Origin::<Test>::Signed(Keyring::Alice.into());
-        let network_id = SubNetworkId::Kusama;
-        let recipient = VersionedMultiLocation::V3(location);
-
-        // send XOR within limit
-        assert_ok!(ParachainApp::burn(
-            origin.clone().into(),
-            network_id,
-            AssetId::XOR,
-            recipient.clone(),
-            limit - 100
-        ));
-
-        // send XOR outside limit
-        assert_noop!(
-            ParachainApp::burn(
-                origin.clone().into(),
-                network_id,
-                AssetId::XOR,
-                recipient,
-                limit + 100
-            ),
-            Error::<Test>::TransferLimitReached
-        );
-    });
-}
-
-#[test]
 fn it_fails_burn_invalid_destination_params() {
     new_tester().execute_with(|| {
         let origin = Origin::<Test>::Signed(Keyring::Alice.into());

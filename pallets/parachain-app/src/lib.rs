@@ -219,10 +219,6 @@ pub mod pallet {
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, AssetKind, OptionQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn get_transfer_limit)]
-    pub type BridgeTransferLimit<T> = StorageValue<_, BalanceOf<T>, OptionQuery>;
-
-    #[pallet::storage]
     #[pallet::getter(fn sidechain_precision)]
     pub(super) type SidechainPrecision<T: Config> =
         StorageDoubleMap<_, Identity, SubNetworkId, Identity, AssetIdOf<T>, u8, OptionQuery>;
@@ -352,7 +348,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(allowed_parachains.len() as u32))]
         pub fn register_thischain_asset(
@@ -393,7 +388,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(allowed_parachains.len() as u32))]
         pub fn register_sidechain_asset(
@@ -427,21 +421,7 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Limits amount of tokens to transfer with limit precision
-        // TODO: make benchmarks
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::set_transfer_limit())]
-        pub fn set_transfer_limit(
-            origin: OriginFor<T>,
-            limit_count: Option<BalanceOf<T>>,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            BridgeTransferLimit::<T>::set(limit_count);
-            Ok(())
-        }
-
-        // TODO: make benchmarks
-        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::add_assetid_paraid())]
         pub fn add_assetid_paraid(
             origin: OriginFor<T>,
@@ -460,8 +440,7 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
-        #[pallet::call_index(7)]
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_assetid_paraid())]
         pub fn remove_assetid_paraid(
             origin: OriginFor<T>,
@@ -480,8 +459,7 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
-        #[pallet::call_index(8)]
+        #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
@@ -508,7 +486,7 @@ pub mod pallet {
         }
 
         // TODO: make benchmarks
-        #[pallet::call_index(9)]
+        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn set_minimum_xcm_incoming_asset_count(
             origin: OriginFor<T>,
@@ -601,10 +579,6 @@ pub mod pallet {
             amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             ensure!(amount > BalanceOf::<T>::zero(), Error::<T>::WrongAmount);
-
-            if let Some(limit) = Self::get_transfer_limit() {
-                ensure!(amount <= limit, Error::<T>::TransferLimitReached);
-            }
 
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
