@@ -174,7 +174,7 @@ impl From<SubNetworkId> for GenericNetworkId {
 pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
-    Parachain(xcm::VersionedMultiLocation),
+    Parachain,
     Unknown,
     Root,
 }
