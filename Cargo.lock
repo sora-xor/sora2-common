@@ -3627,6 +3627,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-bridge-app"
+version = "0.1.1"
+dependencies = [
+ "bridge-types",
+ "dispatch",
+ "ethabi",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "rlp",
+ "rustc-hex",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+ "substrate-bridge-channel",
+ "xcm",
+]
+
+[[package]]
 name = "substrate-bridge-channel"
 version = "0.1.1"
 dependencies = [

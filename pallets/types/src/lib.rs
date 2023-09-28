@@ -171,9 +171,9 @@ impl From<SubNetworkId> for GenericNetworkId {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-pub enum GenericAccount<AccountId> {
+pub enum GenericAccount {
     EVM(H160),
-    Sora(AccountId),
+    Sora(MainnetAccountId),
     Parachain(xcm::VersionedMultiLocation),
     Unknown,
     Root,
@@ -233,6 +233,33 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
             GenericCommitment::EVM(commitment) => commitment.nonce,
         }
     }
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(
+    Encode,
+    Decode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum GenericAssetId {
+    Sora(MainnetAssetId),
+    XCM(substrate::ParachainAssetId),
+    EVM(H160),
+    Liberland(u32),
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub enum GenericBalance {
+    Substrate(MainnetBalance),
+    EVM(U256),
 }
 
 // Use predefined types to ensure data compatability

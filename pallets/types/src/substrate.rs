@@ -37,7 +37,9 @@ use sp_core::{ecdsa, Get, H256};
 use sp_runtime::{traits::Hash, BoundedVec, RuntimeDebug};
 use sp_std::prelude::*;
 
+use crate::types::MessageStatus;
 use crate::{types::AssetKind, GenericTimepoint, MainnetAccountId, MainnetAssetId, MainnetBalance};
+use crate::{GenericAccount, GenericAssetId, GenericBalance};
 
 pub use xcm::v3::{Junction, Junctions};
 pub use xcm::VersionedMultiLocation;
@@ -71,7 +73,6 @@ pub enum ParachainAppCall {
         transfer_status: XCMAppTransferStatus,
     },
 }
-
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppTransferStatus {
     Success,
@@ -81,6 +82,39 @@ pub enum XCMAppTransferStatus {
 impl SubstrateBridgeMessageEncode for ParachainAppCall {
     fn prepare_message(self) -> Vec<u8> {
         BridgeCall::ParachainApp(self).encode()
+    }
+}
+
+/// Message to SubstrateApp pallet
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum SubstrateAppCall {
+    Transfer {
+        asset_id: GenericAssetId,
+        sender: GenericAccount,
+        recipient: GenericAccount,
+        amount: GenericBalance,
+    },
+    RegisterAsset {
+        asset_id: GenericAssetId,
+        sidechain_asset: GenericAssetId,
+        asset_kind: AssetKind,
+        precision: u8,
+    },
+    FinalizeAssetRegistration {
+        asset_id: GenericAssetId,
+        sidechain_asset: GenericAssetId,
+        asset_kind: AssetKind,
+        precision: u8,
+    },
+    ReportTransferResult {
+        message_id: H256,
+        message_status: MessageStatus,
+    },
+}
+
+impl SubstrateBridgeMessageEncode for SubstrateAppCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::SubstrateApp(self).encode()
     }
 }
 
@@ -144,6 +178,7 @@ pub enum BridgeCall {
     XCMApp(XCMAppCall),
     DataSigner(DataSignerCall),
     MultisigVerifier(MultisigVerifierCall),
+    SubstrateApp(SubstrateAppCall),
 }
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
