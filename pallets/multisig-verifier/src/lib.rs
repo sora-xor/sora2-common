@@ -101,6 +101,9 @@ pub mod pallet {
         type MaxPeers: Get<u32>;
 
         type WeightInfo: WeightInfo;
+
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
     }
 
     #[pallet::pallet]
@@ -116,16 +119,6 @@ pub mod pallet {
         BoundedBTreeSet<ecdsa::Public, <T as Config>::MaxPeers>,
         OptionQuery,
     >;
-
-    #[pallet::type_value]
-    pub fn DefaultForThisNetworkId() -> GenericNetworkId {
-        GenericNetworkId::Sub(SubNetworkId::Mainnet)
-    }
-
-    #[pallet::storage]
-    #[pallet::getter(fn this_network_id)]
-    pub type ThisNetworkId<T> =
-        StorageValue<_, GenericNetworkId, ValueQuery, DefaultForThisNetworkId>;
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -153,28 +146,6 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig {
-        /// Network id for current network
-        pub network_id: GenericNetworkId,
-    }
-
-    #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
-        fn default() -> Self {
-            Self {
-                network_id: GenericNetworkId::Sub(SubNetworkId::Mainnet),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
-        fn build(&self) {
-            ThisNetworkId::<T>::put(self.network_id);
-        }
-    }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
@@ -321,7 +292,7 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         commitment_hash: H256,
         proof: &Self::Proof,
     ) -> DispatchResult {
-        let this_network_id = ThisNetworkId::<T>::get();
+        let this_network_id = T::ThisNetworkId::get();
         let digest_hash = Keccak256::hash_of(&proof.digest);
         Self::verify_signatures(network_id, digest_hash, &proof.proof)?;
         let count = proof
