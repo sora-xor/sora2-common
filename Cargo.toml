@@ -6,7 +6,6 @@ members = [
     "pallets/*",
     "pallets/leaf-provider/runtime-api",
     "pallets/leaf-provider/rpc",
-    "pallets/substrate-channel/rpc",
     "pallets/beefy-light-client/runtime-api",
     "pallets/beefy-light-client/rpc",
 ]
