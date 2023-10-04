@@ -329,23 +329,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bridge-channel-rpc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bridge-types",
- "jsonrpsee",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-core",
- "sp-offchain",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "bridge-common"
 version = "0.1.0"
 dependencies = [
@@ -3222,16 +3205,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "thiserror",
-]
-
-[[package]]
-name = "sp-offchain"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.37#6fa7fe1326ecaab9921c2c3888530ad679cfbb87"
-dependencies = [
- "sp-api",
- "sp-core",
- "sp-runtime",
 ]
 
 [[package]]
