@@ -31,12 +31,10 @@
 //! Channel for passing messages from substrate to ethereum.
 
 use bridge_types::substrate::BridgeMessage;
-use codec::Encode;
 use frame_support::ensure;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use sp_core::H256;
-use sp_io::offchain_index;
 
 use bridge_types::types::MessageNonce;
 use bridge_types::SubNetworkId;
@@ -60,6 +58,7 @@ pub mod pallet {
     use bridge_types::traits::OutboundChannel;
     use bridge_types::traits::TimepointProvider;
     use bridge_types::types::AuxiliaryDigestItem;
+    use bridge_types::types::GenericCommitmentWithBlock;
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
     use bridge_types::GenericNetworkId;
@@ -129,6 +128,19 @@ pub mod pallet {
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, SubNetworkId, u64, ValueQuery>;
+
+    #[pallet::storage]
+    pub type LatestCommitment<T: Config> = StorageMap<
+        _,
+        Identity,
+        SubNetworkId,
+        GenericCommitmentWithBlock<
+            BlockNumberFor<T>,
+            T::MaxMessagesPerCommit,
+            T::MaxMessagePayloadSize,
+        >,
+        OptionQuery,
+    >;
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -225,12 +237,11 @@ pub mod pallet {
                 AuxiliaryDigestItem::Commitment(GenericNetworkId::Sub(network_id), commitment_hash);
             T::AuxiliaryDigestHandler::add_item(digest_item);
 
-            let key = bridge_types::utils::make_offchain_key(network_id.into(), batch_nonce);
-            let offchain_data = bridge_types::types::BridgeOffchainData {
+            let commitment = bridge_types::types::GenericCommitmentWithBlock {
                 commitment,
                 block_number: <frame_system::Pallet<T>>::block_number(),
             };
-            offchain_index::set(&key, &offchain_data.encode());
+            LatestCommitment::<T>::insert(network_id, commitment);
 
             <T as Config>::WeightInfo::on_initialize(
                 messages_count as u32,

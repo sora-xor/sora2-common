@@ -337,7 +337,7 @@ pub struct RawAssetInfo {
         deserialize = "BlockNumber: Deserialize<'de>"
     ))
 )]
-pub struct BridgeOffchainData<BlockNumber, MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+pub struct GenericCommitmentWithBlock<BlockNumber, MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     pub block_number: BlockNumber,
     pub commitment: crate::GenericCommitment<MaxMessages, MaxPayload>,
 }
