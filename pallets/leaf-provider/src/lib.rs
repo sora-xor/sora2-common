@@ -47,6 +47,7 @@ pub mod pallet {
     use bridge_types::types::{AuxiliaryDigest, AuxiliaryDigestItem, LeafExtraData};
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
+    use frame_system::pallet_prelude::*;
     use sp_beefy::mmr::BeefyDataProvider;
     use sp_runtime::traits;
     use sp_runtime::traits::Hash;
@@ -101,10 +102,19 @@ pub mod pallet {
         }
     }
 
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+        /// Clear the latest digest. This pallet should be placed before any other pallets which is use AuxiliaryDigestHandler.
+        fn on_initialize(_now: T::BlockNumber) -> Weight {
+            LatestDigest::<T>::kill();
+            <T as frame_system::Config>::DbWeight::get().writes(1)
+        }
+    }
+
     impl<T: Config> BeefyDataProvider<LeafExtraData<HashOf<T>, RandomnessOutputOf<T>>> for Pallet<T> {
         fn extra_data() -> LeafExtraData<HashOf<T>, RandomnessOutputOf<T>> {
             let digest = AuxiliaryDigest {
-                logs: LatestDigest::<T>::take().unwrap_or_default(),
+                logs: LatestDigest::<T>::get().unwrap_or_default(),
             };
             let digest_encoded = digest.encode();
             let (random_seed, _) = T::Randomness::random(RANDOMNESS_SUBJECT);
