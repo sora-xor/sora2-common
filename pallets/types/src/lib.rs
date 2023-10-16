@@ -179,6 +179,16 @@ pub enum GenericAccount {
     Root,
 }
 
+impl TryInto<MainnetAccountId> for GenericAccount {
+    type Error = ();
+    fn try_into(self) -> Result<MainnetAccountId, Self::Error> {
+        match self {
+            GenericAccount::Sora(a) => Ok(a),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(
     Encode,
     Decode,
@@ -260,6 +270,17 @@ pub enum GenericAssetId {
 pub enum GenericBalance {
     Substrate(MainnetBalance),
     EVM(U256),
+}
+
+impl TryInto<MainnetBalance> for GenericBalance {
+    type Error = ();
+
+    fn try_into(self) -> Result<MainnetBalance, Self::Error> {
+        match self {
+            GenericBalance::Substrate(b) => Ok(b),
+            _ => Err(()),
+        }
+    }
 }
 
 // Use predefined types to ensure data compatability

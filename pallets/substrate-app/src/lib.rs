@@ -75,9 +75,12 @@ pub use pallet::*;
 
 impl<T: Config> TryFrom<SubstrateAppCall> for Call<T>
 where
-    AccountIdOf<T>: TryFrom<GenericAccount>,
-    AssetIdOf<T>: TryFrom<GenericAssetId>,
-    BalanceOf<T>: TryFrom<GenericBalance>,
+    // AccountIdOf<T>: TryFrom<GenericAccount>,
+    // AssetIdOf<T>: TryFrom<GenericAssetId>,
+    // BalanceOf<T>: TryFrom<GenericBalance>,
+    GenericAccount: TryInto<AccountIdOf<T>>,
+    GenericAssetId: TryInto<AssetIdOf<T>>,
+    GenericBalance: TryInto<BalanceOf<T>>,
 {
     type Error = Error<T>;
     fn try_from(value: SubstrateAppCall) -> Result<Self, Self::Error> {
@@ -136,6 +139,7 @@ where
             },
         };
         Ok(call)
+        // todo!()
     }
 }
 
@@ -575,6 +579,12 @@ pub mod pallet {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             }
         }
+    }
+}
+
+impl<T: Config> Convert<AssetIdOf<T>, GenericAssetId> for Pallet<T> {
+    fn convert(_: AssetIdOf<T>) -> GenericAssetId {
+        todo!()
     }
 }
 
