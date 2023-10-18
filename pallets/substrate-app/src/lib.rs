@@ -172,6 +172,7 @@ pub mod pallet {
         AccountIdOf<T>,
         AssetIdOf<T>,
     >>::AssetName;
+    
     pub type AssetSymbolOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
         AccountIdOf<T>,
         AssetIdOf<T>,
@@ -579,12 +580,6 @@ pub mod pallet {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
             }
         }
-    }
-}
-
-impl<T: Config> Convert<AssetIdOf<T>, GenericAssetId> for Pallet<T> {
-    fn convert(_: AssetIdOf<T>) -> GenericAssetId {
-        todo!()
     }
 }
 
