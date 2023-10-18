@@ -265,6 +265,17 @@ pub enum GenericAssetId {
     Liberland(u32),
 }
 
+impl TryInto<u32> for GenericAssetId {
+    type Error = ();
+
+    fn try_into(self) -> Result<u32, Self::Error> {
+        match self {
+            GenericAssetId::Liberland(b) => Ok(b),
+            _ => Err(()),
+        }
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum GenericBalance {
