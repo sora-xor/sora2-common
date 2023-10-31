@@ -114,14 +114,38 @@ where
                 asset_kind,
                 sidechain_precision: precision,
             },
-            SubstrateAppCall::RegisterAsset {
+            // This chain for this chain is side chain on side chain
+            // That's why incoming_sidechain_asset_registration should be invoked
+            SubstrateAppCall::RegisterThischainAsset {
                 asset_id,
-                sidechain_asset,
-                asset_kind,
+                // sidechain_asset,
+                // asset_kind,
                 symbol,
                 name,
                 precision,
-            } => Call::incoming_asset_registration {
+            } => Call::incoming_sidechain_asset_registration {
+                // TODO: find better way to manage asset kind to make it less confusing
+                // This is sidechain asset for another chain, for our chain it's thischain
+                // asset_id: sidechain_asset
+                //     .try_into()
+                //     .map_err(|_| Error::<T>::WrongAssetId)?,
+                // This is thischain asset for another chain, for our chain it's sidechain
+                sidechain_asset_id: asset_id,
+                // asset_kind,
+                symbol,
+                name,
+                sidechain_precision: precision,
+            },
+            // Side chain for side chain is this chain on this chain
+            // That's why incoming_thischain_asset_registration should be invoked
+            SubstrateAppCall::RegisterSidechainAsset {
+                asset_id,
+                sidechain_asset,
+                // asset_kind,
+                // symbol,
+                // name,
+                // precision,
+            } => Call::incoming_thischain_asset_registration {
                 // TODO: find better way to manage asset kind to make it less confusing
                 // This is sidechain asset for another chain, for our chain it's thischain
                 asset_id: sidechain_asset
@@ -129,10 +153,10 @@ where
                     .map_err(|_| Error::<T>::WrongAssetId)?,
                 // This is thischain asset for another chain, for our chain it's sidechain
                 sidechain_asset_id: asset_id,
-                asset_kind,
-                symbol,
-                name,
-                sidechain_precision: precision,
+                // asset_kind,
+                // symbol,
+                // name,
+                // sidechain_precision: precision,
             },
             SubstrateAppCall::ReportTransferResult {
                 message_id,
@@ -378,30 +402,22 @@ pub mod pallet {
         // TODO: make benchmarks
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
-        pub fn incoming_asset_registration(
+        pub fn incoming_thischain_asset_registration(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
             sidechain_asset_id: GenericAssetId,
-            asset_kind: AssetKind,
-            symbol: Vec<u8>,
-            name: Vec<u8>,
-            sidechain_precision: u8,
         ) -> DispatchResult {
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
-            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
+            ensure!(T::AssetRegistry::ensure_asset_exists(asset_id.clone()), Error::<T>::TokenIsNotRegistered);
+            let asset_kind = AssetKind::Thischain;
+
+            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+
+            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), precision);
             AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
             ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
             SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
-            match asset_kind {
-                AssetKind::Thischain => todo!(),
-                AssetKind::Sidechain => {
-                    T::AssetRegistry::register_asset(
-                        bridge_types::GenericNetworkId::Sub(network_id),
-                        symbol.into(),
-                        name.into(),
-                    )?;
-                }
-            }
+
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
@@ -409,7 +425,49 @@ pub mod pallet {
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset: sidechain_asset_id,
                     asset_kind,
-                    precision: sidechain_precision,
+                    precision,
+                }
+                .prepare_message(),
+                (),
+            )?;
+            Ok(())
+        }
+
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        pub fn incoming_sidechain_asset_registration(
+            origin: OriginFor<T>,
+            // asset_id: AssetIdOf<T>,
+            sidechain_asset_id: GenericAssetId,
+            // asset_kind: AssetKind,
+            symbol: Vec<u8>,
+            name: Vec<u8>,
+            sidechain_precision: u8,
+        ) -> DispatchResult {
+            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+            // ensure!(T::AssetRegistry::ensure_asset_exists(asset_id.clone()), Error::<T>::TokenIsNotRegistered);
+            let asset_id = T::AssetRegistry::register_asset(
+                            bridge_types::GenericNetworkId::Sub(network_id),
+                            symbol.into(),
+                            name.into(),
+                        )?;
+            let asset_kind = AssetKind::Sidechain;
+
+            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+
+            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
+            AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
+            ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
+            SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &SubstrateAppCall::FinalizeAssetRegistration {
+                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    sidechain_asset: sidechain_asset_id,
+                    asset_kind,
+                    precision,
                 }
                 .prepare_message(),
                 (),
@@ -420,7 +478,7 @@ pub mod pallet {
         // Common exstrinsics
 
         // TODO: make benchmarks
-        #[pallet::call_index(3)]
+        #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,
@@ -436,7 +494,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(4)]
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(0))]
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
@@ -452,19 +510,36 @@ pub mod pallet {
 
             let raw_info = T::AssetRegistry::get_raw_info(asset_id.clone());
 
-            Self::register_asset_inner(
+            // Self::register_asset_inner(
+            //     network_id,
+            //     asset_id,
+            //     sidechain_asset,
+            //     AssetKind::Thischain,
+            //     raw_info.symbol,
+            //     raw_info.name,
+            // )?;
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+
+            T::OutboundChannel::submit(
                 network_id,
-                asset_id,
-                sidechain_asset,
-                AssetKind::Thischain,
-                raw_info.symbol,
-                raw_info.name,
+                &RawOrigin::Root,
+                &bridge_types::substrate::SubstrateAppCall::RegisterThischainAsset {
+                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    // sidechain_asset,
+                    // asset_kind,
+                    symbol: raw_info.symbol,
+                    name: raw_info.name,
+                    precision,
+                }
+                .prepare_message(),
+                (),
             )?;
 
             Ok(())
         }
 
-        #[pallet::call_index(5)]
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(0))]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
@@ -478,18 +553,37 @@ pub mod pallet {
             let asset_id =
                 T::AssetRegistry::register_asset(network_id.into(), name.clone(), symbol.clone())?;
 
-            Self::register_asset_inner(
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+
+            T::OutboundChannel::submit(
                 network_id,
-                asset_id,
-                sidechain_asset,
-                AssetKind::Sidechain,
-                symbol.into(),
-                name.into(),
+                &RawOrigin::Root,
+                &bridge_types::substrate::SubstrateAppCall::RegisterSidechainAsset {
+                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    sidechain_asset,
+                    // asset_kind,
+                    // symbol,
+                    // name,
+                    // precision,
+                }
+                .prepare_message(),
+                (),
             )?;
             Ok(())
+
+            // Self::register_asset_inner(
+            //     network_id,
+            //     asset_id,
+            //     sidechain_asset,
+            //     AssetKind::Sidechain,
+            //     symbol.into(),
+            //     name.into(),
+            // )?;
+            // Ok(())
         }
 
-        #[pallet::call_index(6)]
+        #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
@@ -513,33 +607,33 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn register_asset_inner(
-            network_id: SubNetworkId,
-            asset_id: AssetIdOf<T>,
-            sidechain_asset: GenericAssetId,
-            asset_kind: AssetKind,
-            symbol: Vec<u8>,
-            name: Vec<u8>,
-        ) -> DispatchResult {
-            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
-            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+        // pub fn register_asset_inner(
+        //     network_id: SubNetworkId,
+        //     asset_id: AssetIdOf<T>,
+        //     sidechain_asset: GenericAssetId,
+        //     asset_kind: AssetKind,
+        //     symbol: Vec<u8>,
+        //     name: Vec<u8>,
+        // ) -> DispatchResult {
+        //     T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+        //     let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
-            T::OutboundChannel::submit(
-                network_id,
-                &RawOrigin::Root,
-                &bridge_types::substrate::SubstrateAppCall::RegisterAsset {
-                    asset_id: T::AssetIdConverter::convert(asset_id),
-                    sidechain_asset,
-                    asset_kind,
-                    symbol,
-                    name,
-                    precision,
-                }
-                .prepare_message(),
-                (),
-            )?;
-            Ok(())
-        }
+        //     T::OutboundChannel::submit(
+        //         network_id,
+        //         &RawOrigin::Root,
+        //         &bridge_types::substrate::SubstrateAppCall::RegisterAsset {
+        //             asset_id: T::AssetIdConverter::convert(asset_id),
+        //             sidechain_asset,
+        //             asset_kind,
+        //             symbol,
+        //             name,
+        //             precision,
+        //         }
+        //         .prepare_message(),
+        //         (),
+        //     )?;
+        //     Ok(())
+        // }
 
         pub fn burn_inner(
             who: T::AccountId,

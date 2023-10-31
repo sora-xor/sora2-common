@@ -94,10 +94,19 @@ pub enum SubstrateAppCall {
         recipient: GenericAccount,
         amount: GenericBalance,
     },
-    RegisterAsset {
+    // Message to send to sidechain to register side chain asset on bridge
+    RegisterSidechainAsset {
         asset_id: GenericAssetId,
         sidechain_asset: GenericAssetId,
-        asset_kind: AssetKind,
+        // asset_kind: AssetKind,
+        // symbol: Vec<u8>,
+        // name: Vec<u8>,
+        // precision: u8,
+    },
+    RegisterThischainAsset {
+        asset_id: GenericAssetId,
+        // sidechain_asset: GenericAssetId,
+        // asset_kind: AssetKind,
         symbol: Vec<u8>,
         name: Vec<u8>,
         precision: u8,
