@@ -92,6 +92,8 @@ pub enum SubstrateAppCall {
         asset_id: GenericAssetId,
         sidechain_asset: GenericAssetId,
         asset_kind: AssetKind,
+        symbol: Vec<u8>,
+        name: Vec<u8>,
         precision: u8,
     },
     FinalizeAssetRegistration {
