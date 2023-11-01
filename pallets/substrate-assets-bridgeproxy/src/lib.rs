@@ -48,7 +48,7 @@ pub mod pallet {
     use bridge_types::GenericNetworkId;
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::traits::fungibles::{
-        metadata::Mutate, Create, Inspect, InspectMetadata, Transfer,
+        metadata::Mutate as MetadataMutate, Create, Inspect, InspectMetadata, Transfer, Mutate,
     };
     use frame_system::{pallet_prelude::*, Origin};
     use sp_core::H256;
@@ -85,7 +85,9 @@ pub mod pallet {
     }
 
     #[pallet::event]
-    pub enum Event<T: Config> {}
+    pub enum Event<T: Config> {
+        AssetCreated(T::AssetId),
+    }
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
@@ -113,7 +115,10 @@ pub mod pallet {
             // Err(DispatchError::Other("NOT AVAILIBLE"))
             let nonce = Self::asset_nonce();
             AssetNonce::<T>::set(nonce + 1);
-            let ta = T::TechAcc::get();
+            // let ta = T::TechAcc::get();
+            // let ta = account_id();
+            
+            let ta = Self::tech_acc().unwrap();
             let mut i = 0;
             let iter = 4;
             while i <= iter {
@@ -126,6 +131,7 @@ pub mod pallet {
                     H256::from_slice(&hash)
                 };
                 let asset_id = T::AssetIdGenerator::generate_asset_id(hash);
+                // let asset_id = (10000 + nonce).into();
 
                 let res = <pallet_assets::Pallet<T> as Create<T::AccountId>>::create(
                     asset_id,
@@ -133,8 +139,14 @@ pub mod pallet {
                     true,
                     T::MinBalance::get(),
                 );
+                // let res = <pallet_assets::Pallet<T> as Create<T::AccountId>>::create(
+                //     (10000 + nonce).into(),
+                //     ta.clone(),
+                //     true,
+                //     T::MinBalance::get(),
+                // );
                 if res.is_ok() {
-                    <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::set(
+                    <pallet_assets::Pallet<T> as MetadataMutate<T::AccountId>>::set(
                         asset_id, &ta, name, symbol, 18,
                     )?;
                     return Ok(asset_id);
@@ -174,42 +186,82 @@ pub mod pallet {
 
         fn lock_asset(
             _network_id: GenericNetworkId,
-            _asset_kind: bridge_types::types::AssetKind,
+            asset_kind: bridge_types::types::AssetKind,
             who: &T::AccountId,
             asset_id: &Self::AssetId,
             amount: &Self::Balance,
         ) -> DispatchResult {
-            let ta = T::TechAcc::get();
+            // let ta = T::TechAcc::get();
             let ta = Self::tech_acc().unwrap();
-            <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
-                asset_id.clone(),
-                &who,
-                &ta,
-                amount.clone(),
-                true,
-            )?;
+            // let ta = Self::account_id();
+
+            match asset_kind {
+                bridge_types::types::AssetKind::Thischain => {
+                    <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
+                        asset_id.clone(),
+                        &who,
+                        &ta,
+                        amount.clone(),
+                        true,
+                    )?;
+                },
+                bridge_types::types::AssetKind::Sidechain => {
+                    <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::burn_from(
+                        asset_id.clone(),
+                        &who,
+                        amount.clone(),
+                    )?;
+                },
+            }
+
             Ok(())
         }
 
         fn unlock_asset(
             _network_id: GenericNetworkId,
-            _asset_kind: bridge_types::types::AssetKind,
+            asset_kind: bridge_types::types::AssetKind,
             who: &T::AccountId,
             asset_id: &Self::AssetId,
             amount: &Self::Balance,
         ) -> DispatchResult {
-            let ta = T::TechAcc::get();
+            // let ta = T::TechAcc::get();
+            // let ta = Self::account_id();
             let ta = Self::tech_acc().unwrap();
-            <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
-                asset_id.clone(),
-                &ta,
-                &who,
-                amount.clone(),
-                true,
-            )?;
+            match asset_kind {
+                bridge_types::types::AssetKind::Thischain => {
+                    <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
+                        asset_id.clone(),
+                        &ta,
+                        &who,
+                        amount.clone(),
+                        true,
+                    )?;
+                },
+                bridge_types::types::AssetKind::Sidechain => {
+                    <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::mint_into(
+                        asset_id.clone(),
+                        &who,
+                        amount.clone(),
+                    )?;
+                },
+            }
+
             Ok(())
         }
     }
+
+    // impl<T: Config> Pallet<T> { 
+    //     pub fn account_id() -> T::AccountId {
+    //         use frame_support::PalletId;
+    //         use sp_runtime::traits::AccountIdConversion;
+        
+    //         const PALLET_ID: PalletId = PalletId(*b"brdgprxy");
+    //         // Convert the PalletId into an AccountId using the AccountIdConversion trait
+    //         PALLET_ID.into_account()
+    //     }
+    // }
+
+
 }
 
 pub trait AssetIdGenerator<T> {
