@@ -424,7 +424,8 @@ pub mod pallet {
                 &SubstrateAppCall::FinalizeAssetRegistration {
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset: sidechain_asset_id,
-                    asset_kind,
+                    // asset_kind,
+                    asset_kind: AssetKind::Sidechain,
                     precision,
                 }
                 .prepare_message(),
@@ -466,7 +467,8 @@ pub mod pallet {
                 &SubstrateAppCall::FinalizeAssetRegistration {
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset: sidechain_asset_id,
-                    asset_kind,
+                    // asset_kind,
+                    asset_kind: AssetKind::Thischain,
                     precision,
                 }
                 .prepare_message(),
@@ -500,7 +502,7 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
-            sidechain_asset: GenericAssetId,
+            // sidechain_asset: GenericAssetId,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
