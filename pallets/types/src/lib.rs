@@ -208,6 +208,7 @@ pub enum GenericTimepoint {
     EVM(u64),
     Sora(u32),
     Parachain(u32),
+    Liberland(u32),
     Pending,
     #[default]
     Unknown,
