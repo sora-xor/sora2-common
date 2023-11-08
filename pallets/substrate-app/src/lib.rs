@@ -75,9 +75,6 @@ pub use pallet::*;
 
 impl<T: Config> TryFrom<SubstrateAppCall> for Call<T>
 where
-    // AccountIdOf<T>: TryFrom<GenericAccount>,
-    // AssetIdOf<T>: TryFrom<GenericAssetId>,
-    // BalanceOf<T>: TryFrom<GenericBalance>,
     GenericAccount: TryInto<AccountIdOf<T>>,
     GenericAssetId: TryInto<AssetIdOf<T>>,
     GenericBalance: TryInto<BalanceOf<T>>,
@@ -118,17 +115,11 @@ where
             // That's why incoming_sidechain_asset_registration should be invoked
             SubstrateAppCall::RegisterThischainAsset {
                 asset_id,
-                // sidechain_asset,
-                // asset_kind,
                 symbol,
                 name,
                 precision,
             } => Call::incoming_sidechain_asset_registration {
                 // TODO: find better way to manage asset kind to make it less confusing
-                // This is sidechain asset for another chain, for our chain it's thischain
-                // asset_id: sidechain_asset
-                //     .try_into()
-                //     .map_err(|_| Error::<T>::WrongAssetId)?,
                 // This is thischain asset for another chain, for our chain it's sidechain
                 sidechain_asset_id: asset_id,
                 // asset_kind,
@@ -141,10 +132,6 @@ where
             SubstrateAppCall::RegisterSidechainAsset {
                 asset_id,
                 sidechain_asset,
-                // asset_kind,
-                // symbol,
-                // name,
-                // precision,
             } => Call::incoming_thischain_asset_registration {
                 // TODO: find better way to manage asset kind to make it less confusing
                 // This is sidechain asset for another chain, for our chain it's thischain
@@ -153,10 +140,6 @@ where
                     .map_err(|_| Error::<T>::WrongAssetId)?,
                 // This is thischain asset for another chain, for our chain it's sidechain
                 sidechain_asset_id: asset_id,
-                // asset_kind,
-                // symbol,
-                // name,
-                // sidechain_precision: precision,
             },
             SubstrateAppCall::ReportTransferResult {
                 message_id,
@@ -167,7 +150,6 @@ where
             },
         };
         Ok(call)
-        // todo!()
     }
 }
 
@@ -502,7 +484,6 @@ pub mod pallet {
             origin: OriginFor<T>,
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
-            // sidechain_asset: GenericAssetId,
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
@@ -512,14 +493,6 @@ pub mod pallet {
 
             let raw_info = T::AssetRegistry::get_raw_info(asset_id.clone());
 
-            // Self::register_asset_inner(
-            //     network_id,
-            //     asset_id,
-            //     sidechain_asset,
-            //     AssetKind::Thischain,
-            //     raw_info.symbol,
-            //     raw_info.name,
-            // )?;
             T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
             let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
@@ -528,8 +501,6 @@ pub mod pallet {
                 &RawOrigin::Root,
                 &bridge_types::substrate::SubstrateAppCall::RegisterThischainAsset {
                     asset_id: T::AssetIdConverter::convert(asset_id),
-                    // sidechain_asset,
-                    // asset_kind,
                     symbol: raw_info.symbol,
                     name: raw_info.name,
                     precision,
@@ -556,7 +527,6 @@ pub mod pallet {
                 T::AssetRegistry::register_asset(network_id.into(), name.clone(), symbol.clone())?;
 
             T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
-            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
             T::OutboundChannel::submit(
                 network_id,
@@ -564,25 +534,11 @@ pub mod pallet {
                 &bridge_types::substrate::SubstrateAppCall::RegisterSidechainAsset {
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset,
-                    // asset_kind,
-                    // symbol,
-                    // name,
-                    // precision,
                 }
                 .prepare_message(),
                 (),
             )?;
             Ok(())
-
-            // Self::register_asset_inner(
-            //     network_id,
-            //     asset_id,
-            //     sidechain_asset,
-            //     AssetKind::Sidechain,
-            //     symbol.into(),
-            //     name.into(),
-            // )?;
-            // Ok(())
         }
 
         #[pallet::call_index(7)]
