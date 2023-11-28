@@ -106,7 +106,8 @@ pub enum SubNetworkId {
     Kusama,
     Polkadot,
     Rococo,
-    Custom(u32),
+    Alphanet,
+    Liberland,
 }
 
 #[derive(
