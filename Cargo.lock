@@ -521,6 +521,7 @@ dependencies = [
  "scale-info",
  "serde",
  "serde_json",
+ "sp-consensus-beefy",
  "sp-core 21.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
  "sp-io 23.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
  "sp-runtime 24.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
@@ -602,6 +603,15 @@ dependencies = [
  "iana-time-zone",
  "num-traits",
  "windows-targets 0.48.5",
+]
+
+[[package]]
+name = "ckb-merkle-mountain-range"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56ccb671c5921be8a84686e6212ca184cb1d7c51cadcdbfcbd1cc3f042f5dfb8"
+dependencies = [
+ "cfg-if",
 ]
 
 [[package]]
@@ -1584,6 +1594,12 @@ name = "hashbrown"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
+
+[[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "hermit-abi"
@@ -3010,6 +3026,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "sp-consensus-beefy"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
+dependencies = [
+ "lazy_static",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-application-crypto 23.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-core 21.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-io 23.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-mmr-primitives",
+ "sp-runtime 24.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "strum",
+]
+
+[[package]]
 name = "sp-core"
 version = "21.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
@@ -3333,6 +3368,24 @@ dependencies = [
  "parity-scale-codec",
  "scale-info",
  "sp-std 8.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.1.0)",
+]
+
+[[package]]
+name = "sp-mmr-primitives"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0#f60318f68687e601c47de5ad5ca88e2c3f8139a7"
+dependencies = [
+ "ckb-merkle-mountain-range",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-core 21.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-debug-derive 8.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-runtime 24.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "sp-std 8.0.0 (git+https://github.com/paritytech/polkadot-sdk.git?tag=polkadot-v1.1.0)",
+ "thiserror",
 ]
 
 [[package]]
@@ -3817,6 +3870,28 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "strum"
+version = "0.24.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
+dependencies = [
+ "strum_macros",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.24.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e385be0d24f186b4ce2f9982191e7101bb737312ad61c1f2f984f34bcf85d59"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 1.0.109",
+]
 
 [[package]]
 name = "substrate-bip39"

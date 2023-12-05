@@ -47,11 +47,12 @@ use codec::FullCodec;
 use ethereum_types::Address;
 use frame_support::weights::Weight;
 use frame_support::{
-    dispatch::{DispatchError, DispatchResult},
+    dispatch::DispatchResult,
     Parameter,
 };
 use frame_system::{Config, RawOrigin};
 use scale_info::TypeInfo;
+use sp_runtime::DispatchError;
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::prelude::*;
