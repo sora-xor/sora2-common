@@ -408,6 +408,7 @@ name = "beefy-light-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "binary-merkle-tree",
  "bridge-common",
  "bridge-types",
  "ckb-merkle-mountain-range",

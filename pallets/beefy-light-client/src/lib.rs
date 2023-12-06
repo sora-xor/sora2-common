@@ -113,7 +113,7 @@ pub mod pallet {
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::{fail, Twox64Concat};
-    use frame_support::traits::GenesisBuild;
+    use frame_support::traits::{GenesisBuild, BuildGenesisConfig};
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -293,22 +293,24 @@ pub mod pallet {
     }
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig {
+    pub struct GenesisConfig<T> {
         /// Network id for current network
         pub network_id: SubNetworkId,
+        phantom: PhantomData<T>,
     }
 
     #[cfg(feature = "std")]
-    impl Default for GenesisConfig {
+    impl<T> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 network_id: SubNetworkId::Mainnet,
+                phantom: Default::default(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             ThisNetworkId::<T>::put(self.network_id);
         }
@@ -610,8 +612,8 @@ impl<T: Config> Pallet<T> {
     ) -> DispatchResultWithPostInfo {
         let current_validator_set_len = vset.len;
         ensure!(
-            beefy_merkle_tree::verify_proof::<sp_runtime::traits::Keccak256, _, _>(
-                &vset.root,
+            binary_merkle_tree::verify_proof::<sp_runtime::traits::Keccak256, _, _>(
+                &vset.keyset_commitment,
                 proof.iter().cloned(),
                 current_validator_set_len as usize,
                 pos as usize,
