@@ -61,13 +61,15 @@ use bridge_types::traits::BridgeAssetLocker;
 use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo};
 use bridge_types::GenericNetworkId;
 use bridge_types::{MainnetAccountId, MainnetAssetId};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_runtime::traits::{Convert, Get, Zero};
 use sp_std::prelude::*;
+use frame_support::traits::GenesisBuild;
+use sp_runtime::DispatchError;
 
 pub use weights::WeightInfo;
 

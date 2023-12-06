@@ -30,9 +30,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// pub mod beefy_types;
-// pub mod bitfield;
-// pub mod simplified_proof;
+pub mod beefy_types;
+pub mod bitfield;
+pub mod simplified_proof;
 
 use frame_support::weights::Weight;
 use scale_info::prelude::vec::Vec;
@@ -42,4 +42,5 @@ pub fn concat_u8(slice: &[&[u8]]) -> Vec<u8> {
 }
 
 pub const FIXED_TIME: u64 = 100_000_000;
-pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_ref_time(FIXED_TIME);
+// pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_ref_time(FIXED_TIME);
+pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_parts(FIXED_TIME, 0);

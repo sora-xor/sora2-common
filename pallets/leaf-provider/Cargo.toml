@@ -27,7 +27,7 @@ sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkado
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 
 sp-mmr-primitives = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
-# sp-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
+sp-consensus-beefy = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
@@ -50,6 +50,7 @@ std = [
   "sp-std/std",
   "bridge-types/std",
   "sp-mmr-primitives/std",
+  "sp-consensus-beefy/std",
 ]
 runtime-benchmarks = [
   "bridge-types/runtime-benchmarks",

@@ -51,7 +51,7 @@ pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 #[macro_export]
 macro_rules! log {
 	($level:tt, $patter:expr $(, $values:expr)* $(,)?) => {
-		frame_support::log::$level!(
+		log::$level!(
 			target: $crate::LOG_TARGET,
 			concat!("[{:?}] 💸 ", $patter), <frame_system::Pallet<T>>::block_number() $(, $values)*
 		)

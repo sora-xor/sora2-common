@@ -48,7 +48,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_support::traits::Randomness;
     use frame_system::pallet_prelude::*;
-    use sp_beefy::mmr::BeefyDataProvider;
+    use sp_consensus_beefy::mmr::BeefyDataProvider;
     use sp_runtime::traits;
     use sp_runtime::traits::Hash;
     use sp_std::prelude::*;
@@ -90,7 +90,7 @@ pub mod pallet {
             + scale_info::TypeInfo
             + MaxEncodedLen;
 
-        type Randomness: Randomness<RandomnessOutputOf<Self>, Self::BlockNumber>;
+        type Randomness: Randomness<RandomnessOutputOf<Self>, BlockNumberFor<Self>>;
     }
 
     #[pallet::event]
@@ -105,7 +105,7 @@ pub mod pallet {
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
         /// Clear the latest digest. This pallet should be placed before any other pallets which is use AuxiliaryDigestHandler.
-        fn on_initialize(_now: T::BlockNumber) -> Weight {
+        fn on_initialize(_now: BlockNumberFor<T>) -> Weight {
             LatestDigest::<T>::kill();
             <T as frame_system::Config>::DbWeight::get().writes(1)
         }
