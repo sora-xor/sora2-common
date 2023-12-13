@@ -111,25 +111,9 @@ where
                 asset_kind,
                 sidechain_precision: precision,
             },
-            // This chain for this chain is side chain on side chain
-            // That's why incoming_sidechain_asset_registration should be invoked
-            SubstrateAppCall::RegisterThischainAsset {
-                asset_id,
-                symbol,
-                name,
-                precision,
-            } => Call::incoming_sidechain_asset_registration {
-                // TODO: find better way to manage asset kind to make it less confusing
-                // This is thischain asset for another chain, for our chain it's sidechain
-                sidechain_asset_id: asset_id,
-                // asset_kind,
-                symbol,
-                name,
-                sidechain_precision: precision,
-            },
-            // Side chain for side chain is this chain on this chain
-            // That's why incoming_thischain_asset_registration should be invoked
-            SubstrateAppCall::RegisterSidechainAsset {
+            // // This chain for this chain is side chain on side chain
+            // // That's why incoming_sidechain_asset_registration should be invoked
+            SubstrateAppCall::RegisterAsset {
                 asset_id,
                 sidechain_asset,
             } => Call::incoming_thischain_asset_registration {
@@ -138,7 +122,6 @@ where
                 asset_id: sidechain_asset
                     .try_into()
                     .map_err(|_| Error::<T>::WrongAssetId)?,
-                // This is thischain asset for another chain, for our chain it's sidechain
                 sidechain_asset_id: asset_id,
             },
             SubstrateAppCall::ReportTransferResult {
@@ -250,6 +233,10 @@ pub mod pallet {
             BalanceOf<T>,
         ),
         MessageSent(bridge_types::substrate::SubstrateAppCall),
+        FailedToMint(
+            H256,
+            DispatchError,
+        ),
     }
 
     #[pallet::storage]
@@ -331,36 +318,41 @@ pub mod pallet {
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
 
-            let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
-                .ok_or(Error::<T>::TokenIsNotRegistered)?;
-
-            let precision = SidechainPrecision::<T>::get(network_id, &asset_id)
-                .ok_or(Error::<T>::UnknownPrecision)?;
-            let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
-                .ok_or(Error::<T>::WrongAmount)?;
-            ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
-
-            T::BridgeAssetLocker::unlock_asset(
-                network_id.into(),
-                asset_kind,
-                &recipient,
-                &asset_id,
-                &amount,
-            )?;
-
-            T::MessageStatusNotifier::inbound_request(
-                GenericNetworkId::Sub(network_id),
+            if let Err(error) = Self::mint_inner(
+                asset_id,
+                sender,
+                recipient,
+                amount,
+                network_id,
                 message_id,
-                sender.clone(),
-                recipient.clone(),
-                asset_id.clone(),
-                amount.clone(),
                 timepoint,
-                MessageStatus::Done,
-            );
-            Self::deposit_event(Event::Minted(
-                network_id, asset_id, sender, recipient, amount,
-            ));
+            ) {
+                Self::deposit_event(Event::FailedToMint(
+                    message_id, error,
+                ));
+                T::OutboundChannel::submit(
+                    network_id,
+                    &RawOrigin::Root,
+                    &SubstrateAppCall::ReportTransferResult {
+                        message_id,
+                        message_status: MessageStatus::Failed,
+                    }
+                    .prepare_message(),
+                    (),
+                )?;
+            } else {
+                T::OutboundChannel::submit(
+                    network_id,
+                    &RawOrigin::Root,
+                    &SubstrateAppCall::ReportTransferResult {
+                        message_id,
+                        message_status: MessageStatus::Done,
+                    }
+                    .prepare_message(),
+                    (),
+                )?;
+            }
+
             Ok(())
         }
 
@@ -406,51 +398,7 @@ pub mod pallet {
                 &SubstrateAppCall::FinalizeAssetRegistration {
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset: sidechain_asset_id,
-                    // asset_kind,
                     asset_kind: AssetKind::Sidechain,
-                    precision,
-                }
-                .prepare_message(),
-                (),
-            )?;
-            Ok(())
-        }
-
-        #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
-        pub fn incoming_sidechain_asset_registration(
-            origin: OriginFor<T>,
-            // asset_id: AssetIdOf<T>,
-            sidechain_asset_id: GenericAssetId,
-            // asset_kind: AssetKind,
-            symbol: Vec<u8>,
-            name: Vec<u8>,
-            sidechain_precision: u8,
-        ) -> DispatchResult {
-            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
-            // ensure!(T::AssetRegistry::ensure_asset_exists(asset_id.clone()), Error::<T>::TokenIsNotRegistered);
-            let asset_id = T::AssetRegistry::register_asset(
-                            bridge_types::GenericNetworkId::Sub(network_id),
-                            symbol.into(),
-                            name.into(),
-                        )?;
-            let asset_kind = AssetKind::Sidechain;
-
-            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
-
-            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
-            AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
-            ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
-            SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
-
-            T::OutboundChannel::submit(
-                network_id,
-                &RawOrigin::Root,
-                &SubstrateAppCall::FinalizeAssetRegistration {
-                    asset_id: T::AssetIdConverter::convert(asset_id),
-                    sidechain_asset: sidechain_asset_id,
-                    // asset_kind,
-                    asset_kind: AssetKind::Thischain,
                     precision,
                 }
                 .prepare_message(),
@@ -479,40 +427,6 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(0))]
-        pub fn register_thischain_asset(
-            origin: OriginFor<T>,
-            network_id: SubNetworkId,
-            asset_id: AssetIdOf<T>,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(
-                !AssetKinds::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenAlreadyRegistered
-            );
-
-            let raw_info = T::AssetRegistry::get_raw_info(asset_id.clone());
-
-            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
-            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
-
-            T::OutboundChannel::submit(
-                network_id,
-                &RawOrigin::Root,
-                &bridge_types::substrate::SubstrateAppCall::RegisterThischainAsset {
-                    asset_id: T::AssetIdConverter::convert(asset_id),
-                    symbol: raw_info.symbol,
-                    name: raw_info.name,
-                    precision,
-                }
-                .prepare_message(),
-                (),
-            )?;
-
-            Ok(())
-        }
-
-        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(0))]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
@@ -531,7 +445,7 @@ pub mod pallet {
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                &bridge_types::substrate::SubstrateAppCall::RegisterSidechainAsset {
+                &bridge_types::substrate::SubstrateAppCall::RegisterAsset {
                     asset_id: T::AssetIdConverter::convert(asset_id),
                     sidechain_asset,
                 }
@@ -541,7 +455,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(7)]
+        #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
@@ -565,33 +479,49 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        // pub fn register_asset_inner(
-        //     network_id: SubNetworkId,
-        //     asset_id: AssetIdOf<T>,
-        //     sidechain_asset: GenericAssetId,
-        //     asset_kind: AssetKind,
-        //     symbol: Vec<u8>,
-        //     name: Vec<u8>,
-        // ) -> DispatchResult {
-        //     T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
-        //     let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+        pub fn mint_inner(
+            asset_id: AssetIdOf<T>,
+            sender: GenericAccount,
+            recipient: AccountIdOf<T>,
+            amount: GenericBalance,
+            network_id: SubNetworkId,
+            message_id: H256,
+            timepoint: bridge_types::GenericTimepoint,
+        ) -> DispatchResult {
+            let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
-        //     T::OutboundChannel::submit(
-        //         network_id,
-        //         &RawOrigin::Root,
-        //         &bridge_types::substrate::SubstrateAppCall::RegisterAsset {
-        //             asset_id: T::AssetIdConverter::convert(asset_id),
-        //             sidechain_asset,
-        //             asset_kind,
-        //             symbol,
-        //             name,
-        //             precision,
-        //         }
-        //         .prepare_message(),
-        //         (),
-        //     )?;
-        //     Ok(())
-        // }
+            let precision = SidechainPrecision::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::UnknownPrecision)?;
+            let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
+                .ok_or(Error::<T>::WrongAmount)?;
+            ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
+
+            T::BridgeAssetLocker::unlock_asset(
+                network_id.into(),
+                asset_kind,
+                &recipient,
+                &asset_id,
+                &amount,
+            )?;
+
+            T::MessageStatusNotifier::inbound_request(
+                GenericNetworkId::Sub(network_id),
+                message_id,
+                sender.clone(),
+                recipient.clone(),
+                asset_id.clone(),
+                amount.clone(),
+                timepoint,
+                MessageStatus::Done,
+            );
+
+            Self::deposit_event(Event::Minted(
+                network_id, asset_id, sender, recipient, amount,
+            ));
+
+            Ok(())
+        }
 
         pub fn burn_inner(
             who: T::AccountId,
@@ -628,7 +558,6 @@ pub mod pallet {
             let message = bridge_types::substrate::SubstrateAppCall::Transfer {
                 recipient: recipient.clone(),
                 amount: sidechain_amount,
-                // asset_id: T::AssetIdConverter::convert(asset_id.clone()),
                 asset_id: sidechain_asset_id,
                 sender: T::AccountIdConverter::convert(who.clone()),
             };
@@ -636,13 +565,6 @@ pub mod pallet {
             let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
-                // &bridge_types::substrate::SubstrateAppCall::Transfer {
-                //     recipient: recipient.clone(),
-                //     amount: sidechain_amount,
-                //     // asset_id: T::AssetIdConverter::convert(asset_id.clone()),
-                //     asset_id: sidechain_asset_id,
-                //     sender: T::AccountIdConverter::convert(who.clone()),
-                // }
                 &message.clone().prepare_message(),
                 (),
             )?;
