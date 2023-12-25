@@ -24,6 +24,7 @@ pub mod pallet {
     #![allow(missing_docs)]
     use crate::AssetIdGenerator;
     use bridge_types::GenericNetworkId;
+    use frame_support::fail;
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_support::traits::fungibles::{
         metadata::Mutate as MetadataMutate, Create, Inspect, InspectMetadata, Transfer, Mutate,
@@ -38,9 +39,14 @@ pub mod pallet {
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
+    // #[pallet::storage]
+    // #[pallet::getter(fn tech_acc)]
+    // pub(super) type TechAcc<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+
     #[pallet::storage]
     #[pallet::getter(fn tech_acc)]
-    pub(super) type TechAcc<T: Config> = StorageValue<_, T::AccountId, OptionQuery>;
+    pub(super) type TechAccs<T: Config> =
+        StorageMap<_, Identity, GenericNetworkId, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_nonce)]
@@ -53,8 +59,8 @@ pub mod pallet {
         /// The overarching event type.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        #[pallet::constant]
-        type TechAcc: Get<Self::AccountId>;
+        // #[pallet::constant]
+        // type TechAcc: Get<Self::AccountId>;
 
         type AssetIdGenerator: AssetIdGenerator<Self::AssetId>;
 
@@ -62,39 +68,36 @@ pub mod pallet {
     }
 
     #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         AssetCreated(T::AssetId),
     }
 
+    #[pallet::error]
+    pub enum Error<T> {
+        FailedToCreateAsset,
+        NoTechAccFound,
+    }
+
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-    #[pallet::call]
-    impl<T: Config> Pallet<T> {
-        #[pallet::call_index(0)]
-        #[pallet::weight(0)]
-        pub fn set_tech_account(origin: OriginFor<T>, account_id: T::AccountId) -> DispatchResult {
-            ensure_root(origin)?;
-            TechAcc::<T>::set(Some(account_id));
-            Ok(())
-        }
-    }
 
     impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId> for Pallet<T> {
         type AssetName = Vec<u8>;
         type AssetSymbol = Vec<u8>;
 
         fn register_asset(
-            _: GenericNetworkId,
+            network_id: GenericNetworkId,
             name: <Self as bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId>>::AssetName,
             symbol: <Self as bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId>>::AssetSymbol,
         ) -> Result<T::AssetId, DispatchError> {
             let nonce = Self::asset_nonce();
             AssetNonce::<T>::set(nonce + 1);
-            let ta = T::TechAcc::get();
-            let mut i = 0;
-            let iter = 4;
-            while i <= iter {
+            let Some(tech_acc) = Self::tech_acc(network_id) else {
+                fail!(Error::<T>::NoTechAccFound)
+            };
+            let iter = 3;
+            for i in 0..iter {
                 let hash = {
                     let mut vector = name.clone();
                     vector.extend_from_slice(&symbol);
@@ -105,22 +108,19 @@ pub mod pallet {
                 let asset_id = T::AssetIdGenerator::generate_asset_id(hash);
                 let res = <pallet_assets::Pallet<T> as Create<T::AccountId>>::create(
                     asset_id,
-                    ta.clone(),
+                    tech_acc.clone(),
                     true,
                     T::MinBalance::get(),
                 );
                 if res.is_ok() {
                     <pallet_assets::Pallet<T> as MetadataMutate<T::AccountId>>::set(
-                        asset_id, &ta, name, symbol, 18,
+                        asset_id, &tech_acc, name, symbol, 18,
                     )?;
+                    Self::deposit_event(Event::AssetCreated(asset_id));
                     return Ok(asset_id);
                 }
-                if i == iter {
-                    res?;
-                }
-                i += 1;
             }
-            Err(DispatchError::Other("FAILED TO CREATE ASSET"))
+            fail!(Error::<T>::FailedToCreateAsset)
         }
 
         fn manage_asset(_: GenericNetworkId, _: T::AssetId) -> Result<(), DispatchError> {
@@ -148,19 +148,22 @@ pub mod pallet {
         type Balance = T::Balance;
 
         fn lock_asset(
-            _network_id: GenericNetworkId,
+            network_id: GenericNetworkId,
             asset_kind: bridge_types::types::AssetKind,
             who: &T::AccountId,
             asset_id: &Self::AssetId,
             amount: &Self::Balance,
         ) -> DispatchResult {
-            let ta = T::TechAcc::get();
+            // let ta = T::TechAcc::get();
+            let Some(tech_acc) = Self::tech_acc(network_id) else {
+                fail!(Error::<T>::NoTechAccFound)
+            };
             match asset_kind {
                 bridge_types::types::AssetKind::Thischain => {
                     <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
                         asset_id.clone(),
                         &who,
-                        &ta,
+                        &tech_acc,
                         amount.clone(),
                         true,
                     )?;
@@ -178,18 +181,21 @@ pub mod pallet {
         }
 
         fn unlock_asset(
-            _network_id: GenericNetworkId,
+            network_id: GenericNetworkId,
             asset_kind: bridge_types::types::AssetKind,
             who: &T::AccountId,
             asset_id: &Self::AssetId,
             amount: &Self::Balance,
         ) -> DispatchResult {
-            let ta = T::TechAcc::get();
+            // let ta = T::TechAcc::get();
+            let Some(tech_acc) = Self::tech_acc(network_id) else {
+                fail!(Error::<T>::NoTechAccFound)
+            };
             match asset_kind {
                 bridge_types::types::AssetKind::Thischain => {
                     <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
                         asset_id.clone(),
-                        &ta,
+                        &tech_acc,
                         &who,
                         amount.clone(),
                         true,
