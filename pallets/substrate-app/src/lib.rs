@@ -233,10 +233,7 @@ pub mod pallet {
             BalanceOf<T>,
         ),
         MessageSent(bridge_types::substrate::SubstrateAppCall),
-        FailedToMint(
-            H256,
-            DispatchError,
-        ),
+        FailedToMint(H256, DispatchError),
     }
 
     #[pallet::storage]
@@ -319,17 +316,9 @@ pub mod pallet {
             } = T::CallOrigin::ensure_origin(origin.clone())?;
 
             if let Err(error) = Self::mint_inner(
-                asset_id,
-                sender,
-                recipient,
-                amount,
-                network_id,
-                message_id,
-                timepoint,
+                asset_id, sender, recipient, amount, network_id, message_id, timepoint,
             ) {
-                Self::deposit_event(Event::FailedToMint(
-                    message_id, error,
-                ));
+                Self::deposit_event(Event::FailedToMint(message_id, error));
                 T::OutboundChannel::submit(
                     network_id,
                     &RawOrigin::Root,
@@ -382,10 +371,15 @@ pub mod pallet {
             sidechain_asset_id: GenericAssetId,
         ) -> DispatchResult {
             let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
-            ensure!(T::AssetRegistry::ensure_asset_exists(asset_id.clone()), Error::<T>::TokenIsNotRegistered);
+            ensure!(
+                T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
+                Error::<T>::TokenIsNotRegistered
+            );
             let asset_kind = AssetKind::Thischain;
 
             let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
 
             SidechainPrecision::<T>::insert(network_id, asset_id.clone(), precision);
             AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
