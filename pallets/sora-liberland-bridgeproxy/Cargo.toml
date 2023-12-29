@@ -1,5 +1,5 @@
 [package]
-name = "substrate-assets-bridgeproxy"
+name = "sora-liberland-bridgeproxy"
 description = "Wrapper for parity assets"
 version = "0.1.1"
 edition = "2021"
@@ -24,6 +24,7 @@ sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkad
 sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.37", default-features = false }
 pallet-assets = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, version = "4.0.0-dev"}
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.37", default-features = false, version = "4.0.0-dev"}
 
 bridge-types = { path = "../types", default-features = false }
 
@@ -54,6 +55,7 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
     "pallet-assets/std",
+    "pallet-balances/std",
 ]
 
 try-runtime = ["frame-support/try-runtime"]
