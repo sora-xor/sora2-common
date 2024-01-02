@@ -163,9 +163,9 @@ where
                     18,
                 )?;
                 Self::deposit_event(Event::AssetCreated(
-                    LiberlandAssetId::Asset(asset_id.into()).into(),
+                    LiberlandAssetId::Asset(asset_id).into(),
                 ));
-                return Ok(LiberlandAssetId::Asset(asset_id.into()));
+                return Ok(LiberlandAssetId::Asset(asset_id));
             }
         }
         fail!(Error::<T>::FailedToCreateAsset)
@@ -231,14 +231,14 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                         T::Balances::transfer(
                             who,
                             &tech_acc,
-                            amount.clone().into(),
+                            (*amount).into(),
                             ExistenceRequirement::AllowDeath,
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => {
                         T::Balances::withdraw(
                             who,
-                            amount.clone().into(),
+                            (*amount).into(),
                             WithdrawReasons::RESERVE,
                             ExistenceRequirement::AllowDeath,
                         )?;
@@ -249,18 +249,18 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                 match asset_kind {
                     bridge_types::types::AssetKind::Thischain => {
                         <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
-                            asset.clone().into(),
-                            &who,
+                            (*asset).into(),
+                            who,
                             &tech_acc,
-                            amount.clone(),
+                            *amount,
                             true,
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => {
                         <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::burn_from(
-                            asset.clone().into(),
-                            &who,
-                            amount.clone(),
+                            (*asset).into(),
+                            who,
+                            *amount,
                         )?;
                     },
                 }
@@ -286,14 +286,14 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                         T::Balances::transfer(
                             &tech_acc,
                             who,
-                            amount.clone().into(),
+                            (*amount).into(),
                             ExistenceRequirement::AllowDeath,
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => {
                         T::Balances::deposit_into_existing(
                             who,
-                            amount.clone().into(),
+                            (*amount).into(),
                         )?;
                     },
                 }
@@ -302,18 +302,18 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                 match asset_kind {
                     bridge_types::types::AssetKind::Thischain => {
                         <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
-                            asset.clone().into(),
+                            (*asset).into(),
                             &tech_acc,
-                            &who,
-                            amount.clone(),
+                            who,
+                            *amount,
                             true,
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => {
                         <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::mint_into(
-                            asset.clone().into(),
-                            &who,
-                            amount.clone(),
+                            (*asset).into(),
+                            who,
+                            *amount,
                         )?;
                     }
                 }
