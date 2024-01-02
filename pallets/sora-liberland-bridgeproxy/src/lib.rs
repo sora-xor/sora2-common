@@ -20,12 +20,12 @@ use bridge_types::GenericNetworkId;
 use bridge_types::LiberlandAssetId;
 use frame_support::fail;
 use frame_support::pallet_prelude::*;
-use frame_support::traits::WithdrawReasons;
 use frame_support::traits::fungibles::{
     metadata::Mutate as MetadataMutate, Create, Inspect, InspectMetadata, Mutate, Transfer,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
+use frame_support::traits::WithdrawReasons;
 pub use pallet::*;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
@@ -34,7 +34,6 @@ use sp_std::prelude::*;
 #[frame_support::pallet]
 pub mod pallet {
     #![allow(missing_docs)]
-    use crate::AssetIdGenerator;
     use bridge_types::GenericNetworkId;
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_system::pallet_prelude::*;
@@ -62,12 +61,6 @@ pub mod pallet {
         /// The overarching event type.
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        #[pallet::constant]
-        type TechAcc: Get<Self::AccountId>;
-
-        type AssetIdGenerator: AssetIdGenerator<<Self as pallet_assets::Config>::AssetId>;
-        // type AssetIdGenerator: AssetIdGenerator<S÷>;
-
         type MinBalance: Get<<Self as pallet_assets::Config>::Balance>;
 
         type AssetId: Member
@@ -76,7 +69,6 @@ pub mod pallet {
             + MaybeSerializeDeserialize
             + MaxEncodedLen
             + From<<Self as pallet_assets::Config>::AssetId>;
-        // + Into<<Self as pallet_assets::Config>::AssetId>;
 
         type Balances: frame_support::traits::Currency<Self::AccountId>;
     }
@@ -124,7 +116,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, Liberlan
     for Pallet<T>
 where
     <T as pallet_assets::Config>::AssetId: Into<u32> + From<u32>,
-    AssetIdOf<T>: From<LiberlandAssetId>
+    AssetIdOf<T>: From<LiberlandAssetId>,
 {
     type AssetName = Vec<u8>;
     type AssetSymbol = Vec<u8>;
@@ -152,16 +144,23 @@ where
                 let hash = blake2_256(&vector);
                 H256::from_slice(&hash)
             };
-            let asset_id = T::AssetIdGenerator::generate_asset_id(hash);
+            let asset_id = {
+                let arr: [u8; 4] = hash[..4].try_into().unwrap_or_default();
+                u32::from_be_bytes(arr)
+            };
             let res = <pallet_assets::Pallet<T> as Create<T::AccountId>>::create(
-                asset_id,
+                asset_id.into(),
                 tech_acc.clone(),
                 true,
                 T::MinBalance::get(),
             );
             if res.is_ok() {
                 <pallet_assets::Pallet<T> as MetadataMutate<T::AccountId>>::set(
-                    asset_id, &tech_acc, name, symbol, 18,
+                    asset_id.into(),
+                    &tech_acc,
+                    name,
+                    symbol,
+                    18,
                 )?;
                 Self::deposit_event(Event::AssetCreated(
                     LiberlandAssetId::Asset(asset_id.into()).into(),
@@ -183,7 +182,6 @@ where
                 <pallet_assets::Pallet<T> as Inspect<T::AccountId>>::asset_exists(asset_id.into())
             }
         }
-        // <pallet_assets::Pallet<T> as Inspect<T::AccountId>>::asset_exists(asset_id.into())
     }
 
     fn get_raw_info(asset_id: LiberlandAssetId) -> bridge_types::types::RawAssetInfo {
@@ -194,7 +192,6 @@ where
                 precision: 12,
             },
             LiberlandAssetId::Asset(asset_id) => {
-                // <pallet_assets::Pallet<T> as InspectMetadata<T::AccountId>>::get_raw_info(asset_id.into())
                 let name = <pallet_assets::Pallet<T> as InspectMetadata<T::AccountId>>::name(
                     &asset_id.into(),
                 );
@@ -207,14 +204,6 @@ where
                 }
             }
         }
-        // let name = <pallet_assets::Pallet<T> as InspectMetadata<T::AccountId>>::name(&asset_id);
-        // let symbol = pallet_assets::Pallet::<T>::symbol(&asset_id.into());
-        // let precision = pallet_assets::Pallet::<T>::decimals(&asset_id.into());
-        // bridge_types::types::RawAssetInfo {
-        //     name,
-        //     symbol,
-        //     precision,
-        // }
     }
 }
 
@@ -307,7 +296,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             amount.clone().into(),
                         )?;
                     },
-                }   
+                }
             },
             LiberlandAssetId::Asset(asset) => {
                 match asset_kind {
@@ -332,139 +321,4 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
         }
         Ok(())
     }
-}
-
-// impl<T: Config> bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId> for Pallet<T> {
-//     type AssetName = Vec<u8>;
-//     type AssetSymbol = Vec<u8>;
-
-//     fn register_asset(
-//         network_id: GenericNetworkId,
-//         name: <Self as bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId>>::AssetName,
-//         symbol: <Self as bridge_types::traits::BridgeAssetRegistry<T::AccountId, T::AssetId>>::AssetSymbol,
-//     ) -> Result<T::AssetId, DispatchError> {
-//         let nonce = Self::asset_nonce();
-//         AssetNonce::<T>::set(nonce + 1);
-//         let Some(tech_acc) = Self::tech_acc(network_id) else {
-//             fail!(Error::<T>::NoTechAccFound)
-//         };
-//         // let's take 3  itrations to create a new asset id, considering that collision can happen
-//         let iter = 3;
-//         for i in 0..iter {
-//             let hash = {
-//                 let mut vector = name.clone();
-//                 vector.extend_from_slice(&symbol);
-//                 vector.extend_from_slice(&(nonce + i).encode());
-//                 let hash = blake2_256(&vector);
-//                 H256::from_slice(&hash)
-//             };
-//             let asset_id = T::AssetIdGenerator::generate_asset_id(hash);
-//             let res = <pallet_assets::Pallet<T> as Create<T::AccountId>>::create(
-//                 asset_id,
-//                 tech_acc.clone(),
-//                 true,
-//                 T::MinBalance::get(),
-//             );
-//             if res.is_ok() {
-//                 <pallet_assets::Pallet<T> as MetadataMutate<T::AccountId>>::set(
-//                     asset_id, &tech_acc, name, symbol, 18,
-//                 )?;
-//                 Self::deposit_event(Event::AssetCreated(asset_id));
-//                 return Ok(asset_id);
-//             }
-//         }
-//         fail!(Error::<T>::FailedToCreateAsset)
-//     }
-
-//     fn manage_asset(_: GenericNetworkId, _: T::AssetId) -> Result<(), DispatchError> {
-//         Ok(())
-//     }
-
-//     fn ensure_asset_exists(asset_id: T::AssetId) -> bool {
-//         <pallet_assets::Pallet<T> as Inspect<T::AccountId>>::asset_exists(asset_id)
-//     }
-
-//     fn get_raw_info(asset_id: T::AssetId) -> bridge_types::types::RawAssetInfo {
-//         let name = <pallet_assets::Pallet<T> as InspectMetadata<T::AccountId>>::name(&asset_id);
-//         let symbol = pallet_assets::Pallet::<T>::symbol(&asset_id);
-//         let precision = pallet_assets::Pallet::<T>::decimals(&asset_id);
-//         bridge_types::types::RawAssetInfo {
-//             name,
-//             symbol,
-//             precision,
-//         }
-//     }
-// }
-
-// impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet<T> {
-//     type AssetId = T::AssetId;
-//     type Balance = T::Balance;
-
-//     fn lock_asset(
-//         network_id: GenericNetworkId,
-//         asset_kind: bridge_types::types::AssetKind,
-//         who: &T::AccountId,
-//         asset_id: &Self::AssetId,
-//         amount: &Self::Balance,
-//     ) -> DispatchResult {
-//         let Some(tech_acc) = Self::tech_acc(network_id) else {
-//             fail!(Error::<T>::NoTechAccFound)
-//         };
-//         match asset_kind {
-//             bridge_types::types::AssetKind::Thischain => {
-//                 <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
-//                     asset_id.clone(),
-//                     &who,
-//                     &tech_acc,
-//                     amount.clone(),
-//                     true,
-//                 )?;
-//             }
-//             bridge_types::types::AssetKind::Sidechain => {
-//                 <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::burn_from(
-//                     asset_id.clone(),
-//                     &who,
-//                     amount.clone(),
-//                 )?;
-//             }
-//         }
-
-//         Ok(())
-//     }
-
-//     fn unlock_asset(
-//         network_id: GenericNetworkId,
-//         asset_kind: bridge_types::types::AssetKind,
-//         who: &T::AccountId,
-//         asset_id: &Self::AssetId,
-//         amount: &Self::Balance,
-//     ) -> DispatchResult {
-//         let Some(tech_acc) = Self::tech_acc(network_id) else {
-//             fail!(Error::<T>::NoTechAccFound)
-//         };
-//         match asset_kind {
-//             bridge_types::types::AssetKind::Thischain => {
-//                 <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
-//                     asset_id.clone(),
-//                     &tech_acc,
-//                     &who,
-//                     amount.clone(),
-//                     true,
-//                 )?;
-//             }
-//             bridge_types::types::AssetKind::Sidechain => {
-//                 <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::mint_into(
-//                     asset_id.clone(),
-//                     &who,
-//                     amount.clone(),
-//                 )?;
-//             }
-//         }
-
-//         Ok(())
-//     }
-// }
-
-pub trait AssetIdGenerator<T> {
-    fn generate_asset_id(hash: H256) -> T;
 }
