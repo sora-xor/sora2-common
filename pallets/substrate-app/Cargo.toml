@@ -30,11 +30,8 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits", default-features = false, optional = true }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies", default-features = false, optional = true }
-
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
-
 bridge-types = { path = "../types", default-features = false }
-xcm = { git = "https://github.com/paritytech/polkadot.git", branch = "release-v0.9.38", default-features = false, optional = true }
 
 [dev-dependencies]
 substrate-bridge-channel = { path = "../substrate-channel" }
@@ -46,7 +43,6 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies" }
 bridge-types = { path = "../types", features = ["test"] }
-xcm = { git = "https://github.com/paritytech/polkadot.git", branch = "release-v0.9.38", default-features = false }
 
 [features]
 default = ["std"]
@@ -78,7 +74,6 @@ runtime-benchmarks = [
     "substrate-bridge-channel/runtime-benchmarks",
     "traits",
     "currencies",
-    "xcm"
 ]
 
 try-runtime = ["frame-support/try-runtime"]

@@ -248,15 +248,18 @@ impl pallet_timestamp::Config for Test {
 pub struct AssetRegistryImpl;
 
 impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
-    type AssetName = String;
-    type AssetSymbol = String;
+    type AssetName = Vec<u8>;
+    type AssetSymbol = Vec<u8>;
 
     fn register_asset(
         _network_id: GenericNetworkId,
         name: Self::AssetName,
         _symbol: Self::AssetSymbol,
     ) -> Result<AssetId, sp_runtime::DispatchError> {
-        match name.as_str() {
+        match String::from_utf8(name)
+            .expect("parachain-app: failed to convert a string")
+            .as_str()
+        {
             "XOR" => Ok(AssetId::XOR),
             "KSM" => Ok(AssetId::Custom(1)),
             _ => Ok(AssetId::Custom(0)),
@@ -288,6 +291,10 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
                 precision: 18,
             },
         }
+    }
+
+    fn ensure_asset_exists(_asset_id: AssetId) -> bool {
+        true
     }
 }
 
@@ -386,8 +393,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
             Origin::<Test>::Root.into(),
             SubNetworkId::Kusama,
             PARENT_PARACHAIN_ASSET,
-            "KSM".to_owned(),
-            "KSM".to_owned(),
+            "KSM".into(),
+            "KSM".into(),
             12,
             allowed_parachains.clone(),
             minimal_xcm_amount,
