@@ -175,6 +175,7 @@ impl From<SubNetworkId> for GenericNetworkId {
 pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
+    Liberland(LiberlandAccountId),
     Parachain(xcm::VersionedMultiLocation),
     Unknown,
     Root,
@@ -311,6 +312,8 @@ impl TryInto<MainnetBalance> for GenericBalance {
 pub type MainnetAssetId = H256;
 
 pub type MainnetAccountId = sp_runtime::AccountId32;
+
+pub type LiberlandAccountId = sp_runtime::AccountId32;
 
 pub type MainnetBalance = u128;
 
