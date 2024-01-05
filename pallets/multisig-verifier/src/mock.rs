@@ -56,8 +56,8 @@ frame_support::construct_runtime!(
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
     pub const SS58Prefix: u8 = 42;
-    pub const SidechainRandomnessNetwork: SubNetworkId = SubNetworkId::Mainnet;
     pub const BridgeMaxPeers: u32 = 50;
+    pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
 pub type AccountId = u64;
@@ -95,6 +95,7 @@ impl trusted_verifier::Config for Test {
     type OutboundChannel = TestOutboundChannel;
     type MaxPeers = BridgeMaxPeers;
     type WeightInfo = ();
+    type ThisNetworkId = ThisNetworkId;
 }
 
 pub struct TestOutboundChannel;

@@ -1,0 +1,61 @@
+[package]
+name = "sora-liberland-bridgeproxy"
+description = "Wrapper for parity assets"
+version = "0.1.1"
+edition = "2021"
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+repository = "https://github.com/sora-xor/sora2-common"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+serde = { version = "1.0.101", optional = true }
+codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
+    "derive",
+] }
+scale-info = { version = "2", default-features = false, features = ["derive"] }
+
+frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
+frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-core = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-io = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
+pallet-assets = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false, version = "4.0.0-dev"}
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.38", default-features = false, version = "4.0.0-dev"}
+
+bridge-types = { path = "../types", default-features = false }
+
+[dev-dependencies]
+sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
+hex-literal = { version = "0.4.1" }
+
+[features]
+default = ["std"]
+std = [
+    "pallet-assets/std",
+    "serde",
+    "codec/std",
+    "scale-info/std",
+    "frame-support/std",
+    "frame-system/std",
+    "frame-benchmarking/std",
+    "sp-core/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "sp-std/std",
+    "bridge-types/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking",
+    "sp-runtime/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
+    "pallet-assets/std",
+    "pallet-balances/std",
+]
+
+try-runtime = ["frame-support/try-runtime"]

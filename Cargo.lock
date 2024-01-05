@@ -341,23 +341,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bridge-channel-rpc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bridge-types",
- "jsonrpsee",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-core",
- "sp-offchain",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "bridge-common"
 version = "0.1.0"
 dependencies = [
@@ -2178,6 +2161,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-assets"
+version = "4.0.0-dev"
+source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-balances"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -3008,6 +3006,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "sora-liberland-bridgeproxy"
+version = "0.1.1"
+dependencies = [
+ "bridge-types",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "pallet-assets",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "sp-api"
 version = "4.0.0-dev"
 source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
@@ -3297,16 +3316,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "thiserror",
-]
-
-[[package]]
-name = "sp-offchain"
-version = "4.0.0-dev"
-source = "git+https://github.com/paritytech/substrate.git?branch=polkadot-v0.9.38#bcff60a227d455d95b4712b6cb356ce56b1ff672"
-dependencies = [
- "sp-api",
- "sp-core",
- "sp-runtime",
 ]
 
 [[package]]
@@ -3653,7 +3662,6 @@ dependencies = [
  "sp-runtime",
  "sp-std",
  "substrate-bridge-channel",
- "xcm",
 ]
 
 [[package]]

@@ -30,7 +30,7 @@
 
 use super::*;
 use bridge_types::GenericNetworkId;
-use codec::{Decode, MaxEncodedLen};
+use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::{OutboundChannel, TimepointProvider};

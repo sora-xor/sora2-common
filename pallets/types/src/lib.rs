@@ -106,7 +106,8 @@ pub enum SubNetworkId {
     Kusama,
     Polkadot,
     Rococo,
-    Custom(u32),
+    Alphanet,
+    Liberland,
 }
 
 #[derive(
@@ -177,6 +178,16 @@ pub enum GenericAccount {
     Parachain(xcm::VersionedMultiLocation),
     Unknown,
     Root,
+}
+
+impl TryInto<MainnetAccountId> for GenericAccount {
+    type Error = ();
+    fn try_into(self) -> Result<MainnetAccountId, Self::Error> {
+        match self {
+            GenericAccount::Sora(a) => Ok(a),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(
@@ -252,7 +263,29 @@ pub enum GenericAssetId {
     Sora(MainnetAssetId),
     XCM(substrate::ParachainAssetId),
     EVM(H160),
-    Liberland(u32),
+    Liberland(LiberlandAssetId),
+}
+
+// impl TryInto<u32> for GenericAssetId {
+//     type Error = ();
+
+//     fn try_into(self) -> Result<u32, Self::Error> {
+//         match self {
+//             GenericAssetId::Liberland(b) => Ok(b),
+//             _ => Err(()),
+//         }
+//     }
+// }
+
+impl TryInto<LiberlandAssetId> for GenericAssetId {
+    type Error = ();
+
+    fn try_into(self) -> Result<LiberlandAssetId, Self::Error> {
+        match self {
+            GenericAssetId::Liberland(b) => Ok(b),
+            _ => Err(()),
+        }
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -262,6 +295,17 @@ pub enum GenericBalance {
     EVM(U256),
 }
 
+impl TryInto<MainnetBalance> for GenericBalance {
+    type Error = ();
+
+    fn try_into(self) -> Result<MainnetBalance, Self::Error> {
+        match self {
+            GenericBalance::Substrate(b) => Ok(b),
+            _ => Err(()),
+        }
+    }
+}
+
 // Use predefined types to ensure data compatability
 
 pub type MainnetAssetId = H256;
@@ -269,6 +313,29 @@ pub type MainnetAssetId = H256;
 pub type MainnetAccountId = sp_runtime::AccountId32;
 
 pub type MainnetBalance = u128;
+
+#[derive(
+    Encode,
+    Decode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum LiberlandAssetId {
+    LLD,
+    Asset(u32),
+}
+
+impl From<u32> for LiberlandAssetId {
+    fn from(value: u32) -> Self {
+        LiberlandAssetId::Asset(value)
+    }
+}
 
 pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
 where

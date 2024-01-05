@@ -45,6 +45,7 @@ extern crate alloc;
 
 pub mod weights;
 
+// TODO!!! write benchmarks! https://github.com/sora-xor/sora2-network/issues/862
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 
@@ -75,9 +76,9 @@ pub use pallet::*;
 
 impl<T: Config> TryFrom<SubstrateAppCall> for Call<T>
 where
-    AccountIdOf<T>: TryFrom<GenericAccount>,
-    AssetIdOf<T>: TryFrom<GenericAssetId>,
-    BalanceOf<T>: TryFrom<GenericBalance>,
+    GenericAccount: TryInto<AccountIdOf<T>>,
+    GenericAssetId: TryInto<AssetIdOf<T>>,
+    GenericBalance: TryInto<BalanceOf<T>>,
 {
     type Error = Error<T>;
     fn try_from(value: SubstrateAppCall) -> Result<Self, Self::Error> {
@@ -101,7 +102,6 @@ where
                 precision,
                 sidechain_asset,
             } => Call::finalize_asset_registration {
-                // TODO: find better way to manage asset kind to make it less confusing
                 // This is sidechain asset for another chain, for our chain it's thischain
                 asset_id: sidechain_asset
                     .try_into()
@@ -111,21 +111,17 @@ where
                 asset_kind,
                 sidechain_precision: precision,
             },
+            // // This chain for this chain is side chain on side chain
+            // // That's why incoming_sidechain_asset_registration should be invoked
             SubstrateAppCall::RegisterAsset {
                 asset_id,
                 sidechain_asset,
-                asset_kind,
-                precision,
-            } => Call::incoming_asset_registration {
-                // TODO: find better way to manage asset kind to make it less confusing
+            } => Call::incoming_thischain_asset_registration {
                 // This is sidechain asset for another chain, for our chain it's thischain
                 asset_id: sidechain_asset
                     .try_into()
                     .map_err(|_| Error::<T>::WrongAssetId)?,
-                // This is thischain asset for another chain, for our chain it's sidechain
                 sidechain_asset_id: asset_id,
-                asset_kind,
-                sidechain_precision: precision,
             },
             SubstrateAppCall::ReportTransferResult {
                 message_id,
@@ -140,6 +136,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::large_enum_variant)]
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -168,6 +165,7 @@ pub mod pallet {
         AccountIdOf<T>,
         AssetIdOf<T>,
     >>::AssetName;
+
     pub type AssetSymbolOf<T> = <<T as Config>::AssetRegistry as BridgeAssetRegistry<
         AccountIdOf<T>,
         AssetIdOf<T>,
@@ -234,6 +232,8 @@ pub mod pallet {
             T::AccountId,
             BalanceOf<T>,
         ),
+        MessageSent(bridge_types::substrate::SubstrateAppCall),
+        FailedToMint(H256, DispatchError),
     }
 
     #[pallet::storage]
@@ -298,7 +298,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Internal calls to be used from Parachain side.
 
-        // TODO: make benchmarks
+        // TODO!!! write benchmarks! #862
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -315,6 +315,177 @@ pub mod pallet {
                 ..
             } = T::CallOrigin::ensure_origin(origin.clone())?;
 
+            // Here we need a logic that does not fail the extrinic
+            if let Err(error) = Self::mint_inner(
+                asset_id, sender, recipient, amount, network_id, message_id, timepoint,
+            ) {
+                Self::deposit_event(Event::FailedToMint(message_id, error));
+                T::OutboundChannel::submit(
+                    network_id,
+                    &RawOrigin::Root,
+                    &SubstrateAppCall::ReportTransferResult {
+                        message_id,
+                        message_status: MessageStatus::Failed,
+                    }
+                    .prepare_message(),
+                    (),
+                )?;
+            } else {
+                T::OutboundChannel::submit(
+                    network_id,
+                    &RawOrigin::Root,
+                    &SubstrateAppCall::ReportTransferResult {
+                        message_id,
+                        message_status: MessageStatus::Done,
+                    }
+                    .prepare_message(),
+                    (),
+                )?;
+            }
+
+            Ok(())
+        }
+
+        // TODO!!! write benchmarks! #862
+        #[pallet::call_index(1)]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        pub fn finalize_asset_registration(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            sidechain_asset_id: GenericAssetId,
+            asset_kind: AssetKind,
+            sidechain_precision: u8,
+        ) -> DispatchResult {
+            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
+            AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
+            ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
+            SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
+            Ok(())
+        }
+
+        // TODO!!! write benchmarks! #862
+        #[pallet::call_index(2)]
+        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        pub fn incoming_thischain_asset_registration(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            sidechain_asset_id: GenericAssetId,
+        ) -> DispatchResult {
+            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
+            ensure!(
+                T::AssetRegistry::ensure_asset_exists(asset_id.clone()),
+                Error::<T>::TokenIsNotRegistered
+            );
+            let asset_kind = AssetKind::Thischain;
+
+            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
+
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+
+            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), precision);
+            AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
+            ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
+            SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &SubstrateAppCall::FinalizeAssetRegistration {
+                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    sidechain_asset: sidechain_asset_id,
+                    asset_kind: AssetKind::Sidechain,
+                    precision,
+                }
+                .prepare_message(),
+                (),
+            )?;
+            Ok(())
+        }
+
+        // Common exstrinsics
+
+        // TODO!!! write benchmarks! #862
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::burn())]
+        pub fn burn(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            recipient: GenericAccount,
+            amount: BalanceOf<T>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            Self::burn_inner(who, network_id, asset_id, recipient, amount)?;
+
+            Ok(())
+        }
+
+        // TODO!!! write benchmarks! #862
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(0))]
+        pub fn register_sidechain_asset(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            sidechain_asset: GenericAssetId,
+            symbol: AssetSymbolOf<T>,
+            name: AssetNameOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+
+            let asset_id =
+                T::AssetRegistry::register_asset(network_id.into(), name.clone(), symbol.clone())?;
+
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &bridge_types::substrate::SubstrateAppCall::RegisterAsset {
+                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    sidechain_asset,
+                }
+                .prepare_message(),
+                (),
+            )?;
+            Ok(())
+        }
+
+        // TODO!!! write benchmarks! #862
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
+        pub fn update_transaction_status(
+            origin: OriginFor<T>,
+            message_id: H256,
+            message_status: MessageStatus,
+        ) -> DispatchResult {
+            let CallOriginOutput {
+                network_id,
+                timepoint,
+                ..
+            } = T::CallOrigin::ensure_origin(origin)?;
+
+            T::MessageStatusNotifier::update_status(
+                network_id.into(),
+                message_id,
+                message_status,
+                timepoint,
+            );
+            Ok(())
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        pub fn mint_inner(
+            asset_id: AssetIdOf<T>,
+            sender: GenericAccount,
+            recipient: AccountIdOf<T>,
+            amount: GenericBalance,
+            network_id: SubNetworkId,
+            message_id: H256,
+            timepoint: bridge_types::GenericTimepoint,
+        ) -> DispatchResult {
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
@@ -342,157 +513,11 @@ pub mod pallet {
                 timepoint,
                 MessageStatus::Done,
             );
+
             Self::deposit_event(Event::Minted(
                 network_id, asset_id, sender, recipient, amount,
             ));
-            Ok(())
-        }
 
-        #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
-        pub fn finalize_asset_registration(
-            origin: OriginFor<T>,
-            asset_id: AssetIdOf<T>,
-            sidechain_asset_id: GenericAssetId,
-            asset_kind: AssetKind,
-            sidechain_precision: u8,
-        ) -> DispatchResult {
-            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
-            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
-            AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
-            ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
-            SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
-            Ok(())
-        }
-
-        // TODO: make benchmarks
-        #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
-        pub fn incoming_asset_registration(
-            origin: OriginFor<T>,
-            asset_id: AssetIdOf<T>,
-            sidechain_asset_id: GenericAssetId,
-            asset_kind: AssetKind,
-            sidechain_precision: u8,
-        ) -> DispatchResult {
-            let CallOriginOutput { network_id, .. } = T::CallOrigin::ensure_origin(origin.clone())?;
-            SidechainPrecision::<T>::insert(network_id, asset_id.clone(), sidechain_precision);
-            AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
-            ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
-            SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
-            Ok(())
-        }
-
-        // Common exstrinsics
-
-        // TODO: make benchmarks
-        #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::burn())]
-        pub fn burn(
-            origin: OriginFor<T>,
-            network_id: SubNetworkId,
-            asset_id: AssetIdOf<T>,
-            recipient: GenericAccount,
-            amount: BalanceOf<T>,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-
-            Self::burn_inner(who, network_id, asset_id, recipient, amount)?;
-
-            Ok(())
-        }
-
-        #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(0))]
-        pub fn register_thischain_asset(
-            origin: OriginFor<T>,
-            network_id: SubNetworkId,
-            asset_id: AssetIdOf<T>,
-            sidechain_asset: GenericAssetId,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(
-                !AssetKinds::<T>::contains_key(network_id, &asset_id),
-                Error::<T>::TokenAlreadyRegistered
-            );
-
-            Self::register_asset_inner(
-                network_id,
-                asset_id,
-                sidechain_asset,
-                AssetKind::Thischain,
-            )?;
-
-            Ok(())
-        }
-
-        #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(0))]
-        pub fn register_sidechain_asset(
-            origin: OriginFor<T>,
-            network_id: SubNetworkId,
-            sidechain_asset: GenericAssetId,
-            symbol: AssetSymbolOf<T>,
-            name: AssetNameOf<T>,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-
-            let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
-
-            Self::register_asset_inner(
-                network_id,
-                asset_id,
-                sidechain_asset,
-                AssetKind::Sidechain,
-            )?;
-            Ok(())
-        }
-
-        #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
-        pub fn update_transaction_status(
-            origin: OriginFor<T>,
-            message_id: H256,
-            message_status: MessageStatus,
-        ) -> DispatchResult {
-            let CallOriginOutput {
-                network_id,
-                timepoint,
-                ..
-            } = T::CallOrigin::ensure_origin(origin)?;
-
-            T::MessageStatusNotifier::update_status(
-                network_id.into(),
-                message_id,
-                message_status,
-                timepoint,
-            );
-            Ok(())
-        }
-    }
-
-    impl<T: Config> Pallet<T> {
-        pub fn register_asset_inner(
-            network_id: SubNetworkId,
-            asset_id: AssetIdOf<T>,
-            sidechain_asset: GenericAssetId,
-            asset_kind: AssetKind,
-        ) -> DispatchResult {
-            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
-            let precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
-
-            T::OutboundChannel::submit(
-                network_id,
-                &RawOrigin::Root,
-                &bridge_types::substrate::SubstrateAppCall::RegisterAsset {
-                    asset_id: T::AssetIdConverter::convert(asset_id),
-                    sidechain_asset,
-                    asset_kind,
-                    precision,
-                }
-                .prepare_message(),
-                (),
-            )?;
             Ok(())
         }
 
@@ -513,6 +538,9 @@ pub mod pallet {
 
             ensure!(!amount.is_zero(), Error::<T>::WrongAmount);
 
+            let sidechain_asset_id = SidechainAssetId::<T>::get(network_id, asset_id.clone())
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+
             let sidechain_amount =
                 T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount.clone())
                     .ok_or(Error::<T>::WrongAmount)?;
@@ -525,16 +553,17 @@ pub mod pallet {
                 &amount,
             )?;
 
+            let message = bridge_types::substrate::SubstrateAppCall::Transfer {
+                recipient: recipient.clone(),
+                amount: sidechain_amount,
+                asset_id: sidechain_asset_id,
+                sender: T::AccountIdConverter::convert(who.clone()),
+            };
+
             let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
-                &bridge_types::substrate::SubstrateAppCall::Transfer {
-                    recipient: recipient.clone(),
-                    amount: sidechain_amount,
-                    asset_id: T::AssetIdConverter::convert(asset_id.clone()),
-                    sender: T::AccountIdConverter::convert(who.clone()),
-                }
-                .prepare_message(),
+                &message.clone().prepare_message(),
                 (),
             )?;
 
@@ -549,6 +578,7 @@ pub mod pallet {
             );
 
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
+            Self::deposit_event(Event::MessageSent(message));
 
             Ok(Default::default())
         }
