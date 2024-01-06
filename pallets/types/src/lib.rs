@@ -176,6 +176,7 @@ pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
     Parachain,
+    Liberland(LiberladAccountId),
     Unknown,
     Root,
 }
@@ -267,17 +268,6 @@ pub enum GenericAssetId {
     Liberland(LiberlandAssetId),
 }
 
-// impl TryInto<u32> for GenericAssetId {
-//     type Error = ();
-
-//     fn try_into(self) -> Result<u32, Self::Error> {
-//         match self {
-//             GenericAssetId::Liberland(b) => Ok(b),
-//             _ => Err(()),
-//         }
-//     }
-// }
-
 impl TryInto<LiberlandAssetId> for GenericAssetId {
     type Error = ();
 
@@ -312,6 +302,8 @@ impl TryInto<MainnetBalance> for GenericBalance {
 pub type MainnetAssetId = H256;
 
 pub type MainnetAccountId = sp_runtime::AccountId32;
+
+pub type LiberladAccountId = sp_runtime::AccountId32;
 
 pub type MainnetBalance = u128;
 

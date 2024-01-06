@@ -45,6 +45,7 @@ extern crate alloc;
 
 pub mod weights;
 
+// TODO!!! write benchmarks! https://github.com/sora-xor/sora2-network/issues/862
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 
@@ -298,7 +299,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         // Internal calls to be used from Parachain side.
 
-        // TODO: make benchmarks
+        // TODO!!! write benchmarks! #862
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -345,6 +346,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO!!! write benchmarks! #862
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
         pub fn finalize_asset_registration(
@@ -362,7 +364,7 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
+        // TODO!!! write benchmarks! #862
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
         pub fn incoming_thischain_asset_registration(
@@ -403,7 +405,7 @@ pub mod pallet {
 
         // Common exstrinsics
 
-        // TODO: make benchmarks
+        // TODO!!! write benchmarks! #862
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
@@ -420,6 +422,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO!!! write benchmarks! #862
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(0))]
         pub fn register_sidechain_asset(
@@ -449,6 +452,7 @@ pub mod pallet {
             Ok(())
         }
 
+        // TODO!!! write benchmarks! #862
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
