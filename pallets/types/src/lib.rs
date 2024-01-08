@@ -175,8 +175,8 @@ impl From<SubNetworkId> for GenericNetworkId {
 pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
-    Parachain,
     Liberland(LiberladAccountId),
+    Parachain,
     Unknown,
     Root,
 }
