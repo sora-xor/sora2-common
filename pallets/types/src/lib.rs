@@ -175,7 +175,7 @@ impl From<SubNetworkId> for GenericNetworkId {
 pub enum GenericAccount {
     EVM(H160),
     Sora(MainnetAccountId),
-    Liberland(LiberladAccountId),
+    Liberland(MainnetAccountId),
     Parachain,
     Unknown,
     Root,
@@ -185,6 +185,7 @@ impl TryInto<MainnetAccountId> for GenericAccount {
     type Error = ();
     fn try_into(self) -> Result<MainnetAccountId, Self::Error> {
         match self {
+            GenericAccount::Liberland(a) => Ok(a),
             GenericAccount::Sora(a) => Ok(a),
             _ => Err(()),
         }
@@ -302,8 +303,6 @@ impl TryInto<MainnetBalance> for GenericBalance {
 pub type MainnetAssetId = H256;
 
 pub type MainnetAccountId = sp_runtime::AccountId32;
-
-pub type LiberladAccountId = sp_runtime::AccountId32;
 
 pub type MainnetBalance = u128;
 
