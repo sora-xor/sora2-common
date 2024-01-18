@@ -28,13 +28,12 @@ sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkad
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", default-features = false, optional = true }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", default-features = false, optional = true }
+# traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", default-features = false, optional = true }
+# currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", default-features = false, optional = true }
 
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
-# xcm = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false, optional = true }
 staging-xcm = { pachage = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false, optional = true }
 
 [dev-dependencies]
@@ -43,11 +42,10 @@ pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", tag
 dispatch = { path = "../dispatch" }
 sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0" }
 pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0" }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-tokens" }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits" }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies" }
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-tokens", version = "0.4.1-dev" }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", version = "0.4.1-dev" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", version = "0.4.1-dev" }
 bridge-types = { path = "../types", features = ["test"] }
-# xcm = { git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 staging-xcm = { pachage = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", tag = "polkadot-v1.1.0", default-features = false }
 
 [features]
@@ -78,9 +76,95 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
-    "traits",
-    "currencies",
+    # "traits",
+    # "currencies",
     "staging-xcm"
 ]
 
 try-runtime = ["frame-support/try-runtime"]
+
+
+# [package]
+# name = "parachain-bridge-app"
+# version = "0.1.1"
+# edition = "2021"
+# authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
+# license = "BSD-4-Clause"
+# homepage = 'https://sora.org'
+# repository = 'https://github.com/sora-xor/sora2-common'
+
+# [package.metadata.docs.rs]
+# targets = ["x86_64-unknown-linux-gnu"]
+
+# [dependencies]
+# serde = { version = "1.0.130", optional = true }
+# codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
+#     "derive",
+# ] }
+# scale-info = { version = "2", default-features = false, features = ["derive"] }
+# hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
+# rlp = { version = "0.5", default-features = false }
+# hex-literal = { version = "0.4.1", default-features = false }
+
+# frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+# frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+# frame-system = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+# sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+# sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+# sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+# sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+
+# # traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "release-polkadot-v1.1.0", package = "orml-traits", default-features = false, optional = true }
+# # currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "release-polkadot-v1.1.0", package = "orml-currencies", default-features = false, optional = true }
+
+# ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
+
+# bridge-types = { path = "../types", default-features = false }
+# staging-xcm = { pachage = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+
+# [dev-dependencies]
+# substrate-bridge-channel = { path = "../substrate-channel" }
+# pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# dispatch = { path = "../dispatch" }
+# sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+# tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-tokens", version = "0.4.1-dev" }
+# traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits" }
+# currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", version = "0.4.1-dev" }
+# bridge-types = { path = "../types", features = ["test"] }
+# staging-xcm = { pachage = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+
+# [features]
+# default = ["std"]
+# std = [
+#     "serde",
+#     "hex/std",
+#     "codec/std",
+#     "scale-info/std",
+#     "frame-support/std",
+#     "frame-system/std",
+#     "sp-core/std",
+#     "sp-std/std",
+#     "sp-io/std",
+#     "sp-runtime/std",
+#     "bridge-types/std",
+
+#     "frame-benchmarking/std",
+#     "dispatch/std",
+#     "substrate-bridge-channel/std",
+
+#     "ethabi/std",
+#     "rlp/std",
+# ]
+# runtime-benchmarks = [
+#     "frame-benchmarking",
+#     "dispatch/runtime-benchmarks",
+#     "frame-support/runtime-benchmarks",
+#     "frame-system/runtime-benchmarks",
+#     "substrate-bridge-channel/runtime-benchmarks",
+#     # "traits",
+#     # "currencies",
+#     "staging-xcm"
+# ]
+
+# try-runtime = ["frame-support/try-runtime"]

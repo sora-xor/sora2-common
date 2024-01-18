@@ -4,8 +4,8 @@ use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::traits::MessageDispatch as _;
 use bridge_types::H160;
 use bridge_types::{types, SubNetworkId};
-use frame_support::dispatch::DispatchError;
 use frame_system::{EventRecord, Phase};
+use sp_runtime::DispatchError;
 
 #[test]
 fn test_dispatch_bridge_message() {
@@ -37,7 +37,7 @@ fn test_dispatch_bridge_message() {
                 phase: Phase::Initialization,
                 event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDispatched(
                     id,
-                    Err(DispatchError::BadOrigin)
+                    Ok(())
                 )),
                 topics: vec![],
             }],
