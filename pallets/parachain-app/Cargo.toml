@@ -33,6 +33,9 @@ ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0
 bridge-types = { path = "../types", default-features = false }
 staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
 
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", default-features = false, optional = true }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", default-features = false, optional = true }
+
 [dev-dependencies]
 substrate-bridge-channel = { path = "../substrate-channel" }
 pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
@@ -73,7 +76,9 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
-    "staging-xcm"
+    "staging-xcm",
+    "traits",
+    "currencies",
 ]
 
 try-runtime = ["frame-support/try-runtime"]
