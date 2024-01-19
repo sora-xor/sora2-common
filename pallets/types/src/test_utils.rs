@@ -176,14 +176,10 @@ impl<T: traits::MultiCurrency<AccountId32>> BridgeAssetLocker<AccountId32>
         match asset_kind {
             crate::types::AssetKind::Thischain => {
                 let bridge_acc = Self::bridge_account(network_id);
-                if let Err(e) = T::transfer(*asset_id, who, &bridge_acc, *amount){
-                    // return e.into();
-                }
+                T::transfer(*asset_id, who, &bridge_acc, *amount)?;
             }
             crate::types::AssetKind::Sidechain => {
-                // T::withdraw(*asset_id, who, *amount).into()?;
-                T::withdraw(*asset_id, who, *amount);
-                // <Result<(), traits::parameters::sp_runtime::DispatchError> as Into<T>>::into(T::withdraw(*asset_id, who, *amount))?
+                T::withdraw(*asset_id, who, *amount)?;
             }
         }
         Ok(())
@@ -199,12 +195,10 @@ impl<T: traits::MultiCurrency<AccountId32>> BridgeAssetLocker<AccountId32>
         match asset_kind {
             crate::types::AssetKind::Thischain => {
                 let bridge_acc = Self::bridge_account(network_id);
-                // T::transfer(*asset_id, &bridge_acc, who, *amount).into()?;
-                T::transfer(*asset_id, &bridge_acc, who, *amount);
+                T::transfer(*asset_id, &bridge_acc, who, *amount)?;
             }
             crate::types::AssetKind::Sidechain => {
-                // T::deposit(*asset_id, who, *amount).into()?;
-                T::deposit(*asset_id, who, *amount);
+                T::deposit(*asset_id, who, *amount)?;
             }
         }
         Ok(())

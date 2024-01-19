@@ -699,7 +699,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             for (network_id, asset_id, asset_kind) in &self.assets {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);
