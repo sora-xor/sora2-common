@@ -211,7 +211,7 @@ pub mod pallet {
 
             let origin = RawOrigin::new(<T::OriginOutput as traits::BridgeOriginOutput>::new(
                 network_id,
-                message_id.using_encoded(|v| <T as Config<I>>::Hashing::hash(v)),
+                message_id.using_encoded(<T as Config<I>>::Hashing::hash),
                 timepoint,
                 additional,
             ))
