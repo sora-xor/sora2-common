@@ -79,9 +79,9 @@ impl ValidatorSet {
     fn sign_commitment<R: Rng>(
         &self,
         rng: &mut R,
-        commitment: sp_beefy::Commitment<u32>,
+        commitment: sp_consensus_beefy::Commitment<u32>,
         count: Option<usize>,
-    ) -> sp_beefy::SignedCommitment<u32, sp_core::ecdsa::Signature> {
+    ) -> sp_consensus_beefy::SignedCommitment<u32, sp_core::ecdsa::Signature> {
         let commitment_hash = sp_runtime::traits::Keccak256::hash_of(&commitment);
         let validators_threshold = threshold(self.validators.len());
         let signed_count = count.unwrap_or_else(|| {
@@ -100,14 +100,14 @@ impl ValidatorSet {
             signatures[i] = Some(signature);
         }
 
-        sp_beefy::SignedCommitment {
+        sp_consensus_beefy::SignedCommitment {
             commitment,
             signatures,
         }
     }
 
     pub fn validator_pubkey_proof(&self, pos: usize) -> Vec<H256> {
-        let proof = beefy_merkle_tree::merkle_proof::<sp_runtime::traits::Keccak256, _, _>(
+        let proof = binary_merkle_tree::merkle_proof::<sp_runtime::traits::Keccak256, _, _>(
             self.addresses.clone(),
             pos,
         )
@@ -132,23 +132,27 @@ impl ValidatorSet {
     }
 
     pub fn root(&self) -> H256 {
-        let root = beefy_merkle_tree::merkle_root::<sp_runtime::traits::Keccak256, _>(
+        let root = binary_merkle_tree::merkle_root::<sp_runtime::traits::Keccak256, _>(
             self.addresses.clone(),
         );
         root
     }
 
-    fn authority_set(&self) -> sp_beefy::mmr::BeefyAuthoritySet<H256> {
-        sp_beefy::mmr::BeefyAuthoritySet {
+    fn authority_set(&self) -> sp_consensus_beefy::mmr::BeefyAuthoritySet<H256> {
+        sp_consensus_beefy::mmr::BeefyAuthoritySet {
             id: self.id,
             len: self.validators.len() as u32,
-            root: self.root(),
+            keyset_commitment: self.root(),
         }
     }
 }
 
-pub type MMRLeaf =
-    sp_beefy::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
+pub type MMRLeaf = sp_consensus_beefy::mmr::MmrLeaf<
+    u32,
+    H256,
+    H256,
+    bridge_types::types::LeafExtraData<H256, H256>,
+>;
 
 struct FakeMMR {
     // leaves: BTreeMap<u64, MMRLeaf>,
@@ -275,7 +279,7 @@ impl From<FixtureValidatorSet> for bridge_common::beefy_types::ValidatorSet {
         bridge_common::beefy_types::ValidatorSet {
             id: f.id,
             len: f.len,
-            root: f.root,
+            keyset_commitment: f.root,
         }
     }
 }
@@ -299,7 +303,7 @@ pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture>
     let mut mmr = FakeMMR::new();
     for i in 0..tree_size + 1 {
         mmr.add_leaf(MMRLeaf {
-            version: sp_beefy::mmr::MmrLeafVersion::new(0, 0),
+            version: sp_consensus_beefy::mmr::MmrLeafVersion::new(0, 0),
             parent_number_and_hash: (i, H256::random_using(&mut rng)),
             beefy_next_authority_set: next_validator_set.authority_set(),
             leaf_extra: bridge_types::types::LeafExtraData {
@@ -310,9 +314,9 @@ pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture>
     }
     let mmr_root = mmr.root(tree_size as u64)?;
 
-    let commitment = sp_beefy::Commitment::<u32> {
-        payload: sp_beefy::Payload::from_single_entry(
-            sp_beefy::known_payloads::MMR_ROOT_ID,
+    let commitment = sp_consensus_beefy::Commitment::<u32> {
+        payload: sp_consensus_beefy::Payload::from_single_entry(
+            sp_consensus_beefy::known_payloads::MMR_ROOT_ID,
             mmr_root.encode(),
         ),
         block_number: tree_size as u32,

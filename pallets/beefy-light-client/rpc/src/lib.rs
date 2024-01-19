@@ -37,7 +37,6 @@ use jsonrpsee::{
 };
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 use std::sync::Arc;
 
@@ -87,11 +86,11 @@ where
         at: Option<<B as BlockT>::Hash>,
     ) -> Result<Bitfield> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.get_random_bitfield(&at, network_id, prior, num_of_validators)
+        );
+        api.get_random_bitfield(at, network_id, prior, num_of_validators)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }
