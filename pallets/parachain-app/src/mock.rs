@@ -100,20 +100,13 @@ pub type Amount = i128;
 construct_runtime!(
     pub enum Test
     {
-        // System: frame_system::{Pallet, Call, Storage, Event<T>},
         System: frame_system,
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-        // Tokens: tokens::{Pallet, Call, Config<T>, Storage},
+        Timestamp: pallet_timestamp,
         Tokens: tokens,
-        // Currencies: currencies::{Pallet, Call, Storage},
         Currencies: currencies,
-        // Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Balances: pallet_balances,
-        // Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
         Dispatch: dispatch,
         BridgeOutboundChannel: substrate_bridge_channel::outbound,
-        // BridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
-        // ParachainApp: parachain_app::{Pallet, Call, Config<T>, Storage, Event<T>},
         ParachainApp: parachain_app,
     }
 );

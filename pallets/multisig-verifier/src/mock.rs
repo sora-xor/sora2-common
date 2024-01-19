@@ -43,14 +43,9 @@ type Block = frame_system::mocking::MockBlock<Test>;
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
     pub enum Test
-    // where
-    //     Block = Block,
-    //     NodeBlock = Block,
-    //     UncheckedExtrinsic = UncheckedExtrinsic,
     {
-        // System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         System: frame_system,
-        TrustedVerifier: trusted_verifier::{Pallet, Call, Storage, Event<T>},
+        TrustedVerifier: trusted_verifier,
     }
 );
 

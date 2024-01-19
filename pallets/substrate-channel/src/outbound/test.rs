@@ -54,12 +54,12 @@ const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 frame_support::construct_runtime!(
     pub enum Test
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
+        System: frame_system,
+        Timestamp: pallet_timestamp,
+        Tokens: tokens,
+        Currencies: currencies,
+        Balances: pallet_balances,
+        BridgeOutboundChannel: bridge_outbound_channel,
     }
 );
 

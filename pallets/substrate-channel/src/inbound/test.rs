@@ -58,10 +58,10 @@ const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 frame_support::construct_runtime!(
     pub enum Test
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Storage, Event<T>},
+        System: frame_system,
+        Timestamp: pallet_timestamp,
+        Balances: pallet_balances,
+        BridgeInboundChannel: bridge_inbound_channel,
     }
 );
 
