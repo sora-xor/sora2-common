@@ -47,34 +47,29 @@ use bridge_types::types::AssetKind;
 use bridge_types::SubNetworkId;
 use frame_support::construct_runtime;
 use frame_support::parameter_types;
-use frame_support::traits::BuildGenesisConfig;
-use frame_support::traits::Nothing;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::Deserialize;
 // use frame_support::RuntimeDebug;
 use frame_support::Serialize;
 use frame_system as system;
 use frame_system::Origin;
 use scale_info::TypeInfo;
-use sp_core::ConstU32;
-use sp_core::H256;
 use sp_core::RuntimeDebug;
+use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::BuildStorage;
-use sp_runtime::testing::Header;
+use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, MultiSignature};
-use traits::currency::MutationHooks;
-use traits::parameter_type_with_key;
 use staging_xcm::v3::Junction::GeneralKey;
 use staging_xcm::v3::Junction::Parachain;
 use staging_xcm::v3::Junctions::X2;
 use staging_xcm::v3::MultiLocation;
-use sp_runtime::traits::AccountIdConversion;
+use traits::currency::MutationHooks;
+use traits::parameter_type_with_key;
 
 use crate as parachain_app;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 #[derive(
@@ -103,7 +98,7 @@ pub type Balance = u128;
 pub type Amount = i128;
 
 construct_runtime!(
-    pub enum Test 
+    pub enum Test
     {
         // System: frame_system::{Pallet, Call, Storage, Event<T>},
         System: frame_system,
@@ -194,56 +189,25 @@ impl tokens::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    // type DustRemovalWhitelist = MockDustRemovalWhitelist;
     type DustRemovalWhitelist = ();
-
-    // type RuntimeEvent = RuntimeEvent;
-	// type Balance = Balance;
-	// type Amount = i64;
-	// type CurrencyId = CurrencyId;
-	// type WeightInfo = ();
-	// type ExistentialDeposits = ExistentialDeposits;
-	// type CurrencyHooks = ();
-	// type MaxLocks = ConstU32<2>;
-	// type MaxReserves = ConstU32<2>;
-	// type ReserveIdentifier = ReserveIdentifier;
-	// type DustRemovalWhitelist = MockDustRemovalWhitelist;
-    // type RuntimeEvent = RuntimeEvent;
-	// type Balance = Balance;
-	// type Amount = i64;
-	// type CurrencyId = AssetId;
-	// type WeightInfo = ();
-	// type ExistentialDeposits = ExistentialDeposits;
-	// type CurrencyHooks = CurrencyHooks<Test>;
-	// type MaxLocks = ConstU32<100_000>;
-	// type MaxReserves = ConstU32<100_000>;
-	// type ReserveIdentifier = [u8; 8];
-	// type DustRemovalWhitelist = Nothing;
 }
 
 parameter_types! {
-	pub DustAccount: AccountId = frame_support::PalletId(*b"orml/dst").into_account_truncating();
+    pub DustAccount: AccountId = frame_support::PalletId(*b"orml/dst").into_account_truncating();
 }
 pub struct CurrencyHooks<T>(marker::PhantomData<T>);
 impl<T: tokens::Config> MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T>
 where
-	T::AccountId: From<AccountId32>,
+    T::AccountId: From<AccountId32>,
 {
-	type OnDust = tokens::TransferDust<T, DustAccount>;
-	type OnSlash = ();
-	type PreDeposit = ();
-	type PostDeposit = ();
-	type PreTransfer = ();
-	type PostTransfer = ();
-	type OnNewTokenAccount = ();
-	type OnKilledTokenAccount = ();
-}
-
-pub struct MockDustRemovalWhitelist;
-impl frame_support::traits::Contains<AccountId> for MockDustRemovalWhitelist {
-	fn contains(a: &AccountId) -> bool {
-		true
-	}
+    type OnDust = tokens::TransferDust<T, DustAccount>;
+    type OnSlash = ();
+    type PreDeposit = ();
+    type PostDeposit = ();
+    type PreTransfer = ();
+    type PostTransfer = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
 }
 
 impl currencies::Config for Test {

@@ -46,9 +46,9 @@ use frame_support::{assert_noop, assert_ok};
 use frame_system::Origin;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
-use traits::MultiCurrency;
 use staging_xcm::v3::Junctions::{X1, X3};
 use staging_xcm::v3::{Junction::Parachain, Junctions::X2, MultiLocation};
+use traits::MultiCurrency;
 
 #[test]
 fn it_works_mint() {

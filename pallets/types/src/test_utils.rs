@@ -33,9 +33,8 @@ use std::fs::File;
 use std::path::Path;
 
 use crate::{traits::BridgeAssetLocker, GenericNetworkId, H128, H256, H512};
-use frame_support::traits::tokens::Balance;
 use serde::{Deserialize, Deserializer};
-use sp_runtime::{traits::Hash, AccountId32, DispatchResult,};
+use sp_runtime::{traits::Hash, AccountId32, DispatchResult};
 
 #[derive(Clone)]
 pub struct Hex(pub Vec<u8>);
@@ -161,7 +160,11 @@ impl<T> BridgeAssetLockerImpl<T> {
 }
 
 impl<T: traits::MultiCurrency<AccountId32>> BridgeAssetLocker<AccountId32>
-    for BridgeAssetLockerImpl<T> where T::Balance: frame_support::Parameter + sp_runtime::traits::AtLeast32BitUnsigned + sp_runtime::traits::MaybeSerializeDeserialize
+    for BridgeAssetLockerImpl<T>
+where
+    T::Balance: frame_support::Parameter
+        + sp_runtime::traits::AtLeast32BitUnsigned
+        + sp_runtime::traits::MaybeSerializeDeserialize,
 {
     type AssetId = T::CurrencyId;
     type Balance = T::Balance;

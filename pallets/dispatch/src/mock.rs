@@ -5,17 +5,15 @@ use bridge_types::EVMChainId;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU32, Everything};
 use sp_core::H256;
-use sp_runtime::BuildStorage;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentityLookup, Keccak256};
+use sp_runtime::BuildStorage;
 
 use crate as dispatch;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 frame_support::construct_runtime!(
-    pub enum Test 
+    pub enum Test
     {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Storage, Origin<T>, Event<T>},

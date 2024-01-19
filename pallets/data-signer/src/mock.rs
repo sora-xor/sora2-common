@@ -36,17 +36,15 @@ use frame_system as system;
 use sp_core::H256;
 use sp_runtime::BuildStorage;
 use sp_runtime::{
-    testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
     transaction_validity::TransactionPriority,
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-    pub enum Test 
+    pub enum Test
     // where
     //     Block = Block,
     //     NodeBlock = Block,

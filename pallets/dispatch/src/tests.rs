@@ -5,7 +5,6 @@ use bridge_types::traits::MessageDispatch as _;
 use bridge_types::H160;
 use bridge_types::{types, SubNetworkId};
 use frame_system::{EventRecord, Phase};
-use sp_runtime::DispatchError;
 
 #[test]
 fn test_dispatch_bridge_message() {
@@ -35,10 +34,7 @@ fn test_dispatch_bridge_message() {
             System::events(),
             vec![EventRecord {
                 phase: Phase::Initialization,
-                event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDispatched(
-                    id,
-                    Ok(())
-                )),
+                event: RuntimeEvent::Dispatch(crate::Event::<Test>::MessageDispatched(id, Ok(()))),
                 topics: vec![],
             }],
         );

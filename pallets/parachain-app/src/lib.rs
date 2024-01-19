@@ -67,9 +67,8 @@ use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_runtime::traits::{Convert, Get, Zero};
-use sp_std::prelude::*;
-use frame_support::traits::GenesisBuild;
 use sp_runtime::DispatchError;
+use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
 
@@ -153,7 +152,6 @@ pub mod pallet {
     >>::AssetSymbol;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 

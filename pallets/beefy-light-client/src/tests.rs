@@ -108,8 +108,10 @@ fn submit_fixture_success(validators: usize, tree_size: u32) {
             next_validator_set
         ));
 
-        let signed_commitment: sp_consensus_beefy::SignedCommitment<u32, sp_consensus_beefy::ecdsa_crypto::Signature> =
-            Decode::decode(&mut &fixture.commitment[..]).unwrap();
+        let signed_commitment: sp_consensus_beefy::SignedCommitment<
+            u32,
+            sp_consensus_beefy::ecdsa_crypto::Signature,
+        > = Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
         let leaf: BeefyMMRLeaf = Decode::decode(&mut &fixture.leaf[..]).unwrap();

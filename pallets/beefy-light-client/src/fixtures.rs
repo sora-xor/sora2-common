@@ -147,8 +147,12 @@ impl ValidatorSet {
     }
 }
 
-pub type MMRLeaf =
-    sp_consensus_beefy::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
+pub type MMRLeaf = sp_consensus_beefy::mmr::MmrLeaf<
+    u32,
+    H256,
+    H256,
+    bridge_types::types::LeafExtraData<H256, H256>,
+>;
 
 struct FakeMMR {
     // leaves: BTreeMap<u64, MMRLeaf>,

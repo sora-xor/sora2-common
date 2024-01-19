@@ -58,9 +58,8 @@ pub mod pallet {
     type HashOf<T> = <T as Config>::Hash;
     type RandomnessOutputOf<T> = <T as frame_system::Config>::Hash;
 
-    /// BEEFY-MMR pallet.
+    /// Leaf Provider pallet.
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 

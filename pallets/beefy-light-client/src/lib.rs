@@ -112,8 +112,8 @@ pub mod pallet {
     use bridge_types::SubNetworkId;
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::OptionQuery;
+    use frame_support::traits::BuildGenesisConfig;
     use frame_support::{fail, Twox64Concat};
-    use frame_support::traits::{GenesisBuild, BuildGenesisConfig};
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -122,7 +122,6 @@ pub mod pallet {
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -207,7 +206,7 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         #[pallet::call_index(0)]
-        #[pallet::weight(0)]
+        #[pallet::weight(Weight::from_parts(0, 0))]
         pub fn initialize(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -223,7 +222,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(1)]
-        #[pallet::weight(0)]
+        #[pallet::weight(Weight::from_parts(0, 0))]
         #[frame_support::transactional]
         pub fn submit_signature_commitment(
             origin: OriginFor<T>,

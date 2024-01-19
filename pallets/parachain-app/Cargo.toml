@@ -31,7 +31,7 @@ sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = 
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
-staging-xcm = { pachage = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
+staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
 
 [dev-dependencies]
 substrate-bridge-channel = { path = "../substrate-channel" }
@@ -43,7 +43,7 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", version = "0.4.1-dev" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", version = "0.4.1-dev" }
 bridge-types = { path = "../types", features = ["test"] }
-staging-xcm = { pachage = "staging-xcm", git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+staging-xcm = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 
 [features]
 default = ["std"]

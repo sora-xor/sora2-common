@@ -43,8 +43,8 @@ pub mod weights;
 pub use weights::WeightInfo;
 
 use frame_support::dispatch::{DispatchResult, Parameter};
-use sp_runtime::traits::Dispatchable;
 use frame_support::traits::{Contains, EnsureOrigin};
+use sp_runtime::traits::Dispatchable;
 
 use sp_core::RuntimeDebug;
 
