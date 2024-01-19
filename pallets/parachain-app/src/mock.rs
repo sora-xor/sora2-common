@@ -453,11 +453,6 @@ pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    // GenesisBuild::<Test>::assimilate_storage(
-    //     &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
-    //     &mut storage,
-    // )
-    // .unwrap();
     substrate_bridge_channel::outbound::GenesisConfig::<Test> { interval: 10 }
         .assimilate_storage(&mut storage)
         .unwrap();
