@@ -271,7 +271,7 @@ mod tests {
                     if s.starts_with("0x") {
                         u128::from_str_radix(s.trim_start_matches("0x"), 16)
                     } else {
-                        u128::from_str_radix(&s, 10)
+                        str::parse(&s)
                     }
                 };
                 match maybe_uint {
@@ -316,7 +316,7 @@ mod tests {
             let path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", fixture]
                 .iter()
                 .collect();
-            serde_json::from_reader(File::open(&path).unwrap()).unwrap()
+            serde_json::from_reader(File::open(path).unwrap()).unwrap()
         }
     }
 
@@ -391,7 +391,7 @@ mod tests {
             let path: PathBuf = [env!("CARGO_MANIFEST_DIR"), "tests", "fixtures", fixture]
                 .iter()
                 .collect();
-            serde_json::from_reader(File::open(&path).unwrap()).unwrap()
+            serde_json::from_reader(File::open(path).unwrap()).unwrap()
         }
     }
 

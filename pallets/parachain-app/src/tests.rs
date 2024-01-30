@@ -91,7 +91,7 @@ fn it_fails_mint_not_registered() {
             (),
         ))
         .into();
-        let asset_id = AssetId::ETH;
+        let asset_id = AssetId::Eth;
         let sender = None;
         let recipient = Keyring::Alice.into();
         let amount = 1_000_000_000_000_000_000;
@@ -113,7 +113,7 @@ fn it_fails_mint_no_precision() {
             (),
         ))
         .into();
-        let asset_id = AssetId::ETH;
+        let asset_id = AssetId::Eth;
         let sender = None;
         let recipient = Keyring::Alice.into();
         let amount = 1_000_000_000_000_000_000;
@@ -143,7 +143,7 @@ fn it_fails_mint_wrong_amount() {
         let amount = 0;
 
         assert_noop!(
-            ParachainApp::mint(origin_kusama, asset_id, sender, recipient.clone(), amount),
+            ParachainApp::mint(origin_kusama, asset_id, sender, recipient, amount),
             Error::<Test>::WrongAmount
         );
     });
@@ -171,15 +171,15 @@ fn it_works_burn() {
         assert_ok!(ParachainApp::burn(
             origin.clone().into(),
             network_id,
-            AssetId::XOR,
+            AssetId::Xor,
             recipient,
             amount
         ));
 
         let bridge_acc = BridgeAssetLockerImpl::<Currencies>::bridge_account(network_id.into());
-        assert_eq!(Currencies::total_balance(AssetId::XOR, &bridge_acc), amount);
+        assert_eq!(Currencies::total_balance(AssetId::Xor, &bridge_acc), amount);
         assert_eq!(
-            Currencies::total_balance(AssetId::XOR, &Keyring::Alice.into()),
+            Currencies::total_balance(AssetId::Xor, &Keyring::Alice.into()),
             1_000_000_000_000_000_000 - amount
         );
 
@@ -226,7 +226,7 @@ fn it_fails_burn_invalid_destination_params() {
     new_tester().execute_with(|| {
         let origin = Origin::<Test>::Signed(Keyring::Alice.into());
         let network_id = SubNetworkId::Kusama;
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
         let amount = 100;
 
         // XCM v2 is not supported
@@ -264,7 +264,7 @@ fn it_fails_burn_invalid_destination_params() {
         // XCM destination > X2 not supported
         assert_noop!(
             ParachainApp::burn(
-                origin.clone().into(),
+                origin.into(),
                 network_id,
                 asset_id,
                 VersionedMultiLocation::V3(MultiLocation::new(
@@ -290,7 +290,7 @@ fn it_fails_burn_relaychain_asset_not_registered() {
     new_tester_no_registered_assets().execute_with(|| {
         let origin = Origin::<Test>::Signed(Keyring::Alice.into());
         let network_id = SubNetworkId::Kusama;
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
         let amount = 100;
 
         let sidechain_asset = ParachainAssetId::Concrete(MultiLocation::new(
@@ -320,8 +320,8 @@ fn it_fails_burn_relaychain_asset_not_registered() {
         )
         .expect("XOR registration failed");
         ParachainApp::finalize_asset_registration(
-            origin_kusama.clone(),
-            AssetId::XOR,
+            origin_kusama,
+            AssetId::Xor,
             AssetKind::Thischain,
         )
         .expect("XOR registration finalization failed");
@@ -350,7 +350,7 @@ fn it_fails_not_relay_transferable_asset() {
         let origin = Origin::<Test>::Signed(Keyring::Alice.into());
         let network_id = SubNetworkId::Kusama;
         let amount = 100;
-        let asset_id = AssetId::DAI;
+        let asset_id = AssetId::Dai;
 
         ParachainApp::register_thischain_asset(
             Origin::<Test>::Root.into(),
@@ -382,7 +382,7 @@ fn it_fails_not_relay_transferable_asset() {
 
         assert_noop!(
             ParachainApp::burn(
-                origin.clone().into(),
+                origin.into(),
                 network_id,
                 asset_id,
                 VersionedMultiLocation::V3(MultiLocation::new(
@@ -404,12 +404,12 @@ fn it_fails_burn_invalid_destination_parachain() {
     new_tester().execute_with(|| {
         let origin = Origin::<Test>::Signed(Keyring::Alice.into());
         let network_id = SubNetworkId::Kusama;
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
         let amount = 100;
 
         assert_noop!(
             ParachainApp::burn(
-                origin.clone().into(),
+                origin.into(),
                 network_id,
                 asset_id,
                 VersionedMultiLocation::V3(MultiLocation::new(
@@ -448,13 +448,7 @@ fn it_fails_burn_token_not_registered() {
         let amount = 1_000_000;
 
         assert_noop!(
-            ParachainApp::burn(
-                origin.clone().into(),
-                network_id,
-                AssetId::ETH,
-                recipient,
-                amount
-            ),
+            ParachainApp::burn(origin.into(), network_id, AssetId::Eth, recipient, amount),
             Error::<Test>::TokenIsNotRegistered
         );
     });
@@ -477,19 +471,13 @@ fn it_fails_burn_unknown_presicion() {
         let network_id = SubNetworkId::Kusama;
         let recipient = VersionedMultiLocation::V3(location);
         let amount = 1_000_000;
-        let asset_id = AssetId::DAI;
+        let asset_id = AssetId::Dai;
 
         crate::AllowedParachainAssets::<Test>::insert(SubNetworkId::Kusama, PARA_A, vec![asset_id]);
         crate::AssetKinds::<Test>::insert(SubNetworkId::Kusama, asset_id, AssetKind::Thischain);
 
         assert_noop!(
-            ParachainApp::burn(
-                origin.clone().into(),
-                network_id,
-                asset_id,
-                recipient,
-                amount
-            ),
+            ParachainApp::burn(origin.into(), network_id, asset_id, recipient, amount),
             Error::<Test>::UnknownPrecision
         );
     });
@@ -544,32 +532,26 @@ fn it_fails_burn_outbound_channel_submit() {
         assert_ok!(ParachainApp::burn(
             origin.clone().into(),
             network_id,
-            AssetId::XOR,
+            AssetId::Xor,
             recipient.clone(),
             amount
         ));
         assert_ok!(ParachainApp::burn(
             origin.clone().into(),
             network_id,
-            AssetId::XOR,
+            AssetId::Xor,
             recipient.clone(),
             amount
         ));
         assert_ok!(ParachainApp::burn(
             origin.clone().into(),
             network_id,
-            AssetId::XOR,
+            AssetId::Xor,
             recipient.clone(),
             amount
         ));
         assert_noop!(
-            ParachainApp::burn(
-                origin.clone().into(),
-                network_id,
-                AssetId::XOR,
-                recipient,
-                amount
-            ),
+            ParachainApp::burn(origin.into(), network_id, AssetId::Xor, recipient, amount),
             substrate_bridge_channel::outbound::Error::<Test>::QueueSizeLimitReached
         );
     });
@@ -580,7 +562,7 @@ fn it_works_register_thischain_asset() {
     new_tester_no_registered_assets().execute_with(|| {
         let origin = Origin::<Test>::Root;
         let network_id = SubNetworkId::Mainnet;
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
         let sidechain_asset = ParachainAssetId::Concrete(MultiLocation::new(
             1,
             X2(
@@ -609,7 +591,7 @@ fn it_works_register_thischain_asset() {
 fn it_works_register_asset_inner() {
     new_tester_no_registered_assets().execute_with(|| {
         let network_id = SubNetworkId::Mainnet;
-        let asset_id = AssetId::DAI;
+        let asset_id = AssetId::Dai;
         let sidechain_asset = ParachainAssetId::Concrete(MultiLocation::new(
             1,
             X2(
@@ -701,7 +683,7 @@ fn it_works_add_assetid_paraid() {
     new_tester().execute_with(|| {
         let origin = Origin::<Test>::Root;
         let network_id = SubNetworkId::Kusama;
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
 
         assert_ok!(ParachainApp::add_assetid_paraid(
             origin.into(),
@@ -717,7 +699,7 @@ fn it_works_remove_assetid_paraid() {
     new_tester().execute_with(|| {
         let origin = Origin::<Test>::Root;
         let network_id = SubNetworkId::Kusama;
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
 
         assert_ok!(ParachainApp::remove_assetid_paraid(
             origin.into(),
