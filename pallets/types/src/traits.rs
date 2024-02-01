@@ -363,30 +363,30 @@ pub trait BalancePrecisionConverter<AssetId, Balance, SidechainBalance> {
         asset_id: &AssetId,
         sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<SidechainBalance>;
+    ) -> Option<(Balance, SidechainBalance)>;
 
     fn from_sidechain(
         asset_id: &AssetId,
         sidechain_precision: u8,
         amount: SidechainBalance,
-    ) -> Option<Balance>;
+    ) -> Option<(Balance, SidechainBalance)>;
 }
 
-impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance, Balance> for () {
+impl<AssetId, Balance: Clone> BalancePrecisionConverter<AssetId, Balance, Balance> for () {
     fn to_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
-        Some(amount)
+    ) -> Option<(Balance, Balance)> {
+        Some((amount.clone(), amount))
     }
 
     fn from_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
-        Some(amount)
+    ) -> Option<(Balance, Balance)> {
+        Some((amount.clone(), amount))
     }
 }
 
