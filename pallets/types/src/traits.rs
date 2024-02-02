@@ -358,13 +358,30 @@ impl AuxiliaryDigestHandler for () {
     fn add_item(_item: AuxiliaryDigestItem) {}
 }
 
+/// Converter trait for Balance precision in different networks.
 pub trait BalancePrecisionConverter<AssetId, Balance, SidechainBalance> {
+    /// Convert thischain balance to sidechain balance.
+    ///
+    /// **Returns**
+    /// * `Balance` - rounded thischain balance
+    /// * `SidechainBalance` - converted sidechain balance
+    ///
+    /// Or
+    /// * `None` - if thischain balance can't be converted to sidechain balance
     fn to_sidechain(
         asset_id: &AssetId,
         sidechain_precision: u8,
         amount: Balance,
     ) -> Option<(Balance, SidechainBalance)>;
 
+    /// Convert sidechain balance to thischain balance.
+    ///
+    /// **Returns**
+    /// * `Balance` - rounded thischain balance
+    /// * `SidechainBalance` - converted sidechain balance
+    ///
+    /// Or
+    /// * `None` - if sidechain balance can't be converted to thischain balance
     fn from_sidechain(
         asset_id: &AssetId,
         sidechain_precision: u8,
