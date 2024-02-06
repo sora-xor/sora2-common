@@ -102,7 +102,6 @@ where
                 precision,
                 sidechain_asset,
             } => Call::finalize_asset_registration {
-                // TODO: find better way to manage asset kind to make it less confusing
                 // This is sidechain asset for another chain, for our chain it's thischain
                 asset_id: sidechain_asset
                     .try_into()
@@ -118,7 +117,6 @@ where
                 asset_id,
                 sidechain_asset,
             } => Call::incoming_thischain_asset_registration {
-                // TODO: find better way to manage asset kind to make it less confusing
                 // This is sidechain asset for another chain, for our chain it's thischain
                 asset_id: sidechain_asset
                     .try_into()
@@ -233,8 +231,9 @@ pub mod pallet {
             T::AccountId,
             BalanceOf<T>,
         ),
-        MessageSent(bridge_types::substrate::SubstrateAppCall),
         FailedToMint(H256, DispatchError),
+        AssetRegistrationProceed(AssetIdOf<T>),
+        AssetRegistrationFinalized(AssetIdOf<T>),
     }
 
     #[pallet::storage]
@@ -361,6 +360,7 @@ pub mod pallet {
             AssetKinds::<T>::insert(network_id, asset_id.clone(), asset_kind);
             ThischainAssetId::<T>::insert(network_id, sidechain_asset_id, asset_id.clone());
             SidechainAssetId::<T>::insert(network_id, asset_id.clone(), sidechain_asset_id);
+            Self::deposit_event(Event::<T>::AssetRegistrationFinalized(asset_id));
             Ok(())
         }
 
@@ -392,7 +392,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &SubstrateAppCall::FinalizeAssetRegistration {
-                    asset_id: T::AssetIdConverter::convert(asset_id),
+                    asset_id: T::AssetIdConverter::convert(asset_id.clone()),
                     sidechain_asset: sidechain_asset_id,
                     asset_kind: AssetKind::Sidechain,
                     precision,
@@ -400,6 +400,7 @@ pub mod pallet {
                 .prepare_message(),
                 (),
             )?;
+            Self::deposit_event(Event::<T>::AssetRegistrationProceed(asset_id));
             Ok(())
         }
 
@@ -578,7 +579,6 @@ pub mod pallet {
             );
 
             Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
-            Self::deposit_event(Event::MessageSent(message));
 
             Ok(Default::default())
         }
