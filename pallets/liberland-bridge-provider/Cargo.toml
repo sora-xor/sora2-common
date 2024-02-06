@@ -1,6 +1,6 @@
 [package]
-name = "sora-liberland-bridgeproxy"
-description = "Wrapper for parity assets"
+name = "liberland-bridge-provider"
+description = "Wrapper for liberland assets and balances"
 version = "0.1.1"
 edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']

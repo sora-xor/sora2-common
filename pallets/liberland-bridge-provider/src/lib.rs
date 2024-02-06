@@ -16,7 +16,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use bridge_types::types::MessageDirection;
+use bridge_types::types::MessageStatus;
+use bridge_types::GenericAccount;
 use bridge_types::GenericNetworkId;
+use bridge_types::GenericTimepoint;
 use bridge_types::LiberlandAssetId;
 use frame_support::fail;
 use frame_support::pallet_prelude::*;
@@ -30,13 +34,36 @@ pub use pallet::*;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_std::prelude::*;
+use bridge_types::traits::TimepointProvider;
+
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct BridgeRequest<Balance> {
+    source: GenericAccount,
+    dest: GenericAccount,
+    asset_id: LiberlandAssetId,
+    amount: Balance,
+    status: MessageStatus,
+    start_timepoint: GenericTimepoint,
+    end_timepoint: GenericTimepoint,
+    direction: MessageDirection,
+}
 
 #[frame_support::pallet]
 pub mod pallet {
     #![allow(missing_docs)]
+    use crate::BridgeRequest;
+    use bridge_types::traits::BridgeApp;
+    use bridge_types::types::MessageStatus;
+    use bridge_types::GenericAccount;
     use bridge_types::GenericNetworkId;
+    use bridge_types::LiberlandAssetId;
     use frame_support::pallet_prelude::{ValueQuery, *};
     use frame_system::pallet_prelude::*;
+    use sp_core::H256;
+    use sp_runtime::traits::Convert;
+    use sp_runtime::AccountId32;
+    use bridge_types::traits::TimepointProvider;
 
     pub type AssetIdOf<T> = <T as Config>::AssetId;
 
@@ -53,6 +80,30 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn asset_nonce)]
     pub(super) type AssetNonce<T: Config> = StorageValue<_, u32, ValueQuery>;
+
+    #[pallet::storage]
+    #[pallet::getter(fn transactions)]
+    pub(super) type Transactions<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        (GenericNetworkId, GenericAccount),
+        Blake2_128Concat,
+        H256,
+        BridgeRequest<T::Balance>,
+        OptionQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn sender)]
+    pub(super) type Senders<T: Config> = StorageDoubleMap<
+        _,
+        Twox64Concat,
+        GenericNetworkId,
+        Blake2_128Concat,
+        H256,
+        GenericAccount,
+        OptionQuery,
+    >;
 
     /// The module's configuration trait.
     #[pallet::config]
@@ -71,18 +122,28 @@ pub mod pallet {
             + From<<Self as pallet_assets::Config>::AssetId>;
 
         type Balances: frame_support::traits::Currency<Self::AccountId>;
+
+        type SoraApp: BridgeApp<Self::AccountId, GenericAccount, LiberlandAssetId, Self::Balance>;
+
+        type AccountIdConverter: Convert<AccountId32, Self::AccountId>;
+
+        type TimepointProvider: TimepointProvider;
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
         AssetCreated(AssetIdOf<T>),
+        RefundFailed(H256),
+        RequestStatusUpdate(H256, MessageStatus),
+        RefundInvoked(H256, T::Balance),
     }
 
     #[pallet::error]
     pub enum Error<T> {
         FailedToCreateAsset,
         NoTechAccFound,
+        WrongAccount,
     }
 
     #[pallet::hooks]
@@ -108,6 +169,26 @@ pub mod pallet {
             self.register_tech_accounts.iter().for_each(|(k, v)| {
                 TechAccounts::<T>::insert(k, v);
             });
+        }
+    }
+
+    impl<T: Config> Pallet<T> {
+        pub fn refund(
+            network_id: GenericNetworkId,
+            message_id: H256,
+            generic_beneficiary: GenericAccount,
+            asset_id: LiberlandAssetId,
+            amount: T::Balance,
+        ) -> DispatchResult {
+            let GenericAccount::Liberland(beneficiary_liberland) = generic_beneficiary else {
+                frame_support::fail!(Error::<T>::WrongAccount)
+            };
+            let beneficiary = T::AccountIdConverter::convert(beneficiary_liberland);
+            if T::SoraApp::is_asset_supported(network_id, asset_id) {
+                T::SoraApp::refund(network_id, message_id, beneficiary.into(), asset_id, amount)?;
+            }
+            Self::deposit_event(Event::<T>::RefundInvoked(message_id, amount));
+            Ok(())
         }
     }
 }
@@ -320,5 +401,140 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
             }
         }
         Ok(())
+    }
+}
+
+impl<T: Config>
+    bridge_types::traits::MessageStatusNotifier<LiberlandAssetId, GenericAccount, T::Balance>
+    for Pallet<T>
+{
+    fn update_status(
+        network_id: GenericNetworkId,
+        message_id: H256,
+        mut new_status: MessageStatus,
+        end_timepoint: GenericTimepoint,
+    ) {
+        let sender = match Senders::<T>::get(network_id, message_id) {
+            Some(sender) => sender,
+            None => {
+                // log::warn!(
+                //     "Message status update called for unknown message: {:?} {:?}",
+                //     network_id,
+                //     message_id
+                // );
+                return;
+            }
+        };
+        Transactions::<T>::mutate((network_id, sender), message_id, |req| {
+            if let Some(req) = req {
+                if new_status == MessageStatus::Failed
+                    && req.direction == MessageDirection::Outbound
+                {
+                    match Pallet::<T>::refund(
+                        network_id,
+                        message_id,
+                        req.source.clone(),
+                        req.asset_id,
+                        req.amount,
+                    ) {
+                        Ok(_) => {
+                            new_status = MessageStatus::Refunded;
+                        }
+                        Err(_) => {
+                            Self::deposit_event(Event::RefundFailed(message_id));
+                        }
+                    }
+                }
+                req.status = new_status;
+                req.end_timepoint = end_timepoint;
+
+                Self::deposit_event(Event::RequestStatusUpdate(message_id, new_status));
+            }
+        })
+    }
+
+    fn inbound_request(
+        // _: GenericNetworkId,
+        // _: H256,
+        // _: bridge_types::GenericAccount,
+        // _: T::AccountId,
+        // _: LiberlandAssetId,
+        // _: T::Balance,
+        // _: bridge_types::GenericTimepoint,
+        // _: bridge_types::types::MessageStatus
+        network_id: GenericNetworkId,
+        message_id: H256,
+        source: GenericAccount,
+        // dest: T::AccountId,
+        dest: GenericAccount,
+        asset_id: LiberlandAssetId,
+        amount: T::Balance,
+        start_timepoint: GenericTimepoint,
+        status: MessageStatus,
+    ) {
+        Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
+        Senders::<T>::insert(&network_id, &message_id, &dest);
+
+        let bridge_request = BridgeRequest {
+            source,
+            dest: dest.clone(),
+            asset_id,
+            amount,
+            status,
+            start_timepoint,
+            end_timepoint: T::TimepointProvider::get_timepoint(),
+            direction: MessageDirection::Inbound,
+        };
+
+        Transactions::<T>::insert(
+            (&network_id, &dest),
+            &message_id,
+            bridge_request,
+            // BridgeRequest {
+            //     source,
+            //     dest: GenericAccount::Sora(dest.clone().into()),
+            //     asset_id,
+            //     amount,
+            //     status,
+            //     start_timepoint,
+            //     end_timepoint: T::TimepointProvider::get_timepoint(),
+            //     direction: MessageDirection::Inbound,
+            // },
+        );
+    }
+
+    fn outbound_request(
+        // _: GenericNetworkId,
+        // _: H256,
+        // _: T::AccountId,
+        // _: bridge_types::GenericAccount,
+        // _: LiberlandAssetId,
+        // _: T::Balance,
+        // _: bridge_types::types::MessageStatus
+        network_id: GenericNetworkId,
+        message_id: H256,
+        // source: T::AccountId,
+        source: GenericAccount,
+        // dest: GenericAccount,
+        dest: GenericAccount,
+        asset_id: LiberlandAssetId,
+        amount: T::Balance,
+        status: MessageStatus,
+    ) {
+        Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
+        Senders::<T>::insert(&network_id, &message_id, &source);
+
+        let bridge_request = BridgeRequest {
+            // source: GenericAccount::Liberland(source),
+            source: source.clone(),
+            dest,
+            asset_id,
+            amount,
+            status,
+            start_timepoint: T::TimepointProvider::get_timepoint(),
+            end_timepoint: GenericTimepoint::Pending,
+            direction: MessageDirection::Outbound,
+        };
+        Transactions::<T>::insert((&network_id, &source), &message_id, bridge_request);
     }
 }
