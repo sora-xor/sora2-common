@@ -590,7 +590,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::UnknownPrecision)?;
 
             let (amount, sidechain_amount) =
-                T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount.clone())
+                T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount)
                     .ok_or(Error::<T>::WrongAmount)?;
 
             ensure!(sidechain_amount > 0, Error::<T>::WrongAmount);

@@ -125,7 +125,7 @@ fn test_update_interval_bad_origin() {
         let who: AccountId = Keyring::Bob.into();
 
         assert_noop!(
-            BridgeOutboundChannel::update_interval(RawOrigin::Signed(who).into(), 1u64.into()),
+            BridgeOutboundChannel::update_interval(RawOrigin::Signed(who).into(), 1u64),
             DispatchError::BadOrigin,
         );
     });
@@ -136,7 +136,7 @@ fn test_update_interval_works() {
     new_tester().execute_with(|| {
         assert_ok!(BridgeOutboundChannel::update_interval(
             RawOrigin::Root.into(),
-            1u64.into()
+            1u64
         ),);
     });
 }
@@ -145,7 +145,7 @@ fn test_update_interval_works() {
 fn test_update_interval_zero_interval() {
     new_tester().execute_with(|| {
         assert_noop!(
-            BridgeOutboundChannel::update_interval(RawOrigin::Root.into(), 0u64.into()),
+            BridgeOutboundChannel::update_interval(RawOrigin::Root.into(), 0u64),
             Error::<Test>::ZeroInterval,
         );
     });
