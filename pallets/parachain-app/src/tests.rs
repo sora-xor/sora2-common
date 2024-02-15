@@ -72,7 +72,7 @@ fn it_works_mint() {
             recipient.clone(),
             amount
         ));
-        let sidechain_amount =
+        let (_, sidechain_amount) =
             BalancePrecisionConverterImpl::from_sidechain(&AssetId::Custom(1), 0, amount).unwrap();
         assert_eq!(
             Currencies::total_balance(asset_id, &recipient),

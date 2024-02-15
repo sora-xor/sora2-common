@@ -48,6 +48,9 @@ mod benchmarking;
 #[cfg(test)]
 mod test;
 
+#[cfg(test)]
+mod mock;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -157,15 +160,16 @@ pub mod pallet {
         //
         // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
         // with the corresponding commitment is persisted offchain.
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        //
+        // Use `on_finalize` instead of `on_idle` to ensure that the commitment is always sent,
+        // because `on_idle` not guaranteed to be called.
+        fn on_finalize(now: T::BlockNumber) {
             let interval = Self::interval();
-            let mut weight = Default::default();
             if now % interval == Zero::zero() {
                 for chain_id in MessageQueues::<T>::iter_keys() {
-                    weight += Self::commit(chain_id);
+                    Self::commit(chain_id)
                 }
             }
-            weight
         }
     }
 
@@ -176,6 +180,9 @@ pub mod pallet {
             network_id: SubNetworkId,
             batch_nonce: u64,
             message_nonce: MessageNonce,
+        },
+        IntervalUpdated {
+            interval: T::BlockNumber,
         },
     }
 
@@ -193,15 +200,32 @@ pub mod pallet {
         Overflow,
         /// This channel already exists
         ChannelExists,
+        /// Interval cannot be zero.
+        ZeroInterval,
+    }
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(<T as Config>::WeightInfo::update_interval())]
+        pub fn update_interval(
+            origin: OriginFor<T>,
+            new_interval: T::BlockNumber,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            ensure!(new_interval > Zero::zero(), Error::<T>::ZeroInterval);
+            Interval::<T>::put(new_interval);
+            Self::deposit_event(Event::IntervalUpdated {
+                interval: new_interval,
+            });
+            Ok(().into())
+        }
     }
 
     impl<T: Config> Pallet<T> {
-        pub(crate) fn commit(network_id: SubNetworkId) -> Weight {
+        pub(crate) fn commit(network_id: SubNetworkId) {
             debug!("Commit substrate messages");
-            let messages = MessageQueues::<T>::take(network_id);
-            if messages.is_empty() {
-                return <T as Config>::WeightInfo::on_initialize_no_messages();
-            }
+            let messages = MessageQueues::<T>::take(&network_id);
 
             let batch_nonce = ChannelNonces::<T>::mutate(network_id, |nonce| {
                 *nonce += 1;
@@ -223,9 +247,6 @@ pub mod pallet {
                 );
             }
 
-            let average_payload_size = Self::average_payload_size(&messages);
-            let messages_count = messages.len();
-
             let commitment =
                 bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
                     messages,
@@ -242,18 +263,6 @@ pub mod pallet {
                 block_number: <frame_system::Pallet<T>>::block_number(),
             };
             LatestCommitment::<T>::insert(network_id, commitment);
-
-            <T as Config>::WeightInfo::on_initialize(
-                messages_count as u32,
-                average_payload_size as u32,
-            )
-        }
-
-        fn average_payload_size(messages: &[BridgeMessage<T::MaxMessagePayloadSize>]) -> usize {
-            let sum: usize = messages.iter().fold(0, |acc, x| acc + x.payload.len());
-            // We overestimate message payload size rather than underestimate.
-            // So add 1 here to account for integer division truncation.
-            (sum / messages.len()).saturating_add(1)
         }
     }
 

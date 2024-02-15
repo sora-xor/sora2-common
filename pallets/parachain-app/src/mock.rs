@@ -298,11 +298,11 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
         asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
+    ) -> Option<(Balance, Balance)> {
         if matches!(asset_id, AssetId::Custom(_)) {
-            Some(amount)
+            Some((amount, amount))
         } else {
-            Some(amount * 10)
+            Some((amount, amount * 10))
         }
     }
 
@@ -310,11 +310,11 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
         asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
+    ) -> Option<(Balance, Balance)> {
         if matches!(asset_id, AssetId::Custom(_)) {
-            Some(amount)
+            Some((amount, amount))
         } else {
-            Some(amount / 10)
+            Some((amount / 10, amount))
         }
     }
 }
