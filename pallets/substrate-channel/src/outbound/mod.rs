@@ -225,7 +225,7 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         pub(crate) fn commit(network_id: SubNetworkId) {
             debug!("Commit substrate messages");
-            let messages = MessageQueues::<T>::take(&network_id);
+            let messages = MessageQueues::<T>::take(network_id);
 
             let batch_nonce = ChannelNonces::<T>::mutate(network_id, |nonce| {
                 *nonce += 1;
