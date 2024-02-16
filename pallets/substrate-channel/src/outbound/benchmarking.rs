@@ -31,16 +31,12 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
-use bridge_types::substrate::BridgeMessage;
 use bridge_types::traits::OutboundChannel;
 use frame_benchmarking::benchmarks;
-use frame_support::traits::OnInitialize;
 use frame_system::EventRecord;
 use frame_system::RawOrigin;
 use sp_runtime::traits::One;
 use sp_std::prelude::*;
-
-const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BridgeOutboundChannel;

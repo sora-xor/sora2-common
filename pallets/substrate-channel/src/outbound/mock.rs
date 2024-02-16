@@ -56,9 +56,9 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
     Deserialize,
 )]
 pub enum AssetId {
-    XOR,
-    ETH,
-    DAI,
+    Xor,
+    Eth,
+    Dai,
 }
 
 pub type Balance = u128;
@@ -138,7 +138,7 @@ impl currencies::Config for Test {
     type WeightInfo = ();
 }
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = AssetId::Xor;
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
     pub GetFeeAccountId: AccountId = AccountId32::from([1; 32]);
     pub GetTreasuryAccountId: AccountId = AccountId32::from([2; 32]);

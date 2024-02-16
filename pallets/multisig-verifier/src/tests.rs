@@ -163,7 +163,7 @@ fn it_works_delete_peer() {
             ().into()
         );
 
-        let key = peers.last().unwrap().clone();
+        let key = *peers.last().unwrap();
 
         assert_ok!(
             TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
@@ -189,7 +189,7 @@ fn it_works_delete_peer() {
 #[test]
 fn it_fails_delete_peer_not_initialized() {
     new_test_ext().execute_with(|| {
-        let key = test_peers().last().unwrap().clone();
+        let key = *test_peers().last().unwrap();
 
         assert_noop!(
             TrustedVerifier::remove_peer(RuntimeOrigin::signed(alice::<Test>()), key,),
@@ -230,7 +230,7 @@ fn it_works_verify_signatures() {
 fn it_fails_verify_dublicated_signatures() {
     new_test_ext().execute_with(|| {
         let pairs = test_pairs();
-        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
+        let peers: Vec<ecdsa::Public> = pairs.into_iter().map(|x| x.public()).collect();
         assert_ok!(
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
@@ -266,7 +266,7 @@ fn it_fails_verify_dublicated_signatures() {
 fn it_fails_verify_not_enough_signatures() {
     new_test_ext().execute_with(|| {
         let pairs = test_pairs();
-        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
+        let peers: Vec<ecdsa::Public> = pairs.into_iter().map(|x| x.public()).collect();
         assert_ok!(
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
@@ -301,7 +301,7 @@ fn it_fails_verify_not_enough_signatures() {
 fn it_fails_verify_invalid_signature() {
     new_test_ext().execute_with(|| {
         let pairs = test_pairs();
-        let peers: Vec<ecdsa::Public> = pairs.clone().into_iter().map(|x| x.public()).collect();
+        let peers: Vec<ecdsa::Public> = pairs.into_iter().map(|x| x.public()).collect();
         assert_ok!(
             TrustedVerifier::initialize(
                 RuntimeOrigin::root(),
