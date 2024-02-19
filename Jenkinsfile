@@ -1,11 +1,10 @@
-@Library('jenkins-library') _
+@Library('jenkins-library@@feature/dops-2942-update_rust_lib') _
 
 def pipeline = new org.rust.AppPipeline(steps: this,
-      envImageName: 'docker.soramitsu.co.jp/sora2/parachain-env:latest',
+      envImageName: 'docker.soramitsu.co.jp/sora2/env:env',
       appImageName: 'docker.soramitsu.co.jp/sora2/parachain',
       buildTestCmds: ['housekeeping/tests.sh'],
-      cargoClippyTag: ':latest',
-      cargoClippyCmds: ['housekeeping/clippy.sh'],
-      codeCoverage: false
+      disableCodeCoverage: true,
+      clippyLinter: false
 )
 pipeline.runPipeline()

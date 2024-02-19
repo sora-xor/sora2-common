@@ -1,4 +1,12 @@
 #!/bin/bash
 set -e
 
-cargo test  --release --features runtime-benchmarks
+test() {
+    cargo test  --release --features runtime-benchmarks
+}
+
+if [ "$(type -t $1)" = "function" ]; then
+    "$1"
+else
+    echo "Func '$1' is not exists in this workflow. Skipped."
+fi
