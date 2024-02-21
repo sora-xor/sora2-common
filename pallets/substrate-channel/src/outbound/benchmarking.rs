@@ -31,15 +31,12 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
-use bridge_types::substrate::BridgeMessage;
 use bridge_types::traits::OutboundChannel;
 use frame_benchmarking::benchmarks;
-use frame_support::traits::OnInitialize;
 use frame_system::EventRecord;
 use frame_system::RawOrigin;
+use sp_runtime::traits::One;
 use sp_std::prelude::*;
-
-const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BridgeOutboundChannel;
@@ -56,57 +53,6 @@ benchmarks! {
         where crate::outbound::Event::<T>: Into<<T as frame_system::Config>::RuntimeEvent>
     }
 
-    // Benchmark `on_initialize` under worst case conditions, i.e. messages
-    // in queue are committed.
-    on_initialize {
-        let m in 1 .. T::MaxMessagesPerCommit::get();
-        let p in 0 .. T::MaxMessagePayloadSize::get();
-
-        for _ in 0 .. m {
-            let payload: Vec<u8> = (0..).take(p as usize).collect();
-            MessageQueues::<T>::try_append(
-                BASE_NETWORK_ID, BridgeMessage {
-                payload: payload.try_into().unwrap(),
-                timepoint: Default::default(),
-            }).unwrap();
-        }
-
-        let block_number = 0u32.into();
-
-    }: { BridgeOutboundChannel::<T>::on_initialize(block_number) }
-    verify {
-        assert_eq!(<MessageQueues<T>>::get(BASE_NETWORK_ID).len(), 0);
-    }
-
-    // Benchmark 'on_initialize` for the best case, i.e. nothing is done
-    // because it's not a commitment interval.
-    on_initialize_non_interval {
-        MessageQueues::<T>::take(BASE_NETWORK_ID);
-        let payload: Vec<u8> = (0..).take(10).collect();
-        MessageQueues::<T>::try_append(
-            BASE_NETWORK_ID, BridgeMessage {
-            payload: payload.try_into().unwrap(),
-            timepoint: Default::default(),
-        }).unwrap();
-
-        let interval: T::BlockNumber = 10u32.into();
-        Interval::<T>::put(interval);
-        let block_number: T::BlockNumber = 12u32.into();
-
-    }: { BridgeOutboundChannel::<T>::on_initialize(block_number) }
-    verify {
-        assert_eq!(<MessageQueues<T>>::get(BASE_NETWORK_ID).len(), 1);
-    }
-
-    // Benchmark 'on_initialize` for the case where it is a commitment interval
-    // but there are no messages in the queue.
-    on_initialize_no_messages {
-        MessageQueues::<T>::take(BASE_NETWORK_ID);
-
-        let block_number = Interval::<T>::get();
-
-    }: { BridgeOutboundChannel::<T>::on_initialize(block_number) }
-
     submit {
 
     }: {
@@ -120,9 +66,20 @@ benchmarks! {
         }.into());
     }
 
+    update_interval {
+
+    }: {
+        BridgeOutboundChannel::<T>::update_interval(RawOrigin::Root.into(), One::one()).unwrap()
+    }
+    verify {
+        assert_last_event::<T>(crate::outbound::Event::<T>::IntervalUpdated {
+            interval: One::one()
+        }.into());
+    }
+
     impl_benchmark_test_suite!(
         BridgeOutboundChannel,
-        crate::outbound::test::new_tester(),
-        crate::outbound::test::Test,
+        crate::outbound::mock::new_tester(),
+        crate::outbound::mock::Test,
     );
 }

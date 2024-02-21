@@ -281,8 +281,9 @@ pub mod pallet {
 
             let precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::UnknownPrecision)?;
-            let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
-                .ok_or(Error::<T>::WrongAmount)?;
+            let (amount, _) =
+                T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
+                    .ok_or(Error::<T>::WrongAmount)?;
             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
 
             T::BridgeAssetLocker::unlock_asset(
@@ -366,7 +367,7 @@ pub mod pallet {
 
             let sidechain_precision = T::AssetRegistry::get_raw_info(asset_id.clone()).precision;
 
-            let minimal_xcm_amount = T::BalancePrecisionConverter::to_sidechain(
+            let (_, minimal_xcm_amount) = T::BalancePrecisionConverter::to_sidechain(
                 &asset_id,
                 sidechain_precision,
                 minimal_xcm_amount,
@@ -403,7 +404,7 @@ pub mod pallet {
             ensure_root(origin)?;
 
             let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
-            let minimal_xcm_amount =
+            let (_, minimal_xcm_amount) =
                 T::BalancePrecisionConverter::to_sidechain(&asset_id, decimals, minimal_xcm_amount)
                     .ok_or(Error::<T>::WrongAmount)?;
 
@@ -500,7 +501,7 @@ pub mod pallet {
                 fail!(Error::<T>::UnknownPrecision);
             };
 
-            let minimal_xcm_amount = T::BalancePrecisionConverter::to_sidechain(
+            let (_, minimal_xcm_amount) = T::BalancePrecisionConverter::to_sidechain(
                 &asset_id,
                 sidechain_precision,
                 minimal_xcm_amount,
@@ -588,8 +589,8 @@ pub mod pallet {
             let precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::UnknownPrecision)?;
 
-            let sidechain_amount =
-                T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount.clone())
+            let (amount, sidechain_amount) =
+                T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount)
                     .ok_or(Error::<T>::WrongAmount)?;
 
             ensure!(sidechain_amount > 0, Error::<T>::WrongAmount);

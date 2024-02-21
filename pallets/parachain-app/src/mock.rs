@@ -83,9 +83,9 @@ type Block = frame_system::mocking::MockBlock<Test>;
     Deserialize,
 )]
 pub enum AssetId {
-    XOR,
-    ETH,
-    DAI,
+    Xor,
+    Eth,
+    Dai,
     Custom(u8),
 }
 
@@ -187,7 +187,7 @@ impl currencies::Config for Test {
     type WeightInfo = ();
 }
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = AssetId::Xor;
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
     pub GetFeesAccountId: AccountId = AccountId32::from([1; 32]);
     pub GetTreasuryAccountId: AccountId = AccountId32::from([2; 32]);
@@ -213,7 +213,7 @@ parameter_types! {
 }
 
 parameter_types! {
-    pub const FeeCurrency: AssetId = AssetId::XOR;
+    pub const FeeCurrency: AssetId = AssetId::Xor;
     pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
@@ -275,7 +275,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 
     fn get_raw_info(asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
         match asset_id {
-            AssetId::XOR => bridge_types::types::RawAssetInfo {
+            AssetId::Xor => bridge_types::types::RawAssetInfo {
                 name: "XOR".to_owned().into(),
                 symbol: "XOR".to_owned().into(),
                 precision: 18,
@@ -305,11 +305,11 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
         asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
+    ) -> Option<(Balance, Balance)> {
         if matches!(asset_id, AssetId::Custom(_)) {
-            Some(amount)
+            Some((amount, amount))
         } else {
-            Some(amount * 10)
+            Some((amount, amount * 10))
         }
     }
 
@@ -317,11 +317,11 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
         asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
+    ) -> Option<(Balance, Balance)> {
         if matches!(asset_id, AssetId::Custom(_)) {
-            Some(amount)
+            Some((amount, amount))
         } else {
-            Some(amount / 10)
+            Some((amount / 10, amount))
         }
     }
 }
@@ -383,7 +383,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
         ParachainApp::register_thischain_asset(
             Origin::<Test>::Root.into(),
             SubNetworkId::Kusama,
-            AssetId::XOR,
+            AssetId::Xor,
             sidechain_asset,
             allowed_parachains.clone(),
             minimal_xcm_amount,
@@ -409,7 +409,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
         .into();
         ParachainApp::finalize_asset_registration(
             origin_kusama.clone(),
-            AssetId::XOR,
+            AssetId::Xor,
             AssetKind::Thischain,
         )
         .expect("XOR registration finalization failed");

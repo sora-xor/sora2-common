@@ -324,11 +324,13 @@ pub struct RawAssetInfo {
     pub precision: u8,
 }
 
-#[derive(Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derivative(
     Debug(bound = "BlockNumber: core::fmt::Debug"),
-    Clone(bound = "BlockNumber: Clone")
+    Clone(bound = "BlockNumber: Clone"),
+    PartialEq(bound = "BlockNumber: PartialEq"),
+    Eq(bound = "BlockNumber: Eq")
 )]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(

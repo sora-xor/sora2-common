@@ -494,7 +494,7 @@ pub mod pallet {
 
             let precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::UnknownPrecision)?;
-            let amount = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
+            let (amount, _) = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
                 .ok_or(Error::<T>::WrongAmount)?;
             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
 
@@ -544,7 +544,7 @@ pub mod pallet {
             let sidechain_asset_id = SidechainAssetId::<T>::get(network_id, asset_id.clone())
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
-            let sidechain_amount =
+            let (_, sidechain_amount) =
                 T::BalancePrecisionConverter::to_sidechain(&asset_id, precision, amount.clone())
                     .ok_or(Error::<T>::WrongAmount)?;
 

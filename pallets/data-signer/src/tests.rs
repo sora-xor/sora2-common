@@ -504,7 +504,7 @@ fn it_works_finish_add_peer() {
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
         ));
 
         let new_peer = test_signer().public();
@@ -533,7 +533,7 @@ fn it_fails_add_peer_no_pending_update() {
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
         ));
 
         let new_peer = test_signer().public();
@@ -569,7 +569,7 @@ fn it_works_validate_unsigned() {
         assert_eq!(
             <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
-                &call.into(),
+                &call,
             ),
             TransactionValidity::Ok(
                 ValidTransaction::with_tag_prefix("DataSignerApprove")
@@ -594,7 +594,7 @@ fn it_fails_validate_unsigned_no_network() {
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
         ));
 
         let different_network_id = bridge_types::GenericNetworkId::Sub(SubNetworkId::Kusama);
@@ -611,7 +611,7 @@ fn it_fails_validate_unsigned_no_network() {
         assert_eq!(
             <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
-                &call.into(),
+                &call,
             ),
             InvalidTransaction::BadSigner.into()
         );
@@ -628,7 +628,7 @@ fn it_fails_validate_unsigned_bad_proof() {
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
         ));
 
         let data = [1u8; 32];
@@ -643,7 +643,7 @@ fn it_fails_validate_unsigned_bad_proof() {
         assert_eq!(
             <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
-                &call.into(),
+                &call,
             ),
             InvalidTransaction::BadProof.into()
         );
@@ -660,7 +660,7 @@ fn it_fails_validate_unsigned_bad_signer() {
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
         ));
 
         let data = [1u8; 32];
@@ -675,7 +675,7 @@ fn it_fails_validate_unsigned_bad_signer() {
         assert_eq!(
             <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
-                &call.into(),
+                &call,
             ),
             InvalidTransaction::BadSigner.into()
         );
@@ -692,7 +692,7 @@ fn it_fails_validate_unsigned_transaction_stale() {
         assert_ok!(DataSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
         ));
 
         let data = [1u8; 32];
@@ -716,7 +716,7 @@ fn it_fails_validate_unsigned_transaction_stale() {
         assert_eq!(
             <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::InBlock,
-                &call.into(),
+                &call,
             ),
             InvalidTransaction::Stale.into()
         );
@@ -736,15 +736,12 @@ fn it_fails_validate_unsigned_invalid_call() {
             peers.clone(),
         ));
 
-        let call = Call::register_network {
-            network_id,
-            peers: peers.clone(),
-        };
+        let call = Call::register_network { network_id, peers };
 
         assert_eq!(
             <DataSigner as sp_runtime::traits::ValidateUnsigned>::validate_unsigned(
                 TransactionSource::External,
-                &call.into(),
+                &call,
             ),
             InvalidTransaction::Call.into()
         );
