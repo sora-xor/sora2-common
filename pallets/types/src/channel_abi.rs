@@ -32,7 +32,8 @@
 
 use crate::H160;
 use ethabi::{Function, Param, ParamType, StateMutability, Token};
-use frame_support::RuntimeDebug;
+// use sp_core::RuntimeDebug;
+use sp_core::RuntimeDebug;
 use sp_std::prelude::*;
 
 fn authorize_operator_function() -> Function {

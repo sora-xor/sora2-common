@@ -45,7 +45,7 @@ use bridge_types::SubNetworkId;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_support::Deserialize;
-use frame_support::RuntimeDebug;
+use sp_core::RuntimeDebug;
 use frame_support::Serialize;
 use frame_system as system;
 use frame_system::Origin;

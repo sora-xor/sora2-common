@@ -31,12 +31,12 @@
 use crate::bitfield::BitField;
 use bridge_types::{H160, H256};
 use codec::{Decode, Encode};
-use frame_support::RuntimeDebug;
+use sp_core::RuntimeDebug;
 use scale_info::prelude::vec::Vec;
 
 pub type EthAddress = H160;
 
-pub type Commitment = sp_beefy::Commitment<u32>;
+pub type Commitment = sp_consensus_beefy::Commitment<u32>;
 
 #[derive(Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct ValidatorProof {
@@ -48,6 +48,6 @@ pub struct ValidatorProof {
 }
 
 pub type BeefyMMRLeaf =
-    sp_beefy::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
+    sp_consensus_beefy::mmr::MmrLeaf<u32, H256, H256, bridge_types::types::LeafExtraData<H256, H256>>;
 
-pub type ValidatorSet = sp_beefy::mmr::BeefyAuthoritySet<H256>;
+pub type ValidatorSet = sp_consensus_beefy::mmr::BeefyAuthoritySet<H256>;

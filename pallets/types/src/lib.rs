@@ -49,7 +49,7 @@ pub mod utils;
 
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
-use frame_support::RuntimeDebug;
+use sp_core::RuntimeDebug;
 use sp_core::Get;
 use sp_std::vec;
 use sp_std::vec::Vec;

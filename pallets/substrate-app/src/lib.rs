@@ -62,12 +62,13 @@ use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo};
 use bridge_types::GenericAccount;
 use bridge_types::GenericNetworkId;
 use bridge_types::{GenericAssetId, GenericBalance};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_runtime::traits::{Convert, Get, Zero};
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
@@ -138,7 +139,6 @@ where
 #[allow(clippy::too_many_arguments)]
 #[frame_support::pallet]
 pub mod pallet {
-
     use super::*;
 
     use bridge_types::substrate::SubstrateBridgeMessageEncode;
@@ -151,6 +151,7 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
+    use frame_support::traits::GenesisBuild;
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 

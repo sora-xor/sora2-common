@@ -3,11 +3,21 @@ panic = "unwind"
 
 [workspace]
 members = [
-    "pallets/*",
-    "pallets/leaf-provider/runtime-api",
-    "pallets/leaf-provider/rpc",
-    "pallets/beefy-light-client/runtime-api",
-    "pallets/beefy-light-client/rpc",
+    # "pallets/*",
+    "pallets/bridge-common",
+    "pallets/data-signer",
+    "pallets/dispatch",
+    "pallets/leaf-provider",
+    "pallets/liberland-bridge-provider",
+    "pallets/multisig-verifier",
+    "pallets/substrate-app",
+    "pallets/substrate-channel",
+    "pallets/types",
+
+    # "pallets/leaf-provider/runtime-api",
+    # "pallets/leaf-provider/rpc",
+    # "pallets/beefy-light-client/runtime-api",
+    # "pallets/beefy-light-client/rpc",
 ]
 
 resolver = "2"

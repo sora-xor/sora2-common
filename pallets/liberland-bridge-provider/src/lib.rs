@@ -26,7 +26,7 @@ use bridge_types::LiberlandAssetId;
 use frame_support::fail;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::fungibles::{
-    metadata::Mutate as MetadataMutate, Create, Inspect, InspectMetadata, Mutate, Transfer,
+    metadata::Mutate as MetadataMutate, Create, Inspect, Mutate,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -65,6 +65,7 @@ pub mod pallet {
     use sp_core::H256;
     use sp_runtime::traits::Convert;
     use sp_runtime::AccountId32;
+    use frame_support::traits::GenesisBuild;
 
     pub type AssetIdOf<T> = <T as Config>::AssetId;
 
@@ -267,6 +268,8 @@ where
     }
 
     fn get_raw_info(asset_id: LiberlandAssetId) -> bridge_types::types::RawAssetInfo {
+        use frame_support::traits::fungibles::metadata::Inspect;
+
         match asset_id {
             LiberlandAssetId::LLD => bridge_types::types::RawAssetInfo {
                 name: b"Liberland".to_vec(),
@@ -277,8 +280,8 @@ where
                 let name = <pallet_assets::Pallet<T> as InspectMetadata<T::AccountId>>::name(
                     &asset_id.into(),
                 );
-                let symbol = pallet_assets::Pallet::<T>::symbol(&asset_id.into());
-                let precision = pallet_assets::Pallet::<T>::decimals(&asset_id.into());
+                let symbol = pallet_assets::Pallet::<T>::symbol(asset_id.into());
+                let precision = pallet_assets::Pallet::<T>::decimals(asset_id.into());
                 bridge_types::types::RawAssetInfo {
                     name,
                     symbol,
@@ -345,7 +348,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             *amount,
                         )?;
                     },
-                }
+                },
             }
         }
         Ok(())
@@ -418,7 +421,7 @@ impl<T: Config>
         let sender = match Senders::<T>::get(network_id, message_id) {
             Some(sender) => sender,
             None => {
-                frame_support::log::warn!(
+                log::warn!(
                     "Message status update called for unknown message: {:?} {:?}",
                     network_id,
                     message_id

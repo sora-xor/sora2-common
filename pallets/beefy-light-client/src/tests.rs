@@ -47,7 +47,7 @@ fn alice<T: crate::Config>() -> T::AccountId {
 
 fn validator_proof(
     fixture: &Fixture,
-    signatures: Vec<Option<sp_beefy::crypto::Signature>>,
+    signatures: Vec<Option<sp_consensus_beefy::crypto::Signature>>,
     count: usize,
 ) -> ValidatorProof {
     let bits_to_set = signatures
@@ -108,7 +108,7 @@ fn submit_fixture_success(validators: usize, tree_size: u32) {
             next_validator_set
         ));
 
-        let signed_commitment: sp_beefy::SignedCommitment<u32, sp_beefy::crypto::Signature> =
+        let signed_commitment: sp_consensus_beefy::SignedCommitment<u32, sp_consensus_beefy::crypto::Signature> =
             Decode::decode(&mut &fixture.commitment[..]).unwrap();
         let commitment = signed_commitment.commitment.clone();
         let validator_proof = validator_proof(&fixture, signed_commitment.signatures, validators);
