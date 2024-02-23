@@ -89,9 +89,7 @@ pub mod pallet {
     use sp_core::TryCollect;
     use sp_std::collections::btree_set::BTreeSet;
 
-    /// BEEFY-MMR pallet.
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
     /// The module's configuration trait.

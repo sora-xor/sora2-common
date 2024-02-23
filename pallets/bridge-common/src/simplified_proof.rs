@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 use bridge_types::H256;
 use codec::{Decode, Encode};
-use sp_core::RuntimeDebug;
 use scale_info::prelude::{vec, vec::Vec};
+use sp_core::RuntimeDebug;
 
 #[derive(
     Encode, Decode, Clone, RuntimeDebug, PartialEq, Eq, PartialOrd, Ord, scale_info::TypeInfo,

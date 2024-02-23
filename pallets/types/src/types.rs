@@ -35,11 +35,11 @@ use crate::substrate::SubAssetInfo;
 use crate::{GenericTimepoint, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
-use sp_core::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_consensus_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use sp_core::Get;
+use sp_core::RuntimeDebug;
 use sp_runtime::traits::Hash;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;

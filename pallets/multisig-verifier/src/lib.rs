@@ -107,7 +107,6 @@ pub mod pallet {
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
     #[pallet::storage]
@@ -258,10 +257,7 @@ pub mod pallet {
                     fail!(Error::<T>::DuplicatedPeer);
                 }
                 ensure!(peers.contains(&rec_sign), {
-                    log::error!(
-                        "verify_signatures: not trusted signatures: {:?}",
-                        sign
-                    );
+                    log::error!("verify_signatures: not trusted signatures: {:?}", sign);
                     Error::<T>::NotTrustedPeerSignature
                 });
             }

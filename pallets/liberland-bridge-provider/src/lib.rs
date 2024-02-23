@@ -26,7 +26,8 @@ use bridge_types::LiberlandAssetId;
 use frame_support::fail;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::fungibles::{
-    metadata::Mutate as MetadataMutate, Create, Inspect, Mutate,
+    metadata::Inspect as InspectMetadata, metadata::Mutate as MetadataMutate, Create, Inspect,
+    Mutate,
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
@@ -36,6 +37,8 @@ use sp_core::H256;
 use sp_io::hashing::blake2_256;
 use sp_runtime::AccountId32;
 use sp_std::prelude::*;
+
+use frame_support::traits::tokens::{Fortitude, Precision, Preservation};
 
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
@@ -65,12 +68,10 @@ pub mod pallet {
     use sp_core::H256;
     use sp_runtime::traits::Convert;
     use sp_runtime::AccountId32;
-    use frame_support::traits::GenesisBuild;
 
     pub type AssetIdOf<T> = <T as Config>::AssetId;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -166,7 +167,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             self.register_tech_accounts.iter().for_each(|(k, v)| {
                 TechAccounts::<T>::insert(k, v);
@@ -278,8 +279,9 @@ where
             },
             LiberlandAssetId::Asset(asset_id) => {
                 let name = <pallet_assets::Pallet<T> as InspectMetadata<T::AccountId>>::name(
-                    &asset_id.into(),
+                    asset_id.into(),
                 );
+                // let name = pallet_assets::Pallet::<T>::name(asset_id.into());
                 let symbol = pallet_assets::Pallet::<T>::symbol(asset_id.into());
                 let precision = pallet_assets::Pallet::<T>::decimals(asset_id.into());
                 bridge_types::types::RawAssetInfo {
@@ -333,12 +335,19 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
             LiberlandAssetId::Asset(asset) => {
                 match asset_kind {
                     bridge_types::types::AssetKind::Thischain => {
-                        <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
+                        // <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
+                        //     (*asset).into(),
+                        //     who,
+                        //     &tech_acc,
+                        //     *amount,
+                        //     true,
+                        // )?;
+                        <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::transfer(
                             (*asset).into(),
                             who,
                             &tech_acc,
                             *amount,
-                            true,
+                            Preservation::Expendable,
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => {
@@ -346,9 +355,11 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             (*asset).into(),
                             who,
                             *amount,
+                            Precision::Exact,
+                            Fortitude::Polite,
                         )?;
                     },
-                },
+                }
             }
         }
         Ok(())
@@ -386,12 +397,12 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
             LiberlandAssetId::Asset(asset) => {
                 match asset_kind {
                     bridge_types::types::AssetKind::Thischain => {
-                        <pallet_assets::Pallet<T> as Transfer<T::AccountId>>::transfer(
+                        <pallet_assets::Pallet<T> as Mutate<T::AccountId>>::transfer(
                             (*asset).into(),
                             &tech_acc,
                             who,
                             *amount,
-                            true,
+                            Preservation::Expendable,
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => {

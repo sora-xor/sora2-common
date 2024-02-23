@@ -63,15 +63,14 @@ pub mod pallet {
     use bridge_types::types::MessageStatus;
     use bridge_types::GenericNetworkId;
     use bridge_types::GenericTimepoint;
-    use log::debug;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_support::Parameter;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
+    use log::debug;
     use sp_runtime::traits::Zero;
     use sp_runtime::DispatchError;
-    use frame_support::traits::GenesisBuild;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
@@ -147,7 +146,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -273,7 +271,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             Interval::<T>::set(self.interval);
         }

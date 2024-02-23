@@ -151,7 +151,6 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
-    use frame_support::traits::GenesisBuild;
 
     pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
@@ -172,7 +171,6 @@ pub mod pallet {
     >>::AssetSymbol;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -600,7 +598,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             for (network_id, asset_id, asset_kind) in &self.assets {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);

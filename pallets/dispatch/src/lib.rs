@@ -128,7 +128,6 @@ pub mod pallet {
         <<T as Config<I>>::OriginOutput as traits::BridgeOriginOutput>::Additional;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T, I = ()>(_);
