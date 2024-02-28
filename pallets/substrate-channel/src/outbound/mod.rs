@@ -261,7 +261,6 @@ pub mod pallet {
         pub interval: BlockNumberFor<T>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {

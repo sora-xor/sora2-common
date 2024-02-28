@@ -539,7 +539,6 @@ dependencies = [
 name = "bridge-common"
 version = "0.1.0"
 dependencies = [
- "ahash 0.8.6",
  "bitvec",
  "bridge-types",
  "frame-support 4.0.0-dev (git+https://github.com/paritytech/polkadot-sdk?tag=polkadot-v1.1.0)",

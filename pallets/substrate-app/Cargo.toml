@@ -12,6 +12,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 serde = { version = "1.0.130", optional = true }
+# serde = { version = "1.0.188", default-features = false, features = ["alloc", "derive"]}
 codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
     "derive",
 ] }
@@ -27,9 +28,6 @@ sp-core = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
-
-# traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.37", package = "orml-traits", default-features = false, optional = true }
-# currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.37", package = "orml-currencies", default-features = false, optional = true }
 
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
 
@@ -74,8 +72,6 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "substrate-bridge-channel/runtime-benchmarks",
-    # "traits",
-    # "currencies",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

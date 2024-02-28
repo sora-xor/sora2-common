@@ -59,7 +59,6 @@ pub use log::Log;
 pub use receipt::Receipt;
 
 use derivative::Derivative;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -97,8 +96,9 @@ pub type EVMChainId = U256;
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum SubNetworkId {
     #[default]
@@ -120,8 +120,9 @@ pub enum SubNetworkId {
     RuntimeDebug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericNetworkId {
     // deserializes value either from hex or decimal
@@ -203,8 +204,9 @@ impl TryInto<MainnetAccountId> for GenericAccount {
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericTimepoint {
     #[cfg_attr(feature = "std", serde(rename = "evm"))]
@@ -260,8 +262,9 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
     RuntimeDebug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum GenericAssetId {
     Sora(MainnetAssetId),
     XCM(substrate::ParachainAssetId),
@@ -316,8 +319,9 @@ pub type MainnetBalance = u128;
     RuntimeDebug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub enum LiberlandAssetId {
     LLD,
     Asset(u32),

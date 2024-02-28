@@ -28,7 +28,6 @@ serde = { version = "1.0", features = [
 	"alloc",
 	"derive",
 ], default-features = false }
-ahash = "=0.8.6"
 
 # Substrate
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
@@ -56,5 +55,10 @@ std = [
 	"frame-system/std",
 	"bridge-types/std",
 	"sp-consensus-beefy/std",
+	"sp-io/std",
+	"sp-core/std",
+	"sp-consensus-beefy/std",
+	"sp-runtime/std",
+	"log/std",
 ]
 try-runtime = ["frame-support/try-runtime"]

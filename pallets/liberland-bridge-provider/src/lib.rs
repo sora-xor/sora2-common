@@ -68,6 +68,7 @@ pub mod pallet {
     use sp_core::H256;
     use sp_runtime::traits::Convert;
     use sp_runtime::AccountId32;
+    use sp_std::vec::Vec;
 
     pub type AssetIdOf<T> = <T as Config>::AssetId;
 
@@ -157,7 +158,6 @@ pub mod pallet {
         pub register_tech_accounts: Vec<(GenericNetworkId, T::AccountId)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
