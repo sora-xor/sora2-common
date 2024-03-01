@@ -68,18 +68,12 @@ pub mod pallet {
     use sp_core::H256;
     use sp_runtime::traits::Convert;
     use sp_runtime::AccountId32;
-    use sp_std::vec::Vec;
 
     pub type AssetIdOf<T> = <T as Config>::AssetId;
 
     #[pallet::pallet]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
-
-    #[pallet::storage]
-    #[pallet::getter(fn tech_acc)]
-    pub(super) type TechAccounts<T: Config> =
-        StorageMap<_, Identity, GenericNetworkId, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_nonce)]
@@ -132,6 +126,9 @@ pub mod pallet {
         type AccountIdConverter: Convert<AccountId32, Self::AccountId>;
 
         type TimepointProvider: TimepointProvider;
+
+        #[pallet::constant]
+        type SoraMainnetTechAcc: Get<Self::AccountId>;
     }
 
     #[pallet::event]
@@ -152,28 +149,6 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub register_tech_accounts: Vec<(GenericNetworkId, T::AccountId)>,
-    }
-
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            Self {
-                register_tech_accounts: Default::default(),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
-        fn build(&self) {
-            self.register_tech_accounts.iter().for_each(|(k, v)| {
-                TechAccounts::<T>::insert(k, v);
-            });
-        }
-    }
 
     impl<T: Config> Pallet<T> {
         pub fn refund(
@@ -206,7 +181,7 @@ where
     type AssetSymbol = Vec<u8>;
 
     fn register_asset(
-        network_id: GenericNetworkId,
+        _network_id: GenericNetworkId,
         name: <Self as bridge_types::traits::BridgeAssetRegistry<T::AccountId, LiberlandAssetId>>::AssetName,
         symbol: <Self as bridge_types::traits::BridgeAssetRegistry<
             T::AccountId,
@@ -215,9 +190,7 @@ where
     ) -> Result<LiberlandAssetId, DispatchError> {
         let nonce = Self::asset_nonce();
         AssetNonce::<T>::set(nonce + 1);
-        let Some(tech_acc) = Self::tech_acc(network_id) else {
-            fail!(Error::<T>::NoTechAccFound)
-        };
+        let tech_acc = T::SoraMainnetTechAcc::get();
         // let's take 3  itrations to create a new asset id, considering that collision can happen
         let iter = 3;
         for i in 0..iter {
@@ -302,15 +275,13 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
     type Balance = <T as pallet_assets::Config>::Balance;
 
     fn lock_asset(
-        network_id: GenericNetworkId,
+        _network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
         who: &T::AccountId,
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        let Some(tech_acc) = Self::tech_acc(network_id) else {
-            fail!(Error::<T>::NoTechAccFound)
-        };
+        let tech_acc = T::SoraMainnetTechAcc::get();
         match asset_id {
                 LiberlandAssetId::LLD => {
                 match asset_kind {
@@ -366,15 +337,13 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
     }
 
     fn unlock_asset(
-        network_id: GenericNetworkId,
+        _network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
         who: &T::AccountId,
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        let Some(tech_acc) = Self::tech_acc(network_id) else {
-            fail!(Error::<T>::NoTechAccFound)
-        };
+        let tech_acc = T::SoraMainnetTechAcc::get();
         match asset_id {
             LiberlandAssetId::LLD => {
                 match asset_kind {
