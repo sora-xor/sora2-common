@@ -8,5 +8,5 @@ test() {
 if [ "$(type -t $1)" = "function" ]; then
     "$1"
 else
-    echo "Func '$1' is not exists in this workflow. Skipped."
+    echo "Func '$1' does not exist in this workflow. Skipped."
 fi
