@@ -7,7 +7,7 @@ def pipeline = new org.rust.AppPipeline(steps: this,
       disableCodeCoverage: true,
       sonarProjectKey: 'sora:sora2-common',
       sonarProjectName: 'sora2-common',
-      dojoProductType: 'sora'
+      dojoProductType: 'sora',
       clippyLinter: false
 )
 pipeline.runPipeline()
