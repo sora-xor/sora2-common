@@ -32,6 +32,7 @@ use bridge_types::traits::BridgeAssetRegistry;
 use bridge_types::traits::BridgeOriginOutput;
 use bridge_types::traits::TimepointProvider;
 use bridge_types::GenericAssetId;
+use bridge_types::GenericBalance;
 use bridge_types::GenericNetworkId;
 use bridge_types::LiberlandAssetId;
 use codec::Decode;
@@ -296,18 +297,51 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 
 pub struct BalancePrecisionConverterImpl;
 
-impl bridge_types::traits::BalancePrecisionConverter<AssetId, Balance, bridge_types::GenericBalance>
+// impl bridge_types::traits::BalancePrecisionConverter<AssetId, Balance, bridge_types::GenericBalance>
+//     for BalancePrecisionConverterImpl
+// {
+//     fn from_sidechain(_: &AssetId, _: u8, amount: bridge_types::GenericBalance) -> Option<Balance> {
+//         match amount {
+//             bridge_types::GenericBalance::Substrate(balance) => Some(balance),
+//             _ => None,
+//         }
+//     }
+
+//     fn to_sidechain(_: &AssetId, _: u8, amount: Balance) -> Option<bridge_types::GenericBalance> {
+//         Some(bridge_types::GenericBalance::Substrate(amount))
+//     }
+// }
+
+impl bridge_types::traits::BalancePrecisionConverter<AssetId, Balance, GenericBalance>
     for BalancePrecisionConverterImpl
 {
-    fn from_sidechain(_: &AssetId, _: u8, amount: bridge_types::GenericBalance) -> Option<Balance> {
-        match amount {
-            bridge_types::GenericBalance::Substrate(balance) => Some(balance),
-            _ => None,
+    fn to_sidechain(
+        asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: Balance,
+    ) -> Option<(Balance, GenericBalance)> {
+        if matches!(asset_id, AssetId::Custom(_)) {
+            Some((amount, GenericBalance::Substrate(amount)))
+        } else {
+            Some((amount, GenericBalance::Substrate(amount * 10)))
         }
     }
 
-    fn to_sidechain(_: &AssetId, _: u8, amount: Balance) -> Option<bridge_types::GenericBalance> {
-        Some(bridge_types::GenericBalance::Substrate(amount))
+    fn from_sidechain(
+        asset_id: &AssetId,
+        _sidechain_precision: u8,
+        amount: GenericBalance,
+    ) -> Option<(Balance, GenericBalance)> {
+        match amount {
+            bridge_types::GenericBalance::Substrate(balance) => {
+                if matches!(asset_id, AssetId::Custom(_)) {
+                    Some((balance, amount))
+                } else {
+                    Some((balance / 10, amount))
+                }
+            }
+            _ => None,
+        }
     }
 }
 

@@ -28,17 +28,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::mock::{
-    new_tester, new_tester_no_registered_assets, Currencies,
-    RuntimeOrigin,
-};
+use crate::mock::{new_tester, new_tester_no_registered_assets, Currencies, RuntimeOrigin};
 use crate::mock::{AssetId, SubstrateApp, System, Test};
 use crate::Error;
 use bridge_types::test_utils::BridgeAssetLockerImpl;
 use bridge_types::traits::BridgeOriginOutput;
 use bridge_types::types::AssetKind;
 use bridge_types::SubNetworkId;
-use bridge_types::{GenericAccount, GenericBalance, GenericAssetId};
+use bridge_types::{GenericAccount, GenericAssetId, GenericBalance};
 use frame_support::{assert_noop, assert_ok};
 use frame_system::Origin;
 use sp_core::H256;

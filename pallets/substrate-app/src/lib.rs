@@ -210,9 +210,6 @@ pub mod pallet {
         type WeightInfo: WeightInfo;
     }
 
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
@@ -494,8 +491,9 @@ pub mod pallet {
 
             let precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::UnknownPrecision)?;
-            let (amount, _) = T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
-                .ok_or(Error::<T>::WrongAmount)?;
+            let (amount, _) =
+                T::BalancePrecisionConverter::from_sidechain(&asset_id, precision, amount)
+                    .ok_or(Error::<T>::WrongAmount)?;
             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
 
             T::BridgeAssetLocker::unlock_asset(
@@ -566,7 +564,7 @@ pub mod pallet {
             let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
-                &message.clone().prepare_message(),
+                &message.prepare_message(),
                 (),
             )?;
 

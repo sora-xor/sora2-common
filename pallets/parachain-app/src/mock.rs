@@ -260,7 +260,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
             .expect("parachain-app: failed to convert a string")
             .as_str()
         {
-            "XOR" => Ok(AssetId::XOR),
+            "XOR" => Ok(AssetId::Xor),
             "KSM" => Ok(AssetId::Custom(1)),
             _ => Ok(AssetId::Custom(0)),
         }

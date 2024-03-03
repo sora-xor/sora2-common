@@ -1,18 +1,32 @@
-// Copyright (C) 2020-2021 Parity Technologies (UK) Ltd.
-// SPDX-License-Identifier: GPL-3.0-or-later WITH Classpath-exception-2.0
+// This file is part of the SORA network and Polkaswap app.
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
 
-// You should have received a copy of the GNU General Public License
-// along with this program. If not, see <https://www.gnu.org/licenses/>.
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
@@ -61,7 +75,6 @@ pub mod pallet {
     use bridge_types::GenericNetworkId;
     use bridge_types::LiberlandAssetId;
     use frame_support::pallet_prelude::{ValueQuery, *};
-    use frame_system::pallet_prelude::*;
     use sp_core::H256;
     use sp_runtime::traits::Convert;
     use sp_runtime::AccountId32;
@@ -72,11 +85,6 @@ pub mod pallet {
     #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
-
-    #[pallet::storage]
-    #[pallet::getter(fn tech_acc)]
-    pub(super) type TechAccounts<T: Config> =
-        StorageMap<_, Identity, GenericNetworkId, T::AccountId, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_nonce)]
@@ -129,6 +137,9 @@ pub mod pallet {
         type AccountIdConverter: Convert<AccountId32, Self::AccountId>;
 
         type TimepointProvider: TimepointProvider;
+
+        #[pallet::constant]
+        type SoraMainnetTechAcc: Get<Self::AccountId>;
     }
 
     #[pallet::event]
@@ -147,32 +158,6 @@ pub mod pallet {
         WrongAccount,
     }
 
-    #[pallet::hooks]
-    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        pub register_tech_accounts: Vec<(GenericNetworkId, T::AccountId)>,
-    }
-
-    #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            Self {
-                register_tech_accounts: Default::default(),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-        fn build(&self) {
-            self.register_tech_accounts.iter().for_each(|(k, v)| {
-                TechAccounts::<T>::insert(k, v);
-            });
-        }
-    }
-
     impl<T: Config> Pallet<T> {
         pub fn refund(
             network_id: GenericNetworkId,
@@ -186,7 +171,7 @@ pub mod pallet {
             };
             let beneficiary = T::AccountIdConverter::convert(beneficiary_liberland);
             if T::SoraApp::is_asset_supported(network_id, asset_id) {
-                T::SoraApp::refund(network_id, message_id, beneficiary.into(), asset_id, amount)?;
+                T::SoraApp::refund(network_id, message_id, beneficiary, asset_id, amount)?;
             }
             Self::deposit_event(Event::<T>::RefundInvoked(message_id, amount));
             Ok(())
@@ -204,7 +189,7 @@ where
     type AssetSymbol = Vec<u8>;
 
     fn register_asset(
-        network_id: GenericNetworkId,
+        _network_id: GenericNetworkId,
         name: <Self as bridge_types::traits::BridgeAssetRegistry<T::AccountId, LiberlandAssetId>>::AssetName,
         symbol: <Self as bridge_types::traits::BridgeAssetRegistry<
             T::AccountId,
@@ -213,9 +198,7 @@ where
     ) -> Result<LiberlandAssetId, DispatchError> {
         let nonce = Self::asset_nonce();
         AssetNonce::<T>::set(nonce + 1);
-        let Some(tech_acc) = Self::tech_acc(network_id) else {
-            fail!(Error::<T>::NoTechAccFound)
-        };
+        let tech_acc = T::SoraMainnetTechAcc::get();
         // let's take 3  itrations to create a new asset id, considering that collision can happen
         let iter = 3;
         for i in 0..iter {
@@ -297,15 +280,13 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
     type Balance = <T as pallet_assets::Config>::Balance;
 
     fn lock_asset(
-        network_id: GenericNetworkId,
+        _network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
         who: &T::AccountId,
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        let Some(tech_acc) = Self::tech_acc(network_id) else {
-            fail!(Error::<T>::NoTechAccFound)
-        };
+        let tech_acc = T::SoraMainnetTechAcc::get();
         match asset_id {
                 LiberlandAssetId::LLD => {
                 match asset_kind {
@@ -352,15 +333,13 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
     }
 
     fn unlock_asset(
-        network_id: GenericNetworkId,
+        _network_id: GenericNetworkId,
         asset_kind: bridge_types::types::AssetKind,
         who: &T::AccountId,
         asset_id: &Self::AssetId,
         amount: &Self::Balance,
     ) -> DispatchResult {
-        let Some(tech_acc) = Self::tech_acc(network_id) else {
-            fail!(Error::<T>::NoTechAccFound)
-        };
+        let tech_acc = T::SoraMainnetTechAcc::get();
         match asset_id {
             LiberlandAssetId::LLD => {
                 match asset_kind {
@@ -466,7 +445,7 @@ impl<T: Config>
     ) {
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         let dest = GenericAccount::Liberland(dest32);
-        Senders::<T>::insert(&network_id, &message_id, &dest);
+        Senders::<T>::insert(network_id, message_id, &dest);
 
         let bridge_request = BridgeRequest {
             source,
@@ -479,7 +458,7 @@ impl<T: Config>
             direction: MessageDirection::Inbound,
         };
 
-        Transactions::<T>::insert((&network_id, &dest), &message_id, bridge_request);
+        Transactions::<T>::insert((network_id, &dest), message_id, bridge_request);
     }
 
     fn outbound_request(
@@ -493,7 +472,7 @@ impl<T: Config>
     ) {
         Self::deposit_event(Event::RequestStatusUpdate(message_id, status));
         let source = GenericAccount::Liberland(source32);
-        Senders::<T>::insert(&network_id, &message_id, &source);
+        Senders::<T>::insert(network_id, message_id, &source);
         let bridge_request = BridgeRequest {
             source: source.clone(),
             dest,
@@ -504,6 +483,6 @@ impl<T: Config>
             end_timepoint: GenericTimepoint::Pending,
             direction: MessageDirection::Outbound,
         };
-        Transactions::<T>::insert((&network_id, &source), &message_id, bridge_request);
+        Transactions::<T>::insert((&network_id, &source), message_id, bridge_request);
     }
 }
