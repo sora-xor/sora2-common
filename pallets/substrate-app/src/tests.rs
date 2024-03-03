@@ -61,7 +61,7 @@ fn it_works_deposit_event_mint_not_registered() {
             origin_liberland,
             asset_id,
             sender,
-            recipient.clone(),
+            recipient,
             GenericBalance::Substrate(amount),
         ));
         assert!(System::events().iter().any(|r| r.event
@@ -93,7 +93,7 @@ fn it_fails_mint_no_precision() {
             origin_liberland,
             asset_id,
             sender,
-            recipient.clone(),
+            recipient,
             GenericBalance::Substrate(amount),
         ));
         assert!(System::events().iter().any(|r| r.event
@@ -114,7 +114,7 @@ fn it_fails_mint_wrong_amount() {
             (),
         ))
         .into();
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
         let sender = bridge_types::GenericAccount::Sora(Keyring::Alice.into());
         let recipient: <Test as frame_system::Config>::AccountId = Keyring::Alice.into();
         let amount = 0;
@@ -125,7 +125,7 @@ fn it_fails_mint_wrong_amount() {
             origin_liberland,
             asset_id,
             sender,
-            recipient.clone(),
+            recipient,
             GenericBalance::Substrate(amount),
         ));
         assert!(System::events().iter().any(|r| r.event
@@ -147,15 +147,15 @@ fn it_works_burn() {
         assert_ok!(SubstrateApp::burn(
             origin.into(),
             network_id,
-            AssetId::XOR,
+            AssetId::Xor,
             GenericAccount::Sora(Keyring::Alice.into()),
             amount
         ));
 
         let bridge_acc = BridgeAssetLockerImpl::<Currencies>::bridge_account(network_id.into());
-        assert_eq!(Currencies::total_balance(AssetId::XOR, &bridge_acc), amount);
+        assert_eq!(Currencies::total_balance(AssetId::Xor, &bridge_acc), amount);
         assert_eq!(
-            Currencies::total_balance(AssetId::XOR, &Keyring::Alice.into()),
+            Currencies::total_balance(AssetId::Xor, &Keyring::Alice.into()),
             1_000_000_000_000_000_000 - amount
         );
     });
@@ -173,7 +173,7 @@ fn it_fails_burn_token_not_registered() {
             SubstrateApp::burn(
                 origin.into(),
                 network_id,
-                AssetId::ETH,
+                AssetId::Eth,
                 GenericAccount::Sora(Keyring::Alice.into()),
                 amount
             ),
@@ -188,13 +188,13 @@ fn it_fails_burn_unknown_presicion() {
         let origin = Origin::<Test>::Signed(Keyring::Alice.into());
         let network_id = SubNetworkId::Liberland;
         let amount = 1_000_000;
-        let asset_id = AssetId::DAI;
+        let asset_id = AssetId::Dai;
 
         crate::AssetKinds::<Test>::insert(SubNetworkId::Liberland, asset_id, AssetKind::Thischain);
 
         assert_noop!(
             SubstrateApp::burn(
-                origin.clone().into(),
+                origin.into(),
                 network_id,
                 asset_id,
                 GenericAccount::Sora(Keyring::Alice.into()),
@@ -234,7 +234,7 @@ fn it_works_incoming_thischain_asset_registration() {
             (),
         ))
         .into();
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
         let generic_asset_id = GenericAssetId::Sora(H256([0; 32]));
 
         assert_ok!(SubstrateApp::incoming_thischain_asset_registration(
@@ -255,7 +255,7 @@ fn it_works_finalize_asset_registration() {
             (),
         ))
         .into();
-        let asset_id = AssetId::XOR;
+        let asset_id = AssetId::Xor;
         let generic_asset_id = GenericAssetId::Sora(H256([0; 32]));
 
         assert_ok!(SubstrateApp::finalize_asset_registration(

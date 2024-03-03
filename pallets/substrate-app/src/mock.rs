@@ -80,9 +80,9 @@ type Block = frame_system::mocking::MockBlock<Test>;
     Deserialize,
 )]
 pub enum AssetId {
-    XOR,
-    ETH,
-    DAI,
+    Xor,
+    Eth,
+    Dai,
     Custom(u8),
 }
 
@@ -184,7 +184,7 @@ impl currencies::Config for Test {
     type WeightInfo = ();
 }
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = AssetId::XOR;
+    pub const GetBaseAssetId: AssetId = AssetId::Xor;
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
     pub GetFeesAccountId: AccountId = AccountId32::from([1; 32]);
     pub GetTreasuryAccountId: AccountId = AccountId32::from([2; 32]);
@@ -210,7 +210,7 @@ parameter_types! {
 }
 
 parameter_types! {
-    pub const FeeCurrency: AssetId = AssetId::XOR;
+    pub const FeeCurrency: AssetId = AssetId::Xor;
     pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 }
 
@@ -257,7 +257,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
             .expect("substrate-app mock: Failed to convert a string")
             .as_str()
         {
-            "XOR" => Ok(AssetId::XOR),
+            "XOR" => Ok(AssetId::Xor),
             "KSM" => Ok(AssetId::Custom(1)),
             _ => Ok(AssetId::Custom(0)),
         }
@@ -272,7 +272,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 
     fn get_raw_info(asset_id: AssetId) -> bridge_types::types::RawAssetInfo {
         match asset_id {
-            AssetId::XOR => bridge_types::types::RawAssetInfo {
+            AssetId::Xor => bridge_types::types::RawAssetInfo {
                 name: "XOR".to_owned().into(),
                 symbol: "XOR".to_owned().into(),
                 precision: 18,
@@ -356,8 +356,8 @@ pub struct AssetIdConverter;
 impl Convert<AssetId, bridge_types::GenericAssetId> for AssetIdConverter {
     fn convert(a: AssetId) -> bridge_types::GenericAssetId {
         match a {
-            AssetId::XOR => GenericAssetId::Liberland(LiberlandAssetId::Asset(1)),
-            AssetId::ETH => GenericAssetId::Liberland(LiberlandAssetId::Asset(2)),
+            AssetId::Xor => GenericAssetId::Liberland(LiberlandAssetId::Asset(1)),
+            AssetId::Eth => GenericAssetId::Liberland(LiberlandAssetId::Asset(2)),
             _ => GenericAssetId::Liberland(LiberlandAssetId::Asset(3)),
         }
     }
@@ -417,8 +417,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
         ))
         .into();
         SubstrateApp::finalize_asset_registration(
-            liberland_origin.clone(),
-            AssetId::XOR,
+            liberland_origin,
+            AssetId::Xor,
             GenericAssetId::Sora(Default::default()),
             AssetKind::Thischain,
             12,
