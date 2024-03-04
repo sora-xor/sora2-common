@@ -588,7 +588,6 @@ pub mod pallet {
         pub assets: Vec<(SubNetworkId, AssetIdOf<T>, AssetKind)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {

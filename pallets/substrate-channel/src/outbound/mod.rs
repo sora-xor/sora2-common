@@ -48,9 +48,6 @@ mod benchmarking;
 #[cfg(test)]
 mod test;
 
-#[cfg(test)]
-mod mock;
-
 pub use pallet::*;
 
 #[frame_support::pallet]
@@ -71,9 +68,9 @@ pub mod pallet {
     use frame_support::Parameter;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
+    use log::debug;
     use sp_runtime::traits::Zero;
     use sp_runtime::DispatchError;
-    use log::debug;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {
@@ -113,7 +110,7 @@ pub mod pallet {
         StorageValue<_, BlockNumberFor<T>, ValueQuery, DefaultInterval<T>>;
 
     #[pallet::type_value]
-    pub(crate) fn DefaultInterval<T: Config>() -> BlockNumberFor<T>{
+    pub(crate) fn DefaultInterval<T: Config>() -> BlockNumberFor<T> {
         // TODO: Select interval
         10u32.into()
     }
