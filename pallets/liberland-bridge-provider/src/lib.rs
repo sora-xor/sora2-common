@@ -44,7 +44,6 @@ use frame_support::traits::fungibles::{
 };
 use frame_support::traits::Currency;
 use frame_support::traits::ExistenceRequirement;
-use frame_support::traits::WithdrawReasons;
 pub use pallet::*;
 use sp_core::H256;
 use sp_io::hashing::blake2_256;
@@ -156,6 +155,7 @@ pub mod pallet {
         FailedToCreateAsset,
         NoTechAccFound,
         WrongAccount,
+        WrongSidechainAsset,
     }
 
     impl<T: Config> Pallet<T> {
@@ -298,14 +298,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             ExistenceRequirement::AllowDeath,
                         )?;
                     },
-                    bridge_types::types::AssetKind::Sidechain => {
-                        T::Balances::withdraw(
-                            who,
-                            (*amount).into(),
-                            WithdrawReasons::RESERVE,
-                            ExistenceRequirement::AllowDeath,
-                        )?;
-                    },
+                    bridge_types::types::AssetKind::Sidechain => fail!(Error::<T>::WrongSidechainAsset),
                 }
             },
             LiberlandAssetId::Asset(asset) => {
@@ -351,12 +344,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             ExistenceRequirement::AllowDeath,
                         )?;
                     },
-                    bridge_types::types::AssetKind::Sidechain => {
-                        T::Balances::deposit_into_existing(
-                            who,
-                            (*amount).into(),
-                        )?;
-                    },
+                    bridge_types::types::AssetKind::Sidechain => fail!(Error::<T>::WrongSidechainAsset),
                 }
             },
             LiberlandAssetId::Asset(asset) => {
