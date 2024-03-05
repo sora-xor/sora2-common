@@ -214,22 +214,20 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// [network_id, asset_id, sender, recepient, amount]
-        Burned(
-            SubNetworkId,
-            AssetIdOf<T>,
-            T::AccountId,
-            GenericAccount,
-            BalanceOf<T>,
-        ),
-        /// [network_id, asset_id, sender, recepient, amount]
-        Minted(
-            SubNetworkId,
-            AssetIdOf<T>,
-            GenericAccount,
-            T::AccountId,
-            BalanceOf<T>,
-        ),
+        Burned{
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            sender: T::AccountId,
+            recipient: GenericAccount,
+            amount: BalanceOf<T>,
+        },
+        Minted{
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            sender: GenericAccount,
+            recipient: T::AccountId,
+            amount: BalanceOf<T>,
+        },
         FailedToMint(H256, DispatchError),
         AssetRegistrationProceed(AssetIdOf<T>),
         AssetRegistrationFinalized(AssetIdOf<T>),
@@ -514,15 +512,15 @@ pub mod pallet {
                 MessageStatus::Done,
             );
 
-            Self::deposit_event(Event::Minted(
+            Self::deposit_event(Event::Minted{
                 network_id, asset_id, sender, recipient, amount,
-            ));
+            });
 
             Ok(())
         }
 
         pub fn burn_inner(
-            who: T::AccountId,
+            sender: T::AccountId,
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
             recipient: GenericAccount,
@@ -548,7 +546,7 @@ pub mod pallet {
             T::BridgeAssetLocker::lock_asset(
                 network_id.into(),
                 asset_kind,
-                &who,
+                &sender,
                 &asset_id,
                 &amount,
             )?;
@@ -557,12 +555,12 @@ pub mod pallet {
                 recipient: recipient.clone(),
                 amount: sidechain_amount,
                 asset_id: sidechain_asset_id,
-                sender: T::AccountIdConverter::convert(who.clone()),
+                sender: T::AccountIdConverter::convert(sender.clone()),
             };
 
             let message_id = T::OutboundChannel::submit(
                 network_id,
-                &RawOrigin::Signed(who.clone()),
+                &RawOrigin::Signed(sender.clone()),
                 &message.clone().prepare_message(),
                 (),
             )?;
@@ -570,14 +568,14 @@ pub mod pallet {
             T::MessageStatusNotifier::outbound_request(
                 GenericNetworkId::Sub(network_id),
                 message_id,
-                who.clone(),
+                sender.clone(),
                 recipient.clone(),
                 asset_id.clone(),
                 amount.clone(),
                 MessageStatus::InQueue,
             );
 
-            Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
+            Self::deposit_event(Event::Burned{network_id, asset_id, sender, recipient, amount});
 
             Ok(Default::default())
         }
