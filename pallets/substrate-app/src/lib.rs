@@ -37,7 +37,7 @@
 //! ### Dispatchable Calls
 //!
 //! - `burn`: Burn an backed substrate or thischain token balance.
-//! 
+//!
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
@@ -213,14 +213,14 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        Burned{
+        Burned {
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
             sender: T::AccountId,
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         },
-        Minted{
+        Minted {
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
             sender: GenericAccount,
@@ -282,7 +282,6 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-
         /// Function used to mint or unlock tokens
         /// The Origin for this call is the Bridge Origin
         /// Only the relayer can call this function
@@ -430,7 +429,10 @@ pub mod pallet {
             ensure_root(origin)?;
 
             // Ensure that asset had not been registered for current network id
-            ensure!(ThischainAssetId::<T>::get(network_id, sidechain_asset).is_none(), Error::<T>::TokenAlreadyRegistered);
+            ensure!(
+                ThischainAssetId::<T>::get(network_id, sidechain_asset).is_none(),
+                Error::<T>::TokenAlreadyRegistered
+            );
 
             let asset_id =
                 T::AssetRegistry::register_asset(network_id.into(), name.clone(), symbol.clone())?;
@@ -515,8 +517,12 @@ pub mod pallet {
                 MessageStatus::Done,
             );
 
-            Self::deposit_event(Event::Minted{
-                network_id, asset_id, sender, recipient, amount,
+            Self::deposit_event(Event::Minted {
+                network_id,
+                asset_id,
+                sender,
+                recipient,
+                amount,
             });
 
             Ok(())
@@ -578,7 +584,13 @@ pub mod pallet {
                 MessageStatus::InQueue,
             );
 
-            Self::deposit_event(Event::Burned{network_id, asset_id, sender, recipient, amount});
+            Self::deposit_event(Event::Burned {
+                network_id,
+                asset_id,
+                sender,
+                recipient,
+                amount,
+            });
 
             Ok(Default::default())
         }
