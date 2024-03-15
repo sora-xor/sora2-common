@@ -30,13 +30,14 @@
 
 //! # Substrate App
 //!
-//! An application that implements bridged parachain/relaychain assets transfer
+//! An application that implements bridged substrate assets transfer
 //!
 //! ## Interface
 //!
 //! ### Dispatchable Calls
 //!
-//! - `burn`: Burn an backed parachain/relaychain or thischain token balance.
+//! - `burn`: Burn an backed substrate or thischain token balance.
+//!
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
@@ -45,7 +46,6 @@ extern crate alloc;
 
 pub mod weights;
 
-// TODO!!! write benchmarks! https://github.com/sora-xor/sora2-network/issues/862
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
 
@@ -214,14 +214,14 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        Burned{
+        Burned {
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
             sender: T::AccountId,
             recipient: GenericAccount,
             amount: BalanceOf<T>,
         },
-        Minted{
+        Minted {
             network_id: SubNetworkId,
             asset_id: AssetIdOf<T>,
             sender: GenericAccount,
@@ -270,32 +270,22 @@ pub mod pallet {
     #[pallet::error]
     pub enum Error<T> {
         TokenIsNotRegistered,
-        AppIsNotRegistered,
-        NotEnoughFunds,
         InvalidNetwork,
         TokenAlreadyRegistered,
-        AppAlreadyRegistered,
         /// Call encoding failed.
         CallEncodeFailed,
         /// Amount must be > 0
         WrongAmount,
-        TransferLimitReached,
         UnknownPrecision,
-        MessageIdNotFound,
-        InvalidDestinationParachain,
-        InvalidDestinationParams,
-        RelaychainAssetNotRegistered,
-        NotRelayTransferableAsset,
-        RelaychainAssetRegistered,
         WrongAssetId,
         WrongAccountId,
     }
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        // Internal calls to be used from Parachain side.
-
-        // TODO!!! write benchmarks! #862
+        /// Function used to mint or unlock tokens
+        /// The Origin for this call is the Bridge Origin
+        /// Only the relayer can call this function
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -342,7 +332,9 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO!!! write benchmarks! #862
+        /// Function used to finalize asset registration if everything went well on the sidechain
+        /// The Origin for this call is the Bridge Origin
+        /// Only the relayer can call this function
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
         pub fn finalize_asset_registration(
@@ -361,9 +353,12 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO!!! write benchmarks! #862
+        /// Function used to register this chain asset
+        /// The Origin for this call is the Bridge Origin
+        /// Only the relayer can call this function
+        /// Sends the message to sidechain to finalize asset registration
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
+        #[pallet::weight(<T as Config>::WeightInfo::incoming_thischain_asset_registration())]
         pub fn incoming_thischain_asset_registration(
             origin: OriginFor<T>,
             asset_id: AssetIdOf<T>,
@@ -401,10 +396,8 @@ pub mod pallet {
             Ok(())
         }
 
-        // Common exstrinsics
-
-        // TODO!!! write benchmarks! #862
-        #[pallet::call_index(4)]
+        /// Function used by users to send tokens to the sidechain
+        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
             origin: OriginFor<T>,
@@ -420,9 +413,12 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO!!! write benchmarks! #862
-        #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(0))]
+        /// Function used to register sidechain asset
+        /// The Origin for this call is the Root Origin
+        /// Only the root can call this function
+        /// Sends the message to sidechain to register asset
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset())]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: SubNetworkId,
@@ -431,6 +427,12 @@ pub mod pallet {
             name: AssetNameOf<T>,
         ) -> DispatchResult {
             ensure_root(origin)?;
+
+            // Ensure that asset had not been registered for current network id
+            ensure!(
+                ThischainAssetId::<T>::get(network_id, sidechain_asset).is_none(),
+                Error::<T>::TokenAlreadyRegistered
+            );
 
             let asset_id =
                 T::AssetRegistry::register_asset(network_id.into(), name.clone(), symbol.clone())?;
@@ -450,8 +452,10 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO!!! write benchmarks! #862
-        #[pallet::call_index(6)]
+        /// Function used to update transaction status
+        /// The Origin for this call is the Bridge Origin
+        /// Only the relayer can call this function
+        #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
             origin: OriginFor<T>,
@@ -512,8 +516,12 @@ pub mod pallet {
                 MessageStatus::Done,
             );
 
-            Self::deposit_event(Event::Minted{
-                network_id, asset_id, sender, recipient, amount,
+            Self::deposit_event(Event::Minted {
+                network_id,
+                asset_id,
+                sender,
+                recipient,
+                amount,
             });
 
             Ok(())
@@ -575,7 +583,13 @@ pub mod pallet {
                 MessageStatus::InQueue,
             );
 
-            Self::deposit_event(Event::Burned{network_id, asset_id, sender, recipient, amount});
+            Self::deposit_event(Event::Burned {
+                network_id,
+                asset_id,
+                sender,
+                recipient,
+                amount,
+            });
 
             Ok(Default::default())
         }
@@ -674,7 +688,7 @@ impl<T: Config> BridgeApp<T::AccountId, GenericAccount, AssetIdOf<T>, BalanceOf<
     }
 
     fn refund_weight() -> Weight {
-        <T as Config>::WeightInfo::refund()
+        <T as Config>::WeightInfo::update_transaction_status()
     }
 
     fn transfer_weight() -> Weight {

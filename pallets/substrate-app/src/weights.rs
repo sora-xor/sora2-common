@@ -58,52 +58,19 @@ use core::marker::PhantomData;
 
 /// Weight functions needed for substrate_bridge_app.
 pub trait WeightInfo {
-	fn register_thischain_asset(a: u32, ) -> Weight;
-	fn register_sidechain_asset(a: u32, ) -> Weight;
-	fn set_transfer_limit() -> Weight;
-	fn add_assetid_paraid() -> Weight;
-	fn remove_assetid_paraid() -> Weight;
+	fn register_sidechain_asset() -> Weight;
 	fn update_transaction_status() -> Weight;
+	fn incoming_thischain_asset_registration() -> Weight;
 	fn mint() -> Weight;
 	fn burn() -> Weight;
 	fn finalize_asset_registration() -> Weight;
-	fn refund() -> Weight;
 }
 
 /// Weights for substrate_bridge_app using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfos (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Technical TechAccounts (r:1 w:0)
-	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:1 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
-	/// The range of component `a` is `[1, 100]`.
-	fn register_thischain_asset(a: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1709`
-		//  Estimated: `28522 + a * (2475 ±0)`
-		// Minimum execution time: 38_232_000 picoseconds.
-		Weight::from_parts(37_766_334, 28522)
-			// Standard Error: 1_077
-			.saturating_add(Weight::from_parts(1_091_491, 0).saturating_mul(a.into()))
-			.saturating_add(T::DbWeight::get().reads(6_u64))
-			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
-	}
+	/// Storage: LiberlandBridgeApp ThischainAssetId (r:1 w:0)
+	/// Proof Skipped: LiberlandBridgeApp ThischainAssetId (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:1 w:1)
@@ -114,81 +81,70 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:2 w:1)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// The range of component `a` is `[1, 100]`.
-	fn register_sidechain_asset(a: u32, ) -> Weight {
+	fn register_sidechain_asset() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2186`
-		//  Estimated: `42077 + a * (2475 ±0)`
-		// Minimum execution time: 72_194_000 picoseconds.
-		Weight::from_parts(72_012_419, 42077)
-			// Standard Error: 1_500
-			.saturating_add(Weight::from_parts(1_112_515, 0).saturating_mul(a.into()))
-			.saturating_add(T::DbWeight::get().reads(9_u64))
-			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(a.into())))
-			.saturating_add(T::DbWeight::get().writes(9_u64))
-			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
+		//  Measured:  `2146`
+		//  Estimated: `42046`
+		// Minimum execution time: 76_000 nanoseconds.
+		Weight::from_parts(80_000_000, 42046)
+			.saturating_add(T::DbWeight::get().reads(10))
+			.saturating_add(T::DbWeight::get().writes(8))
 	}
-	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
-	fn set_transfer_limit() -> Weight {
+	/// Storage: Assets AssetOwners (r:1 w:0)
+	/// Proof Skipped: Assets AssetOwners (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Assets AssetInfos (r:1 w:0)
+	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Technical TechAccounts (r:1 w:0)
+	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
+	/// Storage: Permissions Permissions (r:1 w:0)
+	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
+	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
+	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
+	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
+	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp ThischainAssetId (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp ThischainAssetId (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp AssetKinds (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp SidechainAssetId (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp SidechainAssetId (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	fn incoming_thischain_asset_registration() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `1991`
+		//  Estimated: `34760`
+		// Minimum execution time: 38_000 nanoseconds.
+		Weight::from_parts(39_000_000, 34760)
+			.saturating_add(T::DbWeight::get().reads(6))
+			.saturating_add(T::DbWeight::get().writes(5))
+	}
+	/// Storage: LiberlandBridgeApp ThischainAssetId (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp ThischainAssetId (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp AssetKinds (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp SidechainAssetId (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp SidechainAssetId (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: LiberlandBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	fn finalize_asset_registration() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
-		// Minimum execution time: 1_860_000 picoseconds.
-		Weight::from_parts(1_931_000, 0)
-			.saturating_add(T::DbWeight::get().writes(1_u64))
+		// Minimum execution time: 8_000 nanoseconds.
+		Weight::from_parts(8_000_000, 0)
+			.saturating_add(T::DbWeight::get().writes(4))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
-	fn add_assetid_paraid() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `240`
-		//  Estimated: `5430`
-		// Minimum execution time: 7_900_000 picoseconds.
-		Weight::from_parts(8_200_000, 5430)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
-	fn remove_assetid_paraid() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `332`
-		//  Estimated: `5614`
-		// Minimum execution time: 9_201_000 picoseconds.
-		Weight::from_parts(9_390_000, 5614)
-			.saturating_add(T::DbWeight::get().reads(2_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-	/// Storage: BridgeProxy Senders (r:1 w:0)
-	/// Proof Skipped: BridgeProxy Senders (max_values: None, max_size: None, mode: Measured)
-	fn update_transaction_status() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `4`
-		//  Estimated: `2479`
-		// Minimum execution time: 5_760_000 picoseconds.
-		Weight::from_parts(6_040_000, 2479)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: LiberlandBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: LiberlandBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
@@ -199,27 +155,29 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
 	/// Storage: System Account (r:1 w:0)
 	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
+	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
+	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
+	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
+	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy Senders (r:0 w:1)
 	/// Proof Skipped: BridgeProxy Senders (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy Transactions (r:0 w:1)
 	/// Proof Skipped: BridgeProxy Transactions (max_values: None, max_size: None, mode: Measured)
 	fn mint() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2422`
-		//  Estimated: `37154`
-		// Minimum execution time: 52_452_000 picoseconds.
-		Weight::from_parts(52_983_000, 37154)
-			.saturating_add(T::DbWeight::get().reads(8_u64))
-			.saturating_add(T::DbWeight::get().writes(5_u64))
+		//  Measured:  `2578`
+		//  Estimated: `48352`
+		// Minimum execution time: 64_000 nanoseconds.
+		Weight::from_parts(67_000_000, 48352)
+			.saturating_add(T::DbWeight::get().reads(10))
+			.saturating_add(T::DbWeight::get().writes(6))
 	}
-	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp RelaychainAsset (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp RelaychainAsset (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: LiberlandBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: LiberlandBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: LiberlandBridgeApp SidechainAssetId (r:1 w:0)
+	/// Proof Skipped: LiberlandBridgeApp SidechainAssetId (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
@@ -242,80 +200,27 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: BridgeProxy Transactions (max_values: None, max_size: None, mode: Measured)
 	fn burn() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `2305`
-		//  Estimated: `58255`
-		// Minimum execution time: 64_983_000 picoseconds.
-		Weight::from_parts(65_613_000, 58255)
-			.saturating_add(T::DbWeight::get().reads(13_u64))
-			.saturating_add(T::DbWeight::get().writes(7_u64))
+		//  Measured:  `2152`
+		//  Estimated: `53772`
+		// Minimum execution time: 68_000 nanoseconds.
+		Weight::from_parts(74_000_000, 53772)
+			.saturating_add(T::DbWeight::get().reads(12))
+			.saturating_add(T::DbWeight::get().writes(7))
 	}
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AssetKinds (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	fn finalize_asset_registration() -> Weight {
+	/// Storage: BridgeProxy Senders (r:1 w:0)
+	/// Proof Skipped: BridgeProxy Senders (max_values: None, max_size: None, mode: Measured)
+	fn update_transaction_status() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `207`
-		//  Estimated: `2889`
-		// Minimum execution time: 7_201_000 picoseconds.
-		Weight::from_parts(7_381_000, 2889)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-			.saturating_add(T::DbWeight::get().writes(1_u64))
-	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
-	/// Proof Skipped: BridgeProxy LockedAssets (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Technical TechAccounts (r:1 w:0)
-	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Tokens Accounts (r:2 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:0)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn refund() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1908`
-		//  Estimated: `20974`
-		// Minimum execution time: 36_332_000 picoseconds.
-		Weight::from_parts(36_621_000, 20974)
-			.saturating_add(T::DbWeight::get().reads(6_u64))
-			.saturating_add(T::DbWeight::get().writes(3_u64))
+		//  Measured:  `4`
+		//  Estimated: `2479`
+		// Minimum execution time: 7_000 nanoseconds.
+		Weight::from_parts(8_000_000, 2479)
+			.saturating_add(T::DbWeight::get().reads(1))
 	}
 }
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Assets AssetInfos (r:1 w:0)
-	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Technical TechAccounts (r:1 w:0)
-	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Permissions Permissions (r:1 w:0)
-	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
-	/// The range of component `a` is `[1, 100]`.
-	fn register_thischain_asset(a: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1709`
-		//  Estimated: `28522 + a * (2475 ±0)`
-		// Minimum execution time: 38_232_000 picoseconds.
-		Weight::from_parts(37_766_334, 28522)
-			// Standard Error: 1_077
-			.saturating_add(Weight::from_parts(1_091_491, 0).saturating_mul(a.into()))
-			.saturating_add(RocksDbWeight::get().reads(6_u64))
-			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(a.into())))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
-	}
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:1 w:1)
@@ -337,23 +242,7 @@ impl WeightInfo for () {
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 100]`.
-	fn register_sidechain_asset(a: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `2186`
-		//  Estimated: `42077 + a * (2475 ±0)`
-		// Minimum execution time: 72_194_000 picoseconds.
-		Weight::from_parts(72_012_419, 42077)
-			// Standard Error: 1_500
-			.saturating_add(Weight::from_parts(1_112_515, 0).saturating_mul(a.into()))
-			.saturating_add(RocksDbWeight::get().reads(9_u64))
-			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(a.into())))
-			.saturating_add(RocksDbWeight::get().writes(9_u64))
-			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(a.into())))
-			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
-	}
-	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
-	fn set_transfer_limit() -> Weight {
+	fn register_sidechain_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -361,30 +250,14 @@ impl WeightInfo for () {
 		Weight::from_parts(1_931_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
-	fn add_assetid_paraid() -> Weight {
+	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:0 w:1)
+	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
+	fn incoming_thischain_asset_registration() -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `240`
-		//  Estimated: `5430`
-		// Minimum execution time: 7_900_000 picoseconds.
-		Weight::from_parts(8_200_000, 5430)
-			.saturating_add(RocksDbWeight::get().reads(2_u64))
-			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
-	fn remove_assetid_paraid() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `332`
-		//  Estimated: `5614`
-		// Minimum execution time: 9_201_000 picoseconds.
-		Weight::from_parts(9_390_000, 5614)
-			.saturating_add(RocksDbWeight::get().reads(2_u64))
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 1_860_000 picoseconds.
+		Weight::from_parts(1_931_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	/// Storage: BridgeProxy Senders (r:1 w:0)
@@ -473,24 +346,5 @@ impl WeightInfo for () {
 		Weight::from_parts(7_381_000, 2889)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
-	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
-	/// Proof Skipped: BridgeProxy LockedAssets (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Technical TechAccounts (r:1 w:0)
-	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
-	/// Storage: Tokens Accounts (r:2 w:2)
-	/// Proof: Tokens Accounts (max_values: None, max_size: Some(136), added: 2611, mode: MaxEncodedLen)
-	/// Storage: System Account (r:1 w:0)
-	/// Proof: System Account (max_values: None, max_size: Some(128), added: 2603, mode: MaxEncodedLen)
-	fn refund() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `1908`
-		//  Estimated: `20974`
-		// Minimum execution time: 36_332_000 picoseconds.
-		Weight::from_parts(36_621_000, 20974)
-			.saturating_add(RocksDbWeight::get().reads(6_u64))
-			.saturating_add(RocksDbWeight::get().writes(3_u64))
 	}
 }
