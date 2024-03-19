@@ -244,6 +244,7 @@ pub enum BridgeAssetInfo {
     EVM(EVMAssetInfo),
     /// Substrate network asset info
     Sub(SubAssetInfo),
+    Liberland,
 }
 
 #[derive(

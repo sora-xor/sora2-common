@@ -207,7 +207,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
     fn inbound_request(
         network_id: GenericNetworkId,
         message_id: H256,
-        source: GenericAccount<AccountId>,
+        source: GenericAccount,
         dest: AccountId,
         asset_id: AssetId,
         amount: Balance,
@@ -219,7 +219,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
         network_id: GenericNetworkId,
         message_id: H256,
         source: AccountId,
-        dest: GenericAccount<AccountId>,
+        dest: GenericAccount,
         asset_id: AssetId,
         amount: Balance,
         status: MessageStatus,
@@ -238,7 +238,7 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
     fn inbound_request(
         _network_id: GenericNetworkId,
         _message_id: H256,
-        _source: GenericAccount<AccountId>,
+        _source: GenericAccount,
         _dest: AccountId,
         _asset_id: AssetId,
         _amount: Balance,
@@ -251,7 +251,7 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
         _network_id: GenericNetworkId,
         _message_id: H256,
         _source: AccountId,
-        _dest: GenericAccount<AccountId>,
+        _dest: GenericAccount,
         _asset_id: AssetId,
         _amount: Balance,
         _status: MessageStatus,
@@ -336,14 +336,16 @@ pub trait BridgeOriginOutput: Sized {
 }
 
 pub trait BridgeAssetRegistry<AccountId, AssetId> {
-    type AssetName: Parameter;
-    type AssetSymbol: Parameter;
+    type AssetName: Parameter + From<Vec<u8>> + Into<Vec<u8>>;
+    type AssetSymbol: Parameter + From<Vec<u8>> + Into<Vec<u8>>;
 
     fn register_asset(
         network_id: GenericNetworkId,
         name: Self::AssetName,
         symbol: Self::AssetSymbol,
     ) -> Result<AssetId, DispatchError>;
+
+    fn ensure_asset_exists(asset_id: AssetId) -> bool;
 
     fn manage_asset(network_id: GenericNetworkId, asset_id: AssetId) -> DispatchResult;
 
