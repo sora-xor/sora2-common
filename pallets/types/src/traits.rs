@@ -336,8 +336,8 @@ pub trait BridgeOriginOutput: Sized {
 }
 
 pub trait BridgeAssetRegistry<AccountId, AssetId> {
-    type AssetName: Parameter + From<Vec<u8>> + Into<Vec<u8>>;
-    type AssetSymbol: Parameter + From<Vec<u8>> + Into<Vec<u8>>;
+    type AssetName: Parameter;
+    type AssetSymbol: Parameter;
 
     fn register_asset(
         network_id: GenericNetworkId,
