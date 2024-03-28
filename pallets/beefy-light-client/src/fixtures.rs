@@ -131,10 +131,7 @@ impl ValidatorSet {
     }
 
     pub fn root(&self) -> H256 {
-        let root = binary_merkle_tree::merkle_root::<sp_runtime::traits::Keccak256, _>(
-            self.addresses.clone(),
-        );
-        root
+        binary_merkle_tree::merkle_root::<sp_runtime::traits::Keccak256, _>(self.addresses.clone())
     }
 
     fn authority_set(&self) -> sp_consensus_beefy::mmr::BeefyAuthoritySet<H256> {

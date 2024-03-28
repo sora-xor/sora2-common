@@ -130,10 +130,9 @@ impl Header {
         let item_to_prove: mpt::ShortNode = rlp::decode(first_bytes).ok()?;
 
         let final_hash: Option<[u8; 32]> =
-            iter.fold(Some(keccak_256(first_bytes)), |maybe_hash, bytes| {
-                let expected_hash = maybe_hash?;
+            iter.try_fold(keccak_256(first_bytes), |maybe_hash, bytes| {
                 let node: Box<dyn mpt::Node> = bytes.as_slice().try_into().ok()?;
-                if (*node).contains_hash(expected_hash.into()) {
+                if (*node).contains_hash(maybe_hash.into()) {
                     return Some(keccak_256(bytes));
                 }
                 None
