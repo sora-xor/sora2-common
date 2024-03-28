@@ -141,7 +141,6 @@ pub mod pallet {
         _,
         Twox64Concat,
         SubNetworkId,
-        // (H256, <T as frame_system::Config>::BlockNumber),
         (H256, BlockNumberFor<T>),
         ValueQuery,
     >;
