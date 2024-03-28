@@ -1,23 +1,24 @@
 [package]
-name = "substrate-bridge-channel"
-description = "Substrate Bridge Channel"
+name = "substrate-bridge-app"
 version = "0.1.1"
 edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
-repository = "https://github.com/sora-xor/sora2-common"
+license = "BSD-4-Clause"
+homepage = 'https://sora.org'
+repository = 'https://github.com/sora-xor/sora2-common'
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-serde = { version = "1.0.101", optional = true }
+serde = { version = "1.0.130", optional = true }
 codec = { version = "3", package = "parity-scale-codec", default-features = false, features = [
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = { version = "0.4.1", optional = true }
-rlp = { version = "0.5", default-features = false, optional = true }
-log = { version = "0.4.20", default-features = false }
+hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
+rlp = { version = "0.5", default-features = false }
+hex-literal = { version = "0.4.1", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
@@ -26,49 +27,53 @@ sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "re
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 
-bridge-types = { path = "../types", default-features = false }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", default-features = false, optional = true }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", default-features = false, optional = true }
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
-once_cell = { version = "1.5.2", default-features = false, features = [
-    'alloc',
-    'unstable',
-] }
+bridge-types = { path = "../types", default-features = false }
 
 [dev-dependencies]
+substrate-bridge-channel = { path = "../substrate-channel" }
+pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
+dispatch = { path = "../dispatch" }
+sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
 tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-tokens" }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies" }
-sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-rlp = { version = "0.5" }
+bridge-types = { path = "../types", features = ["test"] }
 
 [features]
 default = ["std"]
 std = [
     "serde",
+    "hex/std",
     "codec/std",
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
     "sp-core/std",
-    "sp-runtime/std",
     "sp-std/std",
     "sp-io/std",
+    "sp-runtime/std",
     "bridge-types/std",
+
+    "frame-benchmarking/std",
+    "dispatch/std",
+    "substrate-bridge-channel/std",
+
     "ethabi/std",
-    "sp-externalities/std",
-    "log/std",
+    "rlp/std",
 ]
 runtime-benchmarks = [
-    "bridge-types/runtime-benchmarks",
     "frame-benchmarking",
+    "dispatch/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
-    "pallet-timestamp/runtime-benchmarks",
-    "hex-literal",
-    "rlp",
+    "substrate-bridge-channel/runtime-benchmarks",
+    "traits",
+    "currencies",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

@@ -1,6 +1,6 @@
 [package]
-name = "substrate-bridge-channel"
-description = "Substrate Bridge Channel"
+name = "liberland-bridge-provider"
+description = "Wrapper for liberland assets and balances"
 version = "0.1.1"
 edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
@@ -15,9 +15,6 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
     "derive",
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
-hex-literal = { version = "0.4.1", optional = true }
-rlp = { version = "0.5", default-features = false, optional = true }
-log = { version = "0.4.20", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
@@ -26,49 +23,40 @@ sp-core = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "re
 sp-std = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-io = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
 sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
-pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
-sp-externalities = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false }
+pallet-assets = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, version = "4.0.0-dev"}
+pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0", default-features = false, version = "4.0.0-dev"}
+log = { version = "0.4.20", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
-once_cell = { version = "1.5.2", default-features = false, features = [
-    'alloc',
-    'unstable',
-] }
 
 [dev-dependencies]
-pallet-balances = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-tokens" }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits" }
-currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies" }
 sp-keyring = { git = "https://github.com/paritytech/polkadot-sdk.git", branch = "release-polkadot-v1.1.0" }
-rlp = { version = "0.5" }
+hex-literal = { version = "0.4.1" }
 
 [features]
 default = ["std"]
 std = [
+    "pallet-assets/std",
     "serde",
     "codec/std",
     "scale-info/std",
     "frame-support/std",
     "frame-system/std",
+    "frame-benchmarking/std",
     "sp-core/std",
+    "sp-io/std",
     "sp-runtime/std",
     "sp-std/std",
-    "sp-io/std",
     "bridge-types/std",
-    "ethabi/std",
-    "sp-externalities/std",
-    "log/std",
 ]
 runtime-benchmarks = [
-    "bridge-types/runtime-benchmarks",
     "frame-benchmarking",
-    "frame-support/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
-    "pallet-timestamp/runtime-benchmarks",
-    "hex-literal",
-    "rlp",
+    "frame-support/runtime-benchmarks",
+    "bridge-types/runtime-benchmarks",
+    "pallet-assets/std",
+    "pallet-balances/std",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

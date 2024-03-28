@@ -205,7 +205,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
     fn inbound_request(
         network_id: GenericNetworkId,
         message_id: H256,
-        source: GenericAccount<AccountId>,
+        source: GenericAccount,
         dest: AccountId,
         asset_id: AssetId,
         amount: Balance,
@@ -217,7 +217,7 @@ pub trait MessageStatusNotifier<AssetId, AccountId, Balance> {
         network_id: GenericNetworkId,
         message_id: H256,
         source: AccountId,
-        dest: GenericAccount<AccountId>,
+        dest: GenericAccount,
         asset_id: AssetId,
         amount: Balance,
         status: MessageStatus,
@@ -236,7 +236,7 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
     fn inbound_request(
         _network_id: GenericNetworkId,
         _message_id: H256,
-        _source: GenericAccount<AccountId>,
+        _source: GenericAccount,
         _dest: AccountId,
         _asset_id: AssetId,
         _amount: Balance,
@@ -249,7 +249,7 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
         _network_id: GenericNetworkId,
         _message_id: H256,
         _source: AccountId,
-        _dest: GenericAccount<AccountId>,
+        _dest: GenericAccount,
         _asset_id: AssetId,
         _amount: Balance,
         _status: MessageStatus,
@@ -343,6 +343,8 @@ pub trait BridgeAssetRegistry<AccountId, AssetId> {
         symbol: Self::AssetSymbol,
     ) -> Result<AssetId, DispatchError>;
 
+    fn ensure_asset_exists(asset_id: AssetId) -> bool;
+
     fn manage_asset(network_id: GenericNetworkId, asset_id: AssetId) -> DispatchResult;
 
     fn get_raw_info(asset_id: AssetId) -> RawAssetInfo;
@@ -356,35 +358,52 @@ impl AuxiliaryDigestHandler for () {
     fn add_item(_item: AuxiliaryDigestItem) {}
 }
 
+/// Converter trait for Balance precision in different networks.
 pub trait BalancePrecisionConverter<AssetId, Balance, SidechainBalance> {
+    /// Convert thischain balance to sidechain balance.
+    ///
+    /// **Returns**
+    /// * `Balance` - rounded thischain balance
+    /// * `SidechainBalance` - converted sidechain balance
+    ///
+    /// Or
+    /// * `None` - if thischain balance can't be converted to sidechain balance
     fn to_sidechain(
         asset_id: &AssetId,
         sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<SidechainBalance>;
+    ) -> Option<(Balance, SidechainBalance)>;
 
+    /// Convert sidechain balance to thischain balance.
+    ///
+    /// **Returns**
+    /// * `Balance` - rounded thischain balance
+    /// * `SidechainBalance` - converted sidechain balance
+    ///
+    /// Or
+    /// * `None` - if sidechain balance can't be converted to thischain balance
     fn from_sidechain(
         asset_id: &AssetId,
         sidechain_precision: u8,
         amount: SidechainBalance,
-    ) -> Option<Balance>;
+    ) -> Option<(Balance, SidechainBalance)>;
 }
 
-impl<AssetId, Balance> BalancePrecisionConverter<AssetId, Balance, Balance> for () {
+impl<AssetId, Balance: Clone> BalancePrecisionConverter<AssetId, Balance, Balance> for () {
     fn to_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
-        Some(amount)
+    ) -> Option<(Balance, Balance)> {
+        Some((amount.clone(), amount))
     }
 
     fn from_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<Balance> {
-        Some(amount)
+    ) -> Option<(Balance, Balance)> {
+        Some((amount.clone(), amount))
     }
 }
 

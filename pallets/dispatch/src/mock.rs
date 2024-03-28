@@ -53,12 +53,12 @@ impl frame_system::Config for Test {
 }
 
 pub struct CallFilter;
-impl frame_support::traits::Contains<RuntimeCall> for CallFilter {
+impl Contains<RuntimeCall> for CallFilter {
     fn contains(call: &RuntimeCall) -> bool {
-        match call {
-            RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { .. }) => true,
-            _ => false,
-        }
+        matches!(
+            call,
+            RuntimeCall::System(frame_system::pallet::Call::<Test>::remark { .. })
+        )
     }
 }
 

@@ -78,14 +78,13 @@ fn validator_proof(
             public_key_merkle_proofs.push(fixture.validator_set_proofs[i].clone());
         }
     }
-    let validator_proof = bridge_common::beefy_types::ValidatorProof {
+    ValidatorProof {
         signatures: proof_signatures,
         positions,
         public_keys,
-        public_key_merkle_proofs: public_key_merkle_proofs,
+        public_key_merkle_proofs,
         validator_claims_bitfield: initial_bitfield,
-    };
-    validator_proof
+    }
 }
 
 #[test_case(3, 5; "3 validators, 5 leaves")]

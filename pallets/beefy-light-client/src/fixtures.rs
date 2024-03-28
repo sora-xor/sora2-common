@@ -118,7 +118,6 @@ impl ValidatorSet {
 
     pub fn proofs(&self) -> Vec<Vec<H256>> {
         (0..self.addresses.len())
-            .into_iter()
             .map(|i| self.validator_pubkey_proof(i))
             .collect()
     }
@@ -239,11 +238,10 @@ enum MMRNode {
 
 impl MMRNode {
     fn hash(&self) -> H256 {
-        let hash = match self {
+        match self {
             MMRNode::Leaf(leaf) => sp_runtime::traits::Keccak256::hash_of(leaf),
             MMRNode::Hash(hash) => *hash,
-        };
-        hash
+        }
     }
 }
 
@@ -319,7 +317,7 @@ pub fn generate_fixture(validators: usize, tree_size: u32) -> AnyResult<Fixture>
             sp_consensus_beefy::known_payloads::MMR_ROOT_ID,
             mmr_root.encode(),
         ),
-        block_number: tree_size as u32,
+        block_number: tree_size,
         validator_set_id: validator_set.id,
     };
     let signed_commitment = validator_set.sign_commitment(&mut rng, commitment, None);

@@ -172,12 +172,24 @@ impl From<SubNetworkId> for GenericNetworkId {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
-pub enum GenericAccount<AccountId> {
+pub enum GenericAccount {
     EVM(H160),
-    Sora(AccountId),
+    Sora(MainnetAccountId),
+    Liberland(MainnetAccountId),
     Parachain(xcm::VersionedMultiLocation),
     Unknown,
     Root,
+}
+
+impl TryInto<MainnetAccountId> for GenericAccount {
+    type Error = ();
+    fn try_into(self) -> Result<MainnetAccountId, Self::Error> {
+        match self {
+            GenericAccount::Sora(a) => Ok(a),
+            GenericAccount::Liberland(a) => Ok(a),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(
@@ -236,6 +248,55 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
     }
 }
 
+#[allow(clippy::large_enum_variant)]
+#[derive(
+    Encode,
+    Decode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum GenericAssetId {
+    Sora(MainnetAssetId),
+    XCM(substrate::ParachainAssetId),
+    EVM(H160),
+    Liberland(LiberlandAssetId),
+}
+
+impl TryInto<LiberlandAssetId> for GenericAssetId {
+    type Error = ();
+
+    fn try_into(self) -> Result<LiberlandAssetId, Self::Error> {
+        match self {
+            GenericAssetId::Liberland(b) => Ok(b),
+            _ => Err(()),
+        }
+    }
+}
+
+#[allow(clippy::large_enum_variant)]
+#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
+pub enum GenericBalance {
+    Substrate(MainnetBalance),
+    EVM(U256),
+}
+
+impl TryInto<MainnetBalance> for GenericBalance {
+    type Error = ();
+
+    fn try_into(self) -> Result<MainnetBalance, Self::Error> {
+        match self {
+            GenericBalance::Substrate(b) => Ok(b),
+            _ => Err(()),
+        }
+    }
+}
+
 // Use predefined types to ensure data compatability
 
 pub type MainnetAssetId = H256;
@@ -243,6 +304,29 @@ pub type MainnetAssetId = H256;
 pub type MainnetAccountId = sp_runtime::AccountId32;
 
 pub type MainnetBalance = u128;
+
+#[derive(
+    Encode,
+    Decode,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    RuntimeDebug,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum LiberlandAssetId {
+    LLD,
+    Asset(u32),
+}
+
+impl From<u32> for LiberlandAssetId {
+    fn from(value: u32) -> Self {
+        LiberlandAssetId::Asset(value)
+    }
+}
 
 pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
 where

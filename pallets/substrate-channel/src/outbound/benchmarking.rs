@@ -31,16 +31,17 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
-use bridge_types::substrate::BridgeMessage;
 use bridge_types::traits::OutboundChannel;
 use frame_benchmarking::benchmarks;
+<<<<<<< HEAD
 use frame_support::traits::OnInitialize;
 use frame_system::pallet_prelude::BlockNumberFor;
+=======
+>>>>>>> develop
 use frame_system::EventRecord;
 use frame_system::RawOrigin;
+use sp_runtime::traits::One;
 use sp_std::prelude::*;
-
-const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BridgeOutboundChannel;
@@ -121,9 +122,20 @@ benchmarks! {
         }.into());
     }
 
+    update_interval {
+
+    }: {
+        BridgeOutboundChannel::<T>::update_interval(RawOrigin::Root.into(), One::one()).unwrap()
+    }
+    verify {
+        assert_last_event::<T>(crate::outbound::Event::<T>::IntervalUpdated {
+            interval: One::one()
+        }.into());
+    }
+
     impl_benchmark_test_suite!(
         BridgeOutboundChannel,
-        crate::outbound::test::new_tester(),
-        crate::outbound::test::Test,
+        crate::outbound::mock::new_tester(),
+        crate::outbound::mock::Test,
     );
 }
