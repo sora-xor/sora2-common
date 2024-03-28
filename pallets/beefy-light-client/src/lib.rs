@@ -137,13 +137,8 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn latest_random_seed)]
-    pub type LatestRandomSeed<T> = StorageMap<
-        _,
-        Twox64Concat,
-        SubNetworkId,
-        (H256, BlockNumberFor<T>),
-        ValueQuery,
-    >;
+    pub type LatestRandomSeed<T> =
+        StorageMap<_, Twox64Concat, SubNetworkId, (H256, BlockNumberFor<T>), ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn current_validator_set)]
