@@ -61,8 +61,6 @@ mod benchmarking;
 pub mod weights;
 pub use weights::WeightInfo;
 
-pub use pallet::*;
-
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub struct Proof {
     pub digest: AuxiliaryDigest,
@@ -85,6 +83,7 @@ pub mod pallet {
     use frame_support::dispatch::DispatchResultWithPostInfo;
     use frame_support::pallet_prelude::OptionQuery;
     use frame_support::{fail, Twox64Concat};
+    use log::info;
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
@@ -107,7 +106,6 @@ pub mod pallet {
     }
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
     #[pallet::storage]
@@ -173,13 +171,13 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::add_peer())]
         pub fn add_peer(origin: OriginFor<T>, peer: ecdsa::Public) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
-            frame_support::log::info!("Call add_peer {:?} by {:?}", peer, output);
+            info!("Call add_peer {:?} by {:?}", peer, output);
             PeerKeys::<T>::try_mutate(
                 GenericNetworkId::from(output.network_id),
                 |x| -> DispatchResult {
                     let Some(peers) = x else {
-                    fail!(Error::<T>::NetworkNotInitialized)
-                };
+                        fail!(Error::<T>::NetworkNotInitialized)
+                    };
                     if peers.contains(&peer) {
                         fail!(Error::<T>::PeerExists);
                     } else {
@@ -207,15 +205,15 @@ pub mod pallet {
             peer: ecdsa::Public,
         ) -> DispatchResultWithPostInfo {
             let output = T::CallOrigin::ensure_origin(origin)?;
-            frame_support::log::info!("Call remove_peer {:?} by {:?}", peer, output);
+            info!("Call remove_peer {:?} by {:?}", peer, output);
             PeerKeys::<T>::try_mutate(
                 GenericNetworkId::from(output.network_id),
                 |x| -> DispatchResult {
                     let Some(keys) = x else {
-                    fail!(Error::<T>::NetworkNotInitialized)
-                };
+                        fail!(Error::<T>::NetworkNotInitialized)
+                    };
                     ensure!(keys.remove(&peer), {
-                        frame_support::log::error!("Call add_peer: No such peer {:?}", peer);
+                        log::error!("Call add_peer: No such peer {:?}", peer);
                         Error::<T>::NoSuchPeer
                     });
                     Ok(())
@@ -241,7 +239,10 @@ pub mod pallet {
             signatures: &[ecdsa::Signature],
         ) -> DispatchResult {
             let Some(peers) = PeerKeys::<T>::get(network_id) else {
-                frame_support::log::error!("verify_signatures: Network {:?} not initialized", network_id);
+                log::error!(
+                    "verify_signatures: Network {:?} not initialized",
+                    network_id
+                );
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
@@ -249,8 +250,10 @@ pub mod pallet {
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
-                let Ok(rec_sign) = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign.0, &hash.0) else {
-                    frame_support::log::error!("verify_signatures: cannot recover: {:?}", sign);
+                let Ok(rec_sign) =
+                    sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign.0, &hash.0)
+                else {
+                    log::error!("verify_signatures: cannot recover: {:?}", sign);
                     fail!(Error::<T>::InvalidSignature)
                 };
                 let rec_sign = ecdsa::Public::from_raw(rec_sign);
@@ -258,10 +261,7 @@ pub mod pallet {
                     fail!(Error::<T>::DuplicatedPeer);
                 }
                 ensure!(peers.contains(&rec_sign), {
-                    frame_support::log::error!(
-                        "verify_signatures: not trusted signatures: {:?}",
-                        sign
-                    );
+                    log::error!("verify_signatures: not trusted signatures: {:?}", sign);
                     Error::<T>::NotTrustedPeerSignature
                 });
             }
@@ -269,7 +269,7 @@ pub mod pallet {
             let len = unique_peers.len() as u32;
             let treshold = bridge_types::utils::threshold(peers.len() as u32);
             ensure!(len >= treshold, {
-                frame_support::log::error!(
+                log::error!(
                     "verify_signatures: invalid number of signatures: {:?} < {:?}",
                     len,
                     treshold

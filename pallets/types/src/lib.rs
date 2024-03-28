@@ -49,10 +49,10 @@ pub mod utils;
 
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
-use frame_support::RuntimeDebug;
-use sp_core::Get;
+use sp_core::{Get, RuntimeDebug};
 use sp_std::vec;
 use sp_std::vec::Vec;
+use staging_xcm as xcm;
 
 pub use header::{Header, HeaderId};
 pub use log::Log;

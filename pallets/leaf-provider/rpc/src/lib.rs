@@ -38,7 +38,6 @@ use jsonrpsee::{
 use leaf_provider_runtime_api::AuxiliaryDigest;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
-use sp_runtime::generic::BlockId;
 use sp_runtime::traits::Block as BlockT;
 
 use std::sync::Arc;
@@ -81,11 +80,11 @@ where
         at: Option<<Block as BlockT>::Hash>,
     ) -> Result<Option<AuxiliaryDigest>> {
         let api = self.client.runtime_api();
-        let at = BlockId::hash(at.unwrap_or(
+        let at = at.unwrap_or(
             // If the block hash is not supplied assume the best block.
             self.client.info().best_hash,
-        ));
-        api.latest_digest(&at)
+        );
+        api.latest_digest(at)
             .map_err(|e| RpcError::Call(CallError::Failed(e.into())))
     }
 }

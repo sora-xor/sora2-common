@@ -42,4 +42,4 @@ pub fn concat_u8(slice: &[&[u8]]) -> Vec<u8> {
 }
 
 pub const FIXED_TIME: u64 = 100_000_000;
-pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_ref_time(FIXED_TIME);
+pub const EXTRINSIC_FIXED_WEIGHT: Weight = Weight::from_parts(FIXED_TIME, 0);

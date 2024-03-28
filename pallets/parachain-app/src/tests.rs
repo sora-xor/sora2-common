@@ -46,9 +46,9 @@ use frame_support::{assert_noop, assert_ok};
 use frame_system::Origin;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
+use staging_xcm::v3::Junctions::{X1, X3};
+use staging_xcm::v3::{Junction::Parachain, Junctions::X2, MultiLocation};
 use traits::MultiCurrency;
-use xcm::v3::Junctions::{X1, X3};
-use xcm::v3::{Junction::Parachain, Junctions::X2, MultiLocation};
 
 #[test]
 fn it_works_mint() {
@@ -235,7 +235,7 @@ fn it_fails_burn_invalid_destination_params() {
                 origin.clone().into(),
                 network_id,
                 asset_id,
-                VersionedMultiLocation::V2(xcm::v2::MultiLocation::default()),
+                VersionedMultiLocation::V2(staging_xcm::v2::MultiLocation::default()),
                 amount
             ),
             Error::<Test>::InvalidDestinationParams
@@ -297,7 +297,7 @@ fn it_fails_burn_relaychain_asset_not_registered() {
             1,
             X2(
                 Parachain(1),
-                xcm::v3::Junction::GeneralKey {
+                staging_xcm::v3::Junction::GeneralKey {
                     length: 32,
                     data: [0u8; 32],
                 },
@@ -360,7 +360,7 @@ fn it_fails_not_relay_transferable_asset() {
                 1,
                 X2(
                     Parachain(1),
-                    xcm::v3::Junction::GeneralKey {
+                    staging_xcm::v3::Junction::GeneralKey {
                         length: 32,
                         data: [0u8; 32],
                     },

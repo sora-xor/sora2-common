@@ -42,8 +42,9 @@ mod benchmarking;
 pub mod weights;
 pub use weights::WeightInfo;
 
-use frame_support::dispatch::{DispatchResult, Dispatchable, Parameter};
+use frame_support::dispatch::{DispatchResult, Parameter};
 use frame_support::traits::{Contains, EnsureOrigin};
+use sp_runtime::traits::Dispatchable;
 
 use sp_core::RuntimeDebug;
 
@@ -127,7 +128,6 @@ pub mod pallet {
         <<T as Config<I>>::OriginOutput as traits::BridgeOriginOutput>::Additional;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T, I = ()>(_);
@@ -210,7 +210,7 @@ pub mod pallet {
 
             let origin = RawOrigin::new(<T::OriginOutput as traits::BridgeOriginOutput>::new(
                 network_id,
-                message_id.using_encoded(|v| <T as Config<I>>::Hashing::hash(v)),
+                message_id.using_encoded(<T as Config<I>>::Hashing::hash),
                 timepoint,
                 additional,
             ))

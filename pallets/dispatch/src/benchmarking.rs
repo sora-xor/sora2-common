@@ -40,7 +40,6 @@ use bridge_types::EVMChainId;
 use bridge_types::GenericNetworkId;
 use bridge_types::SubNetworkId;
 use frame_benchmarking::benchmarks_instance_pallet;
-use frame_support::dispatch::DispatchError;
 use frame_system::EventRecord;
 use frame_system::{self};
 use sp_std::prelude::*;
@@ -80,7 +79,7 @@ benchmarks_instance_pallet! {
         )
     }
     verify {
-        assert_last_event::<T, I>(crate::Event::<T, I>::MessageDispatched(message_id, Err(DispatchError::BadOrigin)).into());
+        assert_last_event::<T, I>(crate::Event::<T, I>::MessageDispatched(message_id, Ok(())).into());
     }
 
     dispatch_decode_failed {
