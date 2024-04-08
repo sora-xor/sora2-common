@@ -156,6 +156,7 @@ pub mod pallet {
         NoTechAccFound,
         WrongAccount,
         WrongSidechainAsset,
+        WrongAssetKind,
     }
 
     impl<T: Config> Pallet<T> {
@@ -299,6 +300,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => fail!(Error::<T>::WrongSidechainAsset),
+                    bridge_types::types::AssetKind::Native => fail!(Error::<T>::WrongAssetKind),
                 }
             },
             LiberlandAssetId::Asset(asset) => {
@@ -319,6 +321,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             *amount,
                         )?;
                     },
+                    bridge_types::types::AssetKind::Native => fail!(Error::<T>::WrongAssetKind),
                 }
             }
         }
@@ -345,6 +348,7 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                         )?;
                     },
                     bridge_types::types::AssetKind::Sidechain => fail!(Error::<T>::WrongSidechainAsset),
+                    bridge_types::types::AssetKind::Native => fail!(Error::<T>::WrongAssetKind),
                 }
             },
             LiberlandAssetId::Asset(asset) => {
@@ -365,10 +369,29 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
                             *amount,
                         )?;
                     }
+                    bridge_types::types::AssetKind::Native => fail!(Error::<T>::WrongAssetKind),
                 }
             }
         }
         Ok(())
+    }
+
+    fn refund_fee(
+            _network_id: GenericNetworkId,
+            _who: &T::AccountId,
+            _asset_id: &Self::AssetId,
+            _amount: &Self::Balance,
+        ) -> DispatchResult {
+            Err(DispatchError::Unavailable)
+    }
+
+    fn withdraw_fee(
+            _network_id: GenericNetworkId,
+            _who: &T::AccountId,
+            _asset_id: &Self::AssetId,
+            _amount: &Self::Balance,
+        ) -> DispatchResult {
+            Err(DispatchError::Unavailable)
     }
 }
 

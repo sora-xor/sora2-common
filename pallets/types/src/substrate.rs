@@ -33,7 +33,8 @@ use codec::{Decode, Encode};
 use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{ecdsa, Get, H256};
+use sp_core::{ecdsa, Get};
+use crate::{H256, H160};
 use sp_runtime::{traits::Hash, BoundedVec, RuntimeDebug};
 use sp_std::prelude::*;
 
@@ -47,6 +48,13 @@ pub use xcm::VersionedMultiLocation;
 pub type ParachainAccountId = VersionedMultiLocation;
 
 pub type ParachainAssetId = xcm::v3::AssetId;
+
+pub type EVMAssetId = H160;
+
+pub type EVMAccountId = H160;
+
+/// We use `H256` instead of `U256` to make easier support of EVM abi encoded uint256
+pub type EVMBalance = H256;
 
 pub const PARENT_PARACHAIN_ASSET: ParachainAssetId =
     ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
@@ -117,6 +125,27 @@ impl SubstrateBridgeMessageEncode for SubstrateAppCall {
     }
 }
 
+/// Message to FAApp pallet
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum FAAppCall {
+    Transfer {
+        token: EVMAssetId,
+        sender: EVMAccountId,
+        recipient: MainnetAccountId,
+        amount: EVMBalance,
+    },
+    FinalizeAssetRegistration {
+        asset_id: MainnetAssetId,
+        token: EVMAssetId,
+    },
+}
+
+impl SubstrateBridgeMessageEncode for FAAppCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::FAApp(self).encode()
+    }
+}
+
 /// Message to XCMApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppCall {
@@ -178,6 +207,7 @@ pub enum BridgeCall {
     DataSigner(DataSignerCall),
     MultisigVerifier(MultisigVerifierCall),
     SubstrateApp(SubstrateAppCall),
+    FAApp(FAAppCall),
 }
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
