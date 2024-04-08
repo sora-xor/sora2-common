@@ -1,0 +1,474 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+//! Channel for passing messages from ethereum to substrate.
+
+use bridge_types::evm::AdditionalEVMOutboundData;
+use bridge_types::traits::{
+    AppRegistry, EVMFeeHandler, MessageDispatch, MessageStatusNotifier, OutboundChannel, Verifier,
+};
+use bridge_types::types::MessageId;
+use bridge_types::SubNetworkId;
+use bridge_types::{EVMChainId, H160};
+use frame_support::dispatch::DispatchResult;
+use frame_support::traits::Get;
+use frame_system::RawOrigin;
+
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
+pub mod weights;
+pub use weights::WeightInfo;
+
+#[cfg(test)]
+mod test;
+
+pub use pallet::*;
+
+#[frame_support::pallet]
+pub mod pallet {
+    use super::*;
+    use bridge_types::evm::AdditionalEVMInboundData;
+    use bridge_types::types::MessageStatus;
+    use bridge_types::{EVMChainId, GenericNetworkId, GenericTimepoint};
+    use frame_support::log::warn;
+    use frame_support::pallet_prelude::*;
+    use frame_support::traits::StorageVersion;
+    use frame_support::weights::Weight;
+    use frame_system::{ensure_root, pallet_prelude::*};
+    use sp_core::H160;
+    use sp_std::prelude::*;
+
+    #[pallet::config]
+    pub trait Config: frame_system::Config + pallet_timestamp::Config {
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+        /// Verifier module for message verification.
+        type Verifier: Verifier;
+
+        /// Verifier module for message verification.
+        type SubstrateMessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
+
+        /// Verifier module for message verification.
+        type EVMMessageDispatch: MessageDispatch<
+            Self,
+            EVMChainId,
+            MessageId,
+            AdditionalEVMInboundData,
+        >;
+
+        type OutboundChannel: OutboundChannel<
+            EVMChainId,
+            Self::AccountId,
+            AdditionalEVMOutboundData,
+        >;
+
+        type AssetId;
+
+        type Balance;
+
+        type MessageStatusNotifier: MessageStatusNotifier<
+            Self::AssetId,
+            Self::AccountId,
+            Self::Balance,
+        >;
+
+        type EVMFeeHandler: EVMFeeHandler<Self::AssetId>;
+
+        /// A configuration for base priority of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedPriority: Get<TransactionPriority>;
+
+        /// A configuration for longevity of unsigned transactions.
+        #[pallet::constant]
+        type UnsignedLongevity: Get<u64>;
+
+        #[pallet::constant]
+        type ThisNetworkId: Get<GenericNetworkId>;
+
+        /// Max bytes in a message payload
+        type MaxMessagePayloadSize: Get<u32>;
+
+        /// Max number of messages that can be queued and committed in one go for a given channel.
+        type MaxMessagesPerCommit: Get<u32>;
+
+        /// Weight information for extrinsics in this pallet
+        type WeightInfo: WeightInfo;
+    }
+
+    #[pallet::storage]
+    pub type ChannelNonces<T: Config> = StorageMap<_, Identity, GenericNetworkId, u64, ValueQuery>;
+
+    #[pallet::storage]
+    pub type ReportedChannelNonces<T: Config> =
+        StorageMap<_, Identity, GenericNetworkId, u64, ValueQuery>;
+
+    #[pallet::storage]
+    pub type EVMChannelAddresses<T: Config> =
+        StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
+
+    /// The current storage version.
+    const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
+
+    #[pallet::pallet]
+    #[pallet::generate_store(pub(super) trait Store)]
+    #[pallet::storage_version(STORAGE_VERSION)]
+    #[pallet::without_storage_info]
+    pub struct Pallet<T>(PhantomData<T>);
+
+    #[pallet::hooks]
+    impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {}
+
+    #[pallet::event]
+    // #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    // This pallet don't have events
+    pub enum Event<T: Config> {}
+
+    #[pallet::error]
+    pub enum Error<T> {
+        /// Message came from an invalid network.
+        InvalidNetwork,
+        /// Message came from an invalid outbound channel on the Ethereum side.
+        InvalidSourceChannel,
+        /// Submitted invalid commitment type.
+        InvalidCommitment,
+        /// Message has an unexpected nonce.
+        InvalidNonce,
+        /// Incorrect reward fraction
+        InvalidRewardFraction,
+        /// This contract already exists
+        ContractExists,
+        /// Call encoding failed.
+        CallEncodeFailed,
+    }
+
+    impl<T: Config> Pallet<T> {
+        fn submit_weight(
+            commitment: &bridge_types::GenericCommitment<
+                T::MaxMessagesPerCommit,
+                T::MaxMessagePayloadSize,
+            >,
+            proof: &<T::Verifier as Verifier>::Proof,
+        ) -> Weight {
+            let commitment_weight = match commitment {
+                bridge_types::GenericCommitment::EVM(commitment) => match commitment {
+                    bridge_types::evm::Commitment::Outbound(_) => {
+                        <T as frame_system::Config>::BlockWeights::get().max_block
+                    }
+                    bridge_types::evm::Commitment::Inbound(commitment) => {
+                        T::EVMMessageDispatch::dispatch_weight(&commitment.payload)
+                    }
+                    bridge_types::evm::Commitment::StatusReport(_) => Default::default(),
+                    bridge_types::evm::Commitment::BaseFeeUpdate(_) => Default::default(),
+                },
+                bridge_types::GenericCommitment::Sub(commitment) => commitment
+                    .messages
+                    .iter()
+                    .map(|m| T::SubstrateMessageDispatch::dispatch_weight(&m.payload))
+                    .fold(Weight::zero(), |acc, w| acc.saturating_add(w)),
+            };
+
+            let proof_weight = T::Verifier::verify_weight(proof);
+
+            <T as Config>::WeightInfo::submit()
+                .saturating_add(commitment_weight)
+                .saturating_add(proof_weight)
+        }
+
+        fn ensure_evm_channel(chain_id: EVMChainId, channel: H160) -> DispatchResult {
+            let channel_address =
+                EVMChannelAddresses::<T>::get(chain_id).ok_or(Error::<T>::InvalidNetwork)?;
+            ensure!(channel_address == channel, Error::<T>::InvalidSourceChannel);
+            Ok(())
+        }
+
+        fn ensure_channel_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
+            let nonce = ChannelNonces::<T>::get(network_id);
+            ensure!(nonce + 1 == new_nonce, Error::<T>::InvalidNonce);
+            Ok(())
+        }
+
+        fn ensure_reported_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
+            let nonce = ReportedChannelNonces::<T>::get(network_id);
+            ensure!(nonce + 1 == new_nonce, Error::<T>::InvalidNonce);
+            Ok(())
+        }
+
+        fn update_channel_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
+            <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                if new_nonce != *nonce + 1 {
+                    Err(Error::<T>::InvalidNonce.into())
+                } else {
+                    *nonce += 1;
+                    Ok(())
+                }
+            })?;
+            Ok(())
+        }
+
+        fn update_reported_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
+            <ReportedChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
+                if new_nonce != *nonce + 1 {
+                    Err(Error::<T>::InvalidNonce.into())
+                } else {
+                    *nonce += 1;
+                    Ok(())
+                }
+            })?;
+            Ok(())
+        }
+    }
+
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(Pallet::<T>::submit_weight(commitment, proof))]
+        pub fn submit(
+            origin: OriginFor<T>,
+            network_id: GenericNetworkId,
+            commitment: bridge_types::GenericCommitment<
+                T::MaxMessagesPerCommit,
+                T::MaxMessagePayloadSize,
+            >,
+            proof: <T::Verifier as Verifier>::Proof,
+        ) -> DispatchResultWithPostInfo {
+            ensure_none(origin)?;
+            let commitment_hash = commitment.hash();
+            match (network_id, commitment) {
+                (
+                    GenericNetworkId::EVM(evm_network_id),
+                    bridge_types::GenericCommitment::EVM(evm_commitment),
+                ) => match evm_commitment {
+                    bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
+                        Self::ensure_evm_channel(evm_network_id, inbound_commitment.source)?;
+                        T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
+                        Self::update_channel_nonce(network_id, inbound_commitment.nonce)?;
+                        let message_id = MessageId::basic(
+                            network_id,
+                            T::ThisNetworkId::get(),
+                            inbound_commitment.nonce,
+                        );
+                        T::EVMMessageDispatch::dispatch(
+                            evm_network_id,
+                            message_id,
+                            GenericTimepoint::EVM(inbound_commitment.block_number),
+                            &inbound_commitment.payload,
+                            AdditionalEVMInboundData {
+                                source: inbound_commitment.source,
+                            },
+                        );
+                    }
+                    bridge_types::evm::Commitment::StatusReport(status_report) => {
+                        Self::ensure_evm_channel(evm_network_id, status_report.source)?;
+                        T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
+                        Self::update_reported_nonce(network_id, status_report.nonce)?;
+                        for (i, result) in status_report.results.into_iter().enumerate() {
+                            let status = if result {
+                                MessageStatus::Done
+                            } else {
+                                MessageStatus::Failed
+                            };
+                            T::MessageStatusNotifier::update_status(
+                                network_id,
+                                MessageId::batched(
+                                    T::ThisNetworkId::get(),
+                                    network_id,
+                                    status_report.nonce,
+                                    i as u64,
+                                )
+                                .hash(),
+                                status,
+                                GenericTimepoint::EVM(status_report.block_number),
+                            )
+                        }
+                        // Add some overhead
+                        let gas_used = status_report.gas_spent + 20_000u64;
+                        // Priority fee and some additional reward
+                        let gas_price = status_report.base_fee + 5_000_000_000u64;
+                        let fee_paid = gas_used * gas_price;
+                        T::EVMFeeHandler::on_fee_paid(
+                            evm_network_id,
+                            status_report.relayer,
+                            fee_paid,
+                        )
+                    }
+                    bridge_types::evm::Commitment::BaseFeeUpdate(update) => {
+                        T::EVMFeeHandler::update_base_fee(evm_network_id, update.new_base_fee)
+                    }
+                    bridge_types::evm::Commitment::Outbound(_) => {
+                        frame_support::fail!(Error::<T>::InvalidCommitment);
+                    }
+                },
+                (
+                    GenericNetworkId::Sub(sub_network_id),
+                    bridge_types::GenericCommitment::Sub(sub_commitment),
+                ) => {
+                    T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
+                    Self::update_channel_nonce(network_id, sub_commitment.nonce)?;
+                    for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
+                        let message_id = MessageId::batched(
+                            network_id,
+                            T::ThisNetworkId::get(),
+                            sub_commitment.nonce,
+                            idx as u64,
+                        );
+                        T::SubstrateMessageDispatch::dispatch(
+                            sub_network_id,
+                            message_id,
+                            message.timepoint,
+                            &message.payload,
+                            (),
+                        );
+                    }
+                }
+                _ => {
+                    frame_support::fail!(Error::<T>::InvalidCommitment);
+                }
+            }
+            Ok(().into())
+        }
+
+        #[pallet::call_index(1)]
+        #[pallet::weight(0)]
+        pub fn register_evm_channel(
+            origin: OriginFor<T>,
+            network_id: EVMChainId,
+            channel_address: H160,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            EVMChannelAddresses::<T>::insert(network_id, channel_address);
+            Ok(().into())
+        }
+    }
+
+    #[pallet::validate_unsigned]
+    impl<T: Config> ValidateUnsigned for Pallet<T> {
+        type Call = Call<T>;
+        // mb add prefetch with validate_ancestors=true to not include unneccessary stuff
+        fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+            if let Call::submit {
+                network_id,
+                commitment,
+                proof,
+            } = call
+            {
+                match (network_id, &commitment) {
+                    (
+                        GenericNetworkId::EVM(evm_network_id),
+                        bridge_types::GenericCommitment::EVM(evm_commitment),
+                    ) => match evm_commitment {
+                        bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
+                            Self::ensure_evm_channel(*evm_network_id, inbound_commitment.source)
+                                .map_err(|_| InvalidTransaction::BadProof)?;
+                            Self::ensure_channel_nonce(*network_id, inbound_commitment.nonce)
+                                .map_err(|_| InvalidTransaction::BadProof)?;
+                        }
+                        bridge_types::evm::Commitment::StatusReport(status_report) => {
+                            Self::ensure_evm_channel(*evm_network_id, status_report.source)
+                                .map_err(|_| InvalidTransaction::BadProof)?;
+                            Self::ensure_reported_nonce(*network_id, status_report.nonce)
+                                .map_err(|_| InvalidTransaction::BadProof)?;
+                        }
+                        bridge_types::evm::Commitment::BaseFeeUpdate(_) => {}
+                        bridge_types::evm::Commitment::Outbound(_) => {
+                            return Err(InvalidTransaction::BadProof.into());
+                        }
+                    },
+                    (
+                        GenericNetworkId::Sub(_),
+                        bridge_types::GenericCommitment::Sub(sub_commitment),
+                    ) => {
+                        Self::ensure_channel_nonce(*network_id, sub_commitment.nonce)
+                            .map_err(|_| InvalidTransaction::BadProof)?;
+                    }
+                    _ => {
+                        return Err(InvalidTransaction::BadProof.into());
+                    }
+                }
+                let commitment_hash = commitment.hash();
+                T::Verifier::verify(network_id.clone(), commitment_hash, proof).map_err(|e| {
+                    warn!("Bad submit proof received: {:?}", e);
+                    InvalidTransaction::BadProof
+                })?;
+                ValidTransaction::with_tag_prefix("SubstrateBridgeChannelSubmit")
+                    .priority(T::UnsignedPriority::get())
+                    .longevity(T::UnsignedLongevity::get())
+                    .and_provides((network_id, commitment_hash))
+                    .propagate(true)
+                    .build()
+            } else {
+                warn!("Unknown unsigned call, can't validate");
+                InvalidTransaction::Call.into()
+            }
+        }
+    }
+}
+
+impl<T: Config> AppRegistry<EVMChainId, H160> for Pallet<T> {
+    fn register_app(network_id: EVMChainId, app: H160) -> DispatchResult {
+        let target = EVMChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+        let message = bridge_types::channel_abi::RegisterAppPayload { app };
+
+        T::OutboundChannel::submit(
+            network_id,
+            &RawOrigin::Root,
+            message
+                .encode()
+                .map_err(|_| Error::<T>::CallEncodeFailed)?
+                .as_ref(),
+            AdditionalEVMOutboundData {
+                target,
+                max_gas: 100000u64.into(),
+            },
+        )?;
+        Ok(())
+    }
+
+    fn deregister_app(network_id: EVMChainId, app: H160) -> DispatchResult {
+        let target = EVMChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
+
+        let message = bridge_types::channel_abi::RemoveAppPayload { app };
+
+        T::OutboundChannel::submit(
+            network_id,
+            &RawOrigin::Root,
+            message
+                .encode()
+                .map_err(|_| Error::<T>::CallEncodeFailed)?
+                .as_ref(),
+            AdditionalEVMOutboundData {
+                target,
+                max_gas: 100000u64.into(),
+            },
+        )?;
+        Ok(())
+    }
+}
