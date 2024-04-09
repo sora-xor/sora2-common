@@ -29,12 +29,12 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #![allow(clippy::large_enum_variant)]
 
+use crate::{H160, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{ecdsa, Get};
-use crate::{H256, H160};
 use sp_runtime::{traits::Hash, BoundedVec, RuntimeDebug};
 use sp_std::prelude::*;
 
