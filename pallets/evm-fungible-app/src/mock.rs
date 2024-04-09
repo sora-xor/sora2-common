@@ -188,8 +188,8 @@ impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConve
 pub struct BridgeAssetRegistryImpl;
 
 impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
-    type AssetName = String;
-    type AssetSymbol = String;
+    type AssetName = Vec<u8>;
+    type AssetSymbol = Vec<u8>;
 
     fn register_asset(
         network_id: GenericNetworkId,

@@ -402,7 +402,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(3)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset())]
         pub fn register_sidechain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -447,7 +447,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(4)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
         pub fn register_existing_sidechain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -489,7 +489,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(5)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset())]
         pub fn register_thischain_asset(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -523,7 +523,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_fungible_app())]
         pub fn register_fungible_app(
             origin: OriginFor<T>,
             network_id: EVMChainId,
@@ -545,7 +545,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_erc20_app())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
         pub fn register_native_app(
             origin: OriginFor<T>,
             network_id: EVMChainId,

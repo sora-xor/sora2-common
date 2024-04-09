@@ -186,8 +186,8 @@ fn test_register_erc20_asset() {
             RuntimeOrigin::root(),
             network_id,
             address,
-            "ETH".to_string(),
-            "ETH".to_string(),
+            "ETH".to_string().into(),
+            "ETH".to_string().into(),
             18,
         )
         .unwrap();
