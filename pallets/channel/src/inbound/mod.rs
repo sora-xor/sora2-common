@@ -268,7 +268,7 @@ pub mod pallet {
                 ) => match evm_commitment {
                     bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
                         Self::ensure_evm_channel(evm_network_id, inbound_commitment.source)?;
-                        T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
+                        T::Verifier::verify(network_id, commitment_hash, &proof)?;
                         Self::update_channel_nonce(network_id, inbound_commitment.nonce)?;
                         let message_id = MessageId::basic(
                             network_id,
@@ -287,7 +287,7 @@ pub mod pallet {
                     }
                     bridge_types::evm::Commitment::StatusReport(status_report) => {
                         Self::ensure_evm_channel(evm_network_id, status_report.source)?;
-                        T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
+                        T::Verifier::verify(network_id, commitment_hash, &proof)?;
                         Self::update_reported_nonce(network_id, status_report.nonce)?;
                         for (i, result) in status_report.results.into_iter().enumerate() {
                             let status = if result {
@@ -330,7 +330,7 @@ pub mod pallet {
                     GenericNetworkId::Sub(sub_network_id),
                     bridge_types::GenericCommitment::Sub(sub_commitment),
                 ) => {
-                    T::Verifier::verify(network_id.into(), commitment_hash, &proof)?;
+                    T::Verifier::verify(network_id, commitment_hash, &proof)?;
                     Self::update_channel_nonce(network_id, sub_commitment.nonce)?;
                     for (idx, message) in sub_commitment.messages.into_iter().enumerate() {
                         let message_id = MessageId::batched(
@@ -413,7 +413,7 @@ pub mod pallet {
                     }
                 }
                 let commitment_hash = commitment.hash();
-                T::Verifier::verify(network_id.clone(), commitment_hash, proof).map_err(|e| {
+                T::Verifier::verify(*network_id, commitment_hash, proof).map_err(|e| {
                     warn!("Bad submit proof received: {:?}", e);
                     InvalidTransaction::BadProof
                 })?;
