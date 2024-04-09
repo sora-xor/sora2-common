@@ -19,7 +19,7 @@ use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256
 use sp_runtime::{DispatchError, MultiSignature};
 use traits::parameter_type_with_key;
 
-use crate as erc20_app;
+use crate as fungible_app;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -42,7 +42,7 @@ frame_support::construct_runtime!(
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        FungibleApp: erc20_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        FungibleApp: fungible_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -147,6 +147,7 @@ parameter_types! {
     pub const MaxMessagesPerCommit: u32 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
+    pub PriorityFee: U256 = U256::from(5_000_000_000u64);
 }
 
 parameter_types! {
@@ -248,7 +249,7 @@ impl EVMOutboundChannel for OutboundChannelImpl {
     }
 }
 
-impl erc20_app::Config for Test {
+impl fungible_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = OutboundChannelImpl;
     type CallOrigin = dispatch::EnsureAccount<
@@ -262,6 +263,7 @@ impl erc20_app::Config for Test {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
     type BaseFeeLifetime = ConstU64<100>;
+    type PriorityFee = PriorityFee;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -277,7 +279,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .unwrap();
 
     GenesisBuild::<Test>::assimilate_storage(
-        &erc20_app::GenesisConfig {
+        &fungible_app::GenesisConfig {
             apps: vec![
                 (BASE_NETWORK_ID, H160::repeat_byte(1), AssetKind::Sidechain),
                 (BASE_NETWORK_ID, H160::repeat_byte(2), AssetKind::Thischain),
