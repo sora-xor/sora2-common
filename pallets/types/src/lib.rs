@@ -59,7 +59,6 @@ pub use log::Log;
 pub use receipt::Receipt;
 
 use derivative::Derivative;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -97,8 +96,9 @@ pub type EVMChainId = U256;
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum SubNetworkId {
     #[default]

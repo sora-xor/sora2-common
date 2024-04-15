@@ -292,7 +292,6 @@ pub mod pallet {
         phantom: PhantomData<T>,
     }
 
-    #[cfg(feature = "std")]
     impl<T> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
