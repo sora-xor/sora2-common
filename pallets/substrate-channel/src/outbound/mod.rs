@@ -42,9 +42,6 @@ use bridge_types::SubNetworkId;
 pub mod weights;
 pub use weights::WeightInfo;
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-
 #[cfg(test)]
 mod test;
 
