@@ -1,6 +1,36 @@
-//! # ERC20
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+//! # EVM Fungible App
 //!
-//! An application that implements bridged ERC20 token assets.
+//! An application that implements bridged fungible (ERC-20 and native) assets.
 //!
 //! ## Overview
 //!
@@ -14,8 +44,6 @@
 //!
 //! - `burn`: Burn an ERC20 token balance.
 #![cfg_attr(not(feature = "std"), no_std)]
-// TODO #167: fix clippy warnings
-#![allow(clippy::all)]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
@@ -176,12 +204,40 @@ pub mod pallet {
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
     pub enum Event<T: Config> {
-        /// [network_id, asset_id, sender, recepient, amount]
-        Burned(EVMChainId, AssetIdOf<T>, T::AccountId, H160, BalanceOf<T>),
-        /// [network_id, asset_id, sender, recepient, amount]
-        Minted(EVMChainId, AssetIdOf<T>, H160, T::AccountId, BalanceOf<T>),
-        /// [network_id, sender, asset_id, amount]
-        Refunded(EVMChainId, AccountIdOf<T>, AssetIdOf<T>, BalanceOf<T>),
+        /// Transfer to sidechain.
+        Burned {
+            network_id: EVMChainId,
+            asset_id: AssetIdOf<T>,
+            sender: T::AccountId,
+            recipient: H160,
+            amount: BalanceOf<T>,
+        },
+        /// Transfer from sidechain.
+        Minted {
+            network_id: EVMChainId,
+            asset_id: AssetIdOf<T>,
+            sender: H160,
+            recipient: T::AccountId,
+            amount: BalanceOf<T>,
+        },
+        /// Transfer failed, tokens refunded.
+        Refunded {
+            network_id: EVMChainId,
+            recipient: T::AccountId,
+            asset_id: AssetIdOf<T>,
+            amount: BalanceOf<T>,
+        },
+        /// New asset registered.
+        AssetRegistered {
+            network_id: EVMChainId,
+            asset_id: AssetIdOf<T>,
+        },
+        /// Fees paid by relayer in EVM was claimed.
+        FeesClaimed {
+            recipient: T::AccountId,
+            asset_id: AssetIdOf<T>,
+            amount: BalanceOf<T>,
+        },
     }
 
     #[pallet::storage]
@@ -249,6 +305,9 @@ pub mod pallet {
         /// Wrong bridge request status, must be Failed
         WrongRequestStatus,
         BaseFeeLifetimeExceeded,
+        InvalidSignature,
+        NothingToClaim,
+        NotEnoughFeesCollected,
     }
 
     #[pallet::genesis_config]
@@ -325,7 +384,7 @@ pub mod pallet {
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             if additional.source != app_address {
-                return Err(DispatchError::BadOrigin.into());
+                return Err(DispatchError::BadOrigin);
             }
 
             let (amount, _) = T::BalancePrecisionConverter::from_sidechain(
@@ -353,9 +412,13 @@ pub mod pallet {
                 timepoint,
                 MessageStatus::Done,
             );
-            Self::deposit_event(Event::Minted(
-                network_id, asset_id, sender, recipient, amount,
-            ));
+            Self::deposit_event(Event::Minted {
+                network_id,
+                asset_id,
+                sender,
+                recipient,
+                amount,
+            });
             Ok(())
         }
 
@@ -548,8 +611,8 @@ pub mod pallet {
         }
 
         #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
-        pub fn register_native_app(
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_native_app())]
+        pub fn register_existing_native_app(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             contract: H160,
@@ -564,12 +627,120 @@ pub mod pallet {
             AppAddresses::<T>::insert(network_id, AssetKind::Native, contract);
             NativeAssetIds::<T>::insert(network_id, &asset_id);
             SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
             T::AppRegistry::register_app(network_id, contract)?;
+            Self::deposit_event(Event::AssetRegistered {
+                network_id,
+                asset_id,
+            });
+            Ok(())
+        }
+
+        #[pallet::call_index(8)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
+        pub fn register_native_app(
+            origin: OriginFor<T>,
+            network_id: EVMChainId,
+            contract: H160,
+            symbol: AssetSymbolOf<T>,
+            name: AssetNameOf<T>,
+            sidechain_precision: u8,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                !AppAddresses::<T>::contains_key(network_id, AssetKind::Native),
+                Error::<T>::AppAlreadyRegistered
+            );
+            let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
+            AppAddresses::<T>::insert(network_id, AssetKind::Native, contract);
+            NativeAssetIds::<T>::insert(network_id, &asset_id);
+            SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+            T::AppRegistry::register_app(network_id, contract)?;
+            Self::deposit_event(Event::AssetRegistered {
+                network_id,
+                asset_id,
+            });
+            Ok(())
+        }
+
+        #[pallet::call_index(9)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
+        pub fn claim_relayer_fees(
+            origin: OriginFor<T>,
+            network_id: EVMChainId,
+            relayer: H160,
+            signature: sp_core::ecdsa::Signature,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            Self::ensure_can_claim_relayer_fees(&who, network_id, relayer, signature)?;
+            let spent_fees = SpentFees::<T>::get(network_id, relayer);
+            ensure!(spent_fees > U256::zero(), Error::<T>::NothingToClaim);
+
+            let collected_fees = CollectedFees::<T>::get(network_id);
+            ensure!(
+                collected_fees > U256::zero(),
+                Error::<T>::NotEnoughFeesCollected
+            );
+            let fees_to_claim = collected_fees.min(spent_fees);
+
+            let fee_asset = Self::get_network_fee_asset(network_id)?;
+            let sidechain_precision = SidechainPrecision::<T>::get(network_id, &fee_asset)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
+
+            let (amount, _) = T::BalancePrecisionConverter::from_sidechain(
+                &fee_asset,
+                sidechain_precision,
+                fees_to_claim,
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
+            ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
+            T::BridgeAssetLocker::refund_fee(network_id.into(), &who, &fee_asset, &amount)?;
+            Self::deposit_event(Event::FeesClaimed {
+                asset_id: fee_asset,
+                recipient: who,
+                amount,
+            });
+
+            SpentFees::<T>::insert(
+                network_id,
+                relayer,
+                spent_fees.saturating_sub(fees_to_claim),
+            );
+            CollectedFees::<T>::set(network_id, collected_fees.saturating_sub(fees_to_claim));
+
             Ok(())
         }
     }
 
     impl<T: Config> Pallet<T> {
+        pub fn get_claim_prehashed_message(network_id: EVMChainId, who: &T::AccountId) -> H256 {
+            let message = (
+                "claim-relayer-fees",
+                &who,
+                frame_system::Pallet::<T>::account_nonce(who),
+                network_id,
+            )
+                .encode();
+            let res = sp_core::keccak_256(&message).into();
+            println!("Message {:?}", res);
+            res
+        }
+
+        pub fn ensure_can_claim_relayer_fees(
+            who: &T::AccountId,
+            network_id: EVMChainId,
+            relayer: H160,
+            signature: sp_core::ecdsa::Signature,
+        ) -> DispatchResult {
+            let message = Self::get_claim_prehashed_message(network_id, who);
+            let pk = sp_io::crypto::secp256k1_ecdsa_recover(&signature.0, &message.0)
+                .map_err(|_| Error::<T>::InvalidSignature)?;
+            let recovered_address = H160::from_slice(&sp_core::keccak_256(&pk)[12..]);
+            ensure!(recovered_address == relayer, Error::<T>::InvalidSignature);
+            Ok(())
+        }
+
         pub fn register_asset_inner(
             network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
@@ -589,7 +760,11 @@ pub mod pallet {
             AssetsByAddresses::<T>::insert(network_id, contract, &asset_id);
             AssetKinds::<T>::insert(network_id, &asset_id, asset_kind);
             SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
-            T::AssetRegistry::manage_asset(network_id.into(), asset_id)?;
+            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+            Self::deposit_event(Event::AssetRegistered {
+                network_id,
+                asset_id,
+            });
             Ok(())
         }
 
@@ -634,7 +809,7 @@ pub mod pallet {
             let message = MintPayload {
                 token: token_address,
                 sender: who.clone(),
-                recipient: recipient.clone(),
+                recipient,
                 amount: sidechain_amount,
             };
 
@@ -656,7 +831,13 @@ pub mod pallet {
                 amount.clone(),
                 MessageStatus::InQueue,
             );
-            Self::deposit_event(Event::Burned(network_id, asset_id, who, recipient, amount));
+            Self::deposit_event(Event::Burned {
+                network_id,
+                asset_id,
+                sender: who,
+                recipient,
+                amount,
+            });
 
             Ok(message_id)
         }
@@ -679,12 +860,12 @@ pub mod pallet {
                 &amount,
             )?;
 
-            Self::deposit_event(Event::Refunded(
+            Self::deposit_event(Event::Refunded {
                 network_id,
-                recipient.clone(),
+                recipient,
                 asset_id,
                 amount,
-            ));
+            });
 
             Ok(())
         }
@@ -725,7 +906,7 @@ pub mod pallet {
                 return vec![];
             };
             AssetKinds::<T>::iter_prefix(network_id)
-                .map(|(asset_id, asset_kind)| {
+                .filter_map(|(asset_id, asset_kind)| {
                     let app_kind = match asset_kind {
                         AssetKind::Sidechain | AssetKind::Thischain => EVMAppKind::FAApp,
                         AssetKind::Native => EVMAppKind::EthApp,
@@ -736,13 +917,12 @@ pub mod pallet {
                             Some(BridgeAssetInfo::EVM(EVMAssetInfo {
                                 asset_id: T::AssetIdConverter::convert(asset_id),
                                 app_kind,
-                                evm_address: evm_address,
+                                evm_address,
                                 precision,
                             }))
                         })
                         .unwrap_or_default()
                 })
-                .flatten()
                 .collect()
         }
 

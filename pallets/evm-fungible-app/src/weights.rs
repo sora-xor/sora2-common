@@ -44,6 +44,7 @@ pub trait WeightInfo {
 	fn register_thischain_asset() -> Weight;
 	fn register_fungible_app() -> Weight;
 	fn register_native_app() -> Weight;
+	fn register_existing_native_app() -> Weight;
 	fn register_asset_internal() -> Weight;
 }
 
@@ -73,6 +74,10 @@ impl WeightInfo for () {
 	}
 
 	fn register_native_app() -> Weight {
+		Default::default()
+    }
+
+	fn register_existing_native_app() -> Weight {
 		Default::default()
     }
 

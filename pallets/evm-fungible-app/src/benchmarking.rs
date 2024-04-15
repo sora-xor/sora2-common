@@ -1,8 +1,39 @@
+// This file is part of the SORA network and Polkaswap app.
+
+// Copyright (c) 2020, 2021, Polka Biome Ltd. All rights reserved.
+// SPDX-License-Identifier: BSD-4-Clause
+
+// Redistribution and use in source and binary forms, with or without modification,
+// are permitted provided that the following conditions are met:
+
+// Redistributions of source code must retain the above copyright notice, this list
+// of conditions and the following disclaimer.
+// Redistributions in binary form must reproduce the above copyright notice, this
+// list of conditions and the following disclaimer in the documentation and/or other
+// materials provided with the distribution.
+//
+// All advertising materials mentioning features or use of this software must display
+// the following acknowledgement: This product includes software developed by Polka Biome
+// Ltd., SORA, and Polkaswap.
+//
+// Neither the name of the Polka Biome Ltd. nor the names of its contributors may be used
+// to endorse or promote products derived from this software without specific prior written permission.
+
+// THIS SOFTWARE IS PROVIDED BY Polka Biome Ltd. AS IS AND ANY EXPRESS OR IMPLIED WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Polka Biome Ltd. BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+// OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+// USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 //! ERC20App pallet benchmarking
 
 use crate::*;
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::traits::BridgeAssetRegistry;
+use bridge_types::traits::EVMBridgeWithdrawFee;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
 use bridge_types::EVMChainId;
@@ -14,7 +45,7 @@ use frame_system::RawOrigin;
 use sp_std::prelude::*;
 use traits::MultiCurrency;
 
-pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
+pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::repeat_byte(1);
 
 benchmarks! {
     where_clause {where
@@ -29,13 +60,16 @@ benchmarks! {
     burn {
         let caller: T::AccountId = whitelisted_caller();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
+        let token = H160::repeat_byte(2);
+        crate::Pallet::<T>::register_fungible_app(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1)).unwrap();
+        crate::Pallet::<T>::register_existing_sidechain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, token, asset_id.clone(), 18).unwrap();
         let recipient = H160::repeat_byte(2);
         let amount = 1000u128;
 
         Currencies::<T>::deposit(asset_id.clone(), &caller, amount.into())?;
     }: burn(RawOrigin::Signed(caller.clone()), BASE_NETWORK_ID, asset_id.clone(), recipient, amount.into())
     verify {
-        assert_eq!(Currencies::<T>::free_balance(asset_id.into(), &caller), 0u128.into());
+        assert_eq!(Currencies::<T>::free_balance(asset_id, &caller), 0u128.into());
     }
 
     // Benchmark `mint` extrinsic under worst case conditions:
@@ -57,7 +91,7 @@ benchmarks! {
 
     }: { call.dispatch_bypass_filter(origin.into())? }
     verify {
-        assert_eq!(Currencies::<T>::free_balance(asset_id.into(), &recipient), amount.into());
+        assert_eq!(Currencies::<T>::free_balance(asset_id, &recipient), amount.into());
     }
 
     register_fungible_app {
@@ -72,11 +106,46 @@ benchmarks! {
     register_native_app {
         let address = H160::repeat_byte(98);
         let network_id = BASE_NETWORK_ID;
+        let asset_name = b"ETH".to_vec();
+        let asset_symbol = b"ETH".to_vec();
+        assert!(!AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
+    }: _(RawOrigin::Root, network_id, address, asset_symbol.into(), asset_name.into(), 18)
+    verify {
+        assert!(AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
+    }
+
+    register_existing_native_app {
+        let address = H160::repeat_byte(98);
+        let network_id = BASE_NETWORK_ID;
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
         assert!(!AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
     }: _(RawOrigin::Root, network_id, address, asset_id, 18)
     verify {
         assert!(AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
+    }
+
+    claim_relayer_fees {
+        let caller: T::AccountId = whitelisted_caller();
+        let claimer: T::AccountId = account("claimer", 0, 0);
+        let address = H160::repeat_byte(98);
+        let message = crate::Pallet::<T>::get_claim_prehashed_message(BASE_NETWORK_ID, &claimer);
+        let pk = sp_io::crypto::ecdsa_generate(11u32.into(), None);
+        let signature = sp_io::crypto::ecdsa_sign_prehashed(11u32.into(), &pk, &message.0).unwrap();
+
+        // We need to have full public key to get Ethereum address, but sp_core public key don't have such conversion method.
+        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&signature.0, &message.0).map_err(|_| "Failed to recover signature").unwrap();
+        let relayer = H160::from_slice(&sp_core::keccak_256(&pk)[12..]);
+
+        let network_id = BASE_NETWORK_ID;
+        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
+        crate::Pallet::<T>::register_existing_native_app(RawOrigin::Root.into(), network_id, address, asset_id.clone(), 18)?;
+        crate::Pallet::<T>::update_base_fee(BASE_NETWORK_ID, 10u64.into());
+        Currencies::<T>::deposit(asset_id.clone(), &caller, 1_000_000_000_000_000_000u128.into())?;
+        crate::Pallet::<T>::withdraw_transfer_fee(&caller, BASE_NETWORK_ID, asset_id.clone())?;
+        crate::Pallet::<T>::on_fee_paid(BASE_NETWORK_ID, relayer, 100u64.into());
+    }: _(RawOrigin::Signed(claimer.clone()), network_id, relayer, signature)
+    verify {
+        assert_eq!(Currencies::<T>::free_balance(asset_id, &claimer), 100u128.into());
     }
 
     register_existing_sidechain_asset {
