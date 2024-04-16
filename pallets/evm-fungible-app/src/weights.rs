@@ -35,14 +35,16 @@
 use frame_support::{traits::Get, weights::{Weight, constants::RocksDbWeight}};
 use sp_std::marker::PhantomData;
 
-/// Weight functions needed for erc20_app.
+/// Weight functions needed for evm_fungible_app.
 pub trait WeightInfo {
 	fn burn() -> Weight;
 	fn mint() -> Weight;
-	fn register_erc20_asset() -> Weight;
-	fn register_native_asset() -> Weight;
-	fn register_erc20_app() -> Weight;
+	fn register_sidechain_asset() -> Weight;
+	fn register_existing_sidechain_asset() -> Weight;
+	fn register_thischain_asset() -> Weight;
+	fn register_fungible_app() -> Weight;
 	fn register_native_app() -> Weight;
+	fn register_existing_native_app() -> Weight;
 	fn register_asset_internal() -> Weight;
 }
 
@@ -55,19 +57,27 @@ impl WeightInfo for () {
 		Weight::zero()
 	}
 
-	fn register_erc20_asset() -> Weight {
+	fn register_existing_sidechain_asset() -> Weight {
 		Default::default()
-    }
+	}
 
-	fn register_native_asset() -> Weight {
+	fn register_fungible_app() -> Weight {
 		Default::default()
-    }
+	}
 
-	fn register_erc20_app() -> Weight {
+	fn register_sidechain_asset() -> Weight {
 		Default::default()
-    }
+	}
+
+	fn register_thischain_asset() -> Weight {
+		Default::default()
+	}
 
 	fn register_native_app() -> Weight {
+		Default::default()
+    }
+
+	fn register_existing_native_app() -> Weight {
 		Default::default()
     }
 
