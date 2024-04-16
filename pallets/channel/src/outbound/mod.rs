@@ -241,13 +241,8 @@ pub mod pallet {
             for idx in 0..messages.len() as u64 {
                 T::MessageStatusNotifier::update_status(
                     network_id,
-                    MessageId::batched(
-                        T::ThisNetworkId::get(),
-                        network_id.into(),
-                        batch_nonce,
-                        idx,
-                    )
-                    .hash(),
+                    MessageId::batched(T::ThisNetworkId::get(), network_id, batch_nonce, idx)
+                        .hash(),
                     MessageStatus::Committed,
                     GenericTimepoint::Pending,
                 );
@@ -263,7 +258,7 @@ pub mod pallet {
                         |(mut messages, total_gas), message| match message {
                             GenericBridgeMessage::EVM(message) => {
                                 let total_gas = total_gas.saturating_add(message.max_gas);
-                                if let Err(_) = messages.try_push(message.clone()) {
+                                if messages.try_push(message.clone()).is_err() {
                                     error!("Messages limit exceeded, ignoring (if you noticed this message, please report it)");
                                 }
                                 (messages, total_gas)
@@ -287,7 +282,7 @@ pub mod pallet {
                         BoundedVec::default(),
                         |mut messages, message| match message {
                             GenericBridgeMessage::Sub(message) => {
-                                if let Err(_) = messages.try_push(message.clone()) {
+                                if messages.try_push(message.clone()).is_err() {
                                     error!("Messages limit exceeded, ignoring (if you noticed this message, please report it)");
                                 }
                                 messages
@@ -381,7 +376,7 @@ pub mod pallet {
             });
             Ok(MessageId::batched(
                 T::ThisNetworkId::get(),
-                network_id.into(),
+                network_id,
                 batch_nonce,
                 messages_count,
             )

@@ -31,11 +31,12 @@
 //! BridgeInboundChannel pallet benchmarking
 
 use super::*;
+use bridge_types::GenericNetworkId;
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::{self, RawOrigin};
 use sp_std::prelude::*;
 
-const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
+const BASE_NETWORK_ID: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 
 #[allow(unused_imports)]
 use crate::inbound::Pallet as BridgeInboundChannel;

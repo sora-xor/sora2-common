@@ -92,9 +92,9 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
     Deserialize,
 )]
 pub enum AssetId {
-    XOR,
-    ETH,
-    DAI,
+    Xor,
+    Eth,
+    Dai,
 }
 
 pub type Balance = u128;
@@ -310,7 +310,7 @@ fn test_submit() {
 
         let call = Call::<Test>::submit {
             network_id: BASE_NETWORK_ID,
-            commitment: commitment.clone(),
+            commitment,
             proof: vec![],
         };
 
@@ -318,7 +318,7 @@ fn test_submit() {
             TransactionSource::External,
             &call
         ));
-        assert_ok!(call.clone().dispatch_bypass_filter(origin.clone()));
+        assert_ok!(call.dispatch_bypass_filter(origin.clone()));
 
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 1);
@@ -336,7 +336,7 @@ fn test_submit() {
 
         let call = Call::<Test>::submit {
             network_id: BASE_NETWORK_ID,
-            commitment: commitment.clone(),
+            commitment,
             proof: vec![],
         };
 
@@ -344,7 +344,7 @@ fn test_submit() {
             TransactionSource::External,
             &call
         ));
-        assert_ok!(call.clone().dispatch_bypass_filter(origin.clone()));
+        assert_ok!(call.dispatch_bypass_filter(origin));
 
         let nonce: u64 = <ChannelNonces<Test>>::get(BASE_NETWORK_ID);
         assert_eq!(nonce, 2);
@@ -369,7 +369,7 @@ fn test_submit_with_invalid_nonce() {
 
         let call = Call::<Test>::submit {
             network_id: BASE_NETWORK_ID,
-            commitment: commitment.clone(),
+            commitment,
             proof: vec![],
         };
 
@@ -388,7 +388,7 @@ fn test_submit_with_invalid_nonce() {
             TransactionValidityError::Invalid(InvalidTransaction::BadProof)
         );
         assert_noop!(
-            call.clone().dispatch_bypass_filter(origin.clone()),
+            call.dispatch_bypass_filter(origin),
             Error::<Test>::InvalidNonce
         );
     });
@@ -412,7 +412,7 @@ fn test_submit_with_invalid_network_id() {
 
         let call = Call::<Test>::submit {
             network_id: SubNetworkId::Kusama.into(),
-            commitment: commitment.clone(),
+            commitment,
             proof: vec![],
         };
 
@@ -421,7 +421,7 @@ fn test_submit_with_invalid_network_id() {
             TransactionValidityError::Invalid(InvalidTransaction::BadProof)
         );
         assert_noop!(
-            call.clone().dispatch_bypass_filter(origin.clone()),
+            call.dispatch_bypass_filter(origin),
             Error::<Test>::InvalidNetwork
         );
     });

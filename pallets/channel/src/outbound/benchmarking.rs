@@ -33,13 +33,14 @@ use super::*;
 
 use bridge_types::substrate::BridgeMessage;
 use bridge_types::traits::OutboundChannel;
+use bridge_types::GenericBridgeMessage;
+use bridge_types::GenericNetworkId;
 use frame_benchmarking::benchmarks;
-use frame_support::traits::OnInitialize;
 use frame_system::EventRecord;
 use frame_system::RawOrigin;
 use sp_std::prelude::*;
 
-const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
+const BASE_NETWORK_ID: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 
 #[allow(unused_imports)]
 use crate::outbound::Pallet as BridgeOutboundChannel;
@@ -65,10 +66,10 @@ benchmarks! {
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
             MessageQueues::<T>::try_append(
-                BASE_NETWORK_ID, BridgeMessage {
+                BASE_NETWORK_ID, GenericBridgeMessage::Sub(BridgeMessage {
                 payload: payload.try_into().unwrap(),
                 timepoint: Default::default(),
-            }).unwrap();
+            })).unwrap();
         }
 
         let block_number = 0u32.into();
@@ -84,10 +85,10 @@ benchmarks! {
         MessageQueues::<T>::take(BASE_NETWORK_ID);
         let payload: Vec<u8> = (0..).take(10).collect();
         MessageQueues::<T>::try_append(
-            BASE_NETWORK_ID, BridgeMessage {
+            BASE_NETWORK_ID, GenericBridgeMessage::Sub(BridgeMessage {
             payload: payload.try_into().unwrap(),
             timepoint: Default::default(),
-        }).unwrap();
+        })).unwrap();
 
         let interval: T::BlockNumber = 10u32.into();
         Interval::<T>::put(interval);
@@ -114,7 +115,7 @@ benchmarks! {
     }
     verify {
         assert_last_event::<T>(crate::outbound::Event::<T>::MessageAccepted {
-            network_id: SubNetworkId::Rococo,
+            network_id: GenericNetworkId::Sub(SubNetworkId::Rococo),
             batch_nonce: 1,
             message_nonce: 0
         }.into());
