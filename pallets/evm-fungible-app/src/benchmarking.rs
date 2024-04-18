@@ -58,11 +58,9 @@ benchmarks! {
     }
 
     burn {
-        let caller: T::AccountId = whitelisted_caller();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
-        let token = H160::repeat_byte(2);
-        crate::Pallet::<T>::register_fungible_app(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1)).unwrap();
-        crate::Pallet::<T>::register_existing_sidechain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, token, asset_id.clone(), 18).unwrap();
+        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), asset_id.clone(), 18).unwrap();
+        let caller: T::AccountId = whitelisted_caller();
         let recipient = H160::repeat_byte(2);
         let amount = 1000u128;
 
@@ -76,55 +74,46 @@ benchmarks! {
     // * `mint` successfully adds amount to recipient account
     mint {
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
-        let token = H160::repeat_byte(2);
-        crate::Pallet::<T>::register_fungible_app(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1)).unwrap();
-        crate::Pallet::<T>::register_existing_sidechain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, token, asset_id.clone(), 18).unwrap();
+        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), asset_id.clone(), 18).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
-        let caller = AppAddresses::<T>::get(BASE_NETWORK_ID, asset_kind).unwrap();
+        let caller = AppAddresses::<T>::get(BASE_NETWORK_ID).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: caller}, ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let sender = H160::zero();
         let amount = 500u128;
 
-        let call = Call::<T>::mint { token, sender, recipient: recipient.clone(), amount: amount.into()};
+        let call = Call::<T>::mint { token: H160::zero(), sender, recipient: recipient.clone(), amount: amount.into()};
 
     }: { call.dispatch_bypass_filter(origin.into())? }
     verify {
         assert_eq!(Currencies::<T>::free_balance(asset_id, &recipient), amount.into());
     }
 
-    register_fungible_app {
-        let address = H160::repeat_byte(98);
-        let network_id = BASE_NETWORK_ID;
-        assert!(!AppAddresses::<T>::contains_key(network_id, AssetKind::Sidechain));
-    }: _(RawOrigin::Root, network_id, address)
-    verify {
-        assert!(AppAddresses::<T>::contains_key(network_id, AssetKind::Sidechain));
-    }
-
-    register_native_app {
+    register_network {
         let address = H160::repeat_byte(98);
         let network_id = BASE_NETWORK_ID;
         let asset_name = b"ETH".to_vec();
         let asset_symbol = b"ETH".to_vec();
-        assert!(!AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
+        assert!(!AppAddresses::<T>::contains_key(network_id));
     }: _(RawOrigin::Root, network_id, address, asset_symbol.into(), asset_name.into(), 18)
     verify {
-        assert!(AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
+        assert!(AppAddresses::<T>::contains_key(network_id));
     }
 
-    register_existing_native_app {
+    register_network_with_existing_asset {
         let address = H160::repeat_byte(98);
         let network_id = BASE_NETWORK_ID;
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
-        assert!(!AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
+        assert!(!AppAddresses::<T>::contains_key(network_id));
     }: _(RawOrigin::Root, network_id, address, asset_id, 18)
     verify {
-        assert!(AppAddresses::<T>::contains_key(network_id, AssetKind::Native));
+        assert!(AppAddresses::<T>::contains_key(network_id));
     }
 
     claim_relayer_fees {
+        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
+        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), asset_id.clone(), 18).unwrap();
         let caller: T::AccountId = whitelisted_caller();
         let claimer: T::AccountId = account("claimer", 0, 0);
         let address = H160::repeat_byte(98);
@@ -137,8 +126,6 @@ benchmarks! {
         let relayer = H160::from_slice(&sp_core::keccak_256(&pk)[12..]);
 
         let network_id = BASE_NETWORK_ID;
-        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
-        crate::Pallet::<T>::register_existing_native_app(RawOrigin::Root.into(), network_id, address, asset_id.clone(), 18)?;
         crate::Pallet::<T>::update_base_fee(BASE_NETWORK_ID, 10u64.into());
         Currencies::<T>::deposit(asset_id.clone(), &caller, 1_000_000_000_000_000_000u128.into())?;
         crate::Pallet::<T>::withdraw_transfer_fee(&caller, BASE_NETWORK_ID, asset_id.clone())?;
@@ -149,9 +136,10 @@ benchmarks! {
     }
 
     register_existing_sidechain_asset {
+        let base_asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
+        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), base_asset_id, 18).unwrap();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
         let token = H160::repeat_byte(2);
-        crate::Pallet::<T>::register_fungible_app(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1)).unwrap();
         assert!(!AssetsByAddresses::<T>::contains_key(BASE_NETWORK_ID, token));
     }: _(RawOrigin::Root, BASE_NETWORK_ID, token, asset_id, 18)
     verify {
@@ -159,11 +147,12 @@ benchmarks! {
     }
 
     register_sidechain_asset {
+        let base_asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
+        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), base_asset_id, 18).unwrap();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
         let token = H160::repeat_byte(2);
         let asset_name = b"ETH".to_vec();
         let asset_symbol = b"ETH".to_vec();
-        crate::Pallet::<T>::register_fungible_app(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1)).unwrap();
         assert!(!AssetsByAddresses::<T>::contains_key(BASE_NETWORK_ID, token));
     }: _(RawOrigin::Root, BASE_NETWORK_ID, token, asset_symbol.into(), asset_name.into(), 18)
     verify {
@@ -171,16 +160,18 @@ benchmarks! {
     }
 
     register_thischain_asset {
+        let base_asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
+        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), base_asset_id, 18).unwrap();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
-        crate::Pallet::<T>::register_fungible_app(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1)).unwrap();
     }: _(RawOrigin::Root, BASE_NETWORK_ID, asset_id)
     verify {
     }
 
     register_asset_internal {
-        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
-        crate::Pallet::<T>::register_fungible_app(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1)).unwrap();
-        let who = AppAddresses::<T>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let base_asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
+        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), base_asset_id, 18).unwrap();
+        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"DAI".to_vec().into(), b"DAI".to_vec().into())?;
+        let who = AppAddresses::<T>::get(BASE_NETWORK_ID).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: who}, ..Default::default()});
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, &asset_id));

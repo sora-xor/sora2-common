@@ -311,8 +311,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
     GenesisBuild::<Test>::assimilate_storage(
         &fungible_app::GenesisConfig {
             apps: vec![
-                (BASE_NETWORK_ID, H160::repeat_byte(1), AssetKind::Sidechain),
-                (BASE_NETWORK_ID, H160::repeat_byte(2), AssetKind::Thischain),
+                (BASE_NETWORK_ID, H160::repeat_byte(1)),
+                (BASE_NETWORK_ID, H160::repeat_byte(2)),
             ],
             assets: vec![
                 (
