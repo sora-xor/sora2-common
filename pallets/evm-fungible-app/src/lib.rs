@@ -769,12 +769,8 @@ pub mod pallet {
                 &amount,
             )?;
 
-            let token_address = if asset_kind == AssetKind::Native {
-                H160::zero()
-            } else {
-                TokenAddresses::<T>::get(network_id, &asset_id)
-                    .ok_or(Error::<T>::TokenIsNotRegistered)?
-            };
+            let token_address = TokenAddresses::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             let message = MintPayload {
                 token: token_address,
@@ -876,17 +872,13 @@ pub mod pallet {
                 return vec![];
             };
             AssetKinds::<T>::iter_prefix(network_id)
-                .filter_map(|(asset_id, asset_kind)| {
-                    let app_kind = match asset_kind {
-                        AssetKind::Sidechain | AssetKind::Thischain => EVMAppKind::FAApp,
-                        AssetKind::Native => EVMAppKind::EthApp,
-                    };
+                .filter_map(|(asset_id, _asset_kind)| {
                     TokenAddresses::<T>::get(network_id, &asset_id)
                         .zip(SidechainPrecision::<T>::get(network_id, &asset_id))
                         .map(|(evm_address, precision)| {
                             Some(BridgeAssetInfo::EVM(EVMAssetInfo {
                                 asset_id: T::AssetIdConverter::convert(asset_id),
-                                app_kind,
+                                app_kind: EVMAppKind::FAApp,
                                 evm_address,
                                 precision,
                             }))
