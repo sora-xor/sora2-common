@@ -179,7 +179,6 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
 pub enum AssetKind {
     Thischain,
     Sidechain,
-    Native,
 }
 
 #[derive(
