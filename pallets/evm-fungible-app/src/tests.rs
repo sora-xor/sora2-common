@@ -181,7 +181,7 @@ fn burn_zero_amount_must_fail() {
 fn test_register_asset_internal() {
     new_tester().execute_with(|| {
         let asset_id = ETH;
-        let who = AppAddresses::<Test>::get(BASE_NETWORK_ID, AssetKind::Thischain).unwrap();
+        let who = AppAddresses::<Test>::get(BASE_NETWORK_ID).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput {
             network_id: BASE_NETWORK_ID,
             additional: AdditionalEVMInboundData { source: who },
@@ -241,31 +241,34 @@ fn test_register_erc20_app() {
     new_tester().execute_with(|| {
         let address = H160::repeat_byte(98);
         let network_id = EVMChainId::from_low_u64_be(2);
-        assert!(!AppAddresses::<Test>::contains_key(
+        assert!(!AppAddresses::<Test>::contains_key(network_id,));
+        FungibleApp::register_network_with_existing_asset(
+            RuntimeOrigin::root(),
             network_id,
-            AssetKind::Sidechain
-        ));
-        FungibleApp::register_fungible_app(RuntimeOrigin::root(), network_id, address).unwrap();
-        assert!(AppAddresses::<Test>::contains_key(
-            network_id,
-            AssetKind::Sidechain
-        ));
+            address,
+            ETH,
+            18,
+        )
+        .unwrap();
+        assert!(AppAddresses::<Test>::contains_key(network_id,));
     })
 }
 
 #[test]
-fn test_register_native_app() {
+fn test_register_network() {
     new_tester().execute_with(|| {
         let address = H160::repeat_byte(98);
         let network_id = EVMChainId::from_low_u64_be(2);
-        assert!(!AppAddresses::<Test>::contains_key(
+        assert!(!AppAddresses::<Test>::contains_key(network_id,));
+        FungibleApp::register_network(
+            RuntimeOrigin::root(),
             network_id,
-            AssetKind::Thischain
-        ));
-        FungibleApp::register_fungible_app(RuntimeOrigin::root(), network_id, address).unwrap();
-        assert!(AppAddresses::<Test>::contains_key(
-            network_id,
-            AssetKind::Thischain
-        ));
+            address,
+            "ETH".into(),
+            "ETH".into(),
+            18,
+        )
+        .unwrap();
+        assert!(AppAddresses::<Test>::contains_key(network_id,));
     })
 }

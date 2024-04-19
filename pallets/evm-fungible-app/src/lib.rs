@@ -193,7 +193,7 @@ pub mod pallet {
         type BaseFeeLifetime: Get<BlockNumberFor<Self>>;
 
         #[pallet::constant]
-        type PriorityFee: Get<U256>;
+        type PriorityFee: Get<u128>;
 
         type WeightInfo: WeightInfo;
     }
@@ -243,12 +243,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn app_address)]
     pub(super) type AppAddresses<T: Config> =
-        StorageDoubleMap<_, Identity, EVMChainId, Identity, AssetKind, H160, OptionQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn native_asset_id)]
-    pub(super) type NativeAssetIds<T: Config> =
-        StorageMap<_, Identity, EVMChainId, AssetIdOf<T>, OptionQuery>;
+        StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_kind)]
@@ -312,8 +307,8 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        /// [network_id, contract, asset_kind]
-        pub apps: Vec<(EVMChainId, H160, AssetKind)>,
+        /// [network_id, contract]
+        pub apps: Vec<(EVMChainId, H160)>,
         /// [network_id, asset_id, asset_contract, asset_kind, precision]
         pub assets: Vec<(EVMChainId, AssetIdOf<T>, H160, AssetKind, u8)>,
     }
@@ -331,8 +326,8 @@ pub mod pallet {
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            for (network_id, contract, asset_kind) in self.apps.iter() {
-                AppAddresses::<T>::insert(network_id, asset_kind, contract);
+            for (network_id, contract) in self.apps.iter() {
+                AppAddresses::<T>::insert(network_id, contract);
             }
             for (network_id, asset_id, contract, asset_kind, precision) in self.assets.iter() {
                 Pallet::<T>::register_asset_inner(
@@ -367,19 +362,13 @@ pub mod pallet {
                 timepoint,
                 additional,
             } = T::CallOrigin::ensure_origin(origin.clone())?;
-            let asset_id = if token.is_zero() {
-                NativeAssetIds::<T>::get(network_id)
-                    // should never return this error, because called from Ethereum
-                    .ok_or(Error::<T>::TokenIsNotRegistered)?
-            } else {
-                AssetsByAddresses::<T>::get(network_id, token)
-                    // should never return this error, because called from Ethereum
-                    .ok_or(Error::<T>::TokenIsNotRegistered)?
-            };
+            let asset_id = AssetsByAddresses::<T>::get(network_id, token)
+                // should never return this error, because called from Ethereum
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
-            let app_address = AppAddresses::<T>::get(network_id, asset_kind)
-                .ok_or(Error::<T>::AppIsNotRegistered)?;
+            let app_address =
+                AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             let sidechain_precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
@@ -434,16 +423,19 @@ pub mod pallet {
                 additional,
                 ..
             } = T::CallOrigin::ensure_origin(origin)?;
-            let asset_kind = AppAddresses::<T>::iter_prefix(network_id)
-                .find(|(_, address)| *address == additional.source)
-                .ok_or(Error::<T>::AppIsNotRegistered)?
-                .0;
+
+            let app_address =
+                AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
+            if additional.source != app_address {
+                return Err(DispatchError::BadOrigin);
+            }
+
             let asset_info = T::AssetRegistry::get_raw_info(asset_id.clone());
             Self::register_asset_inner(
                 network_id,
                 asset_id,
                 contract,
-                asset_kind,
+                AssetKind::Thischain,
                 asset_info.precision,
             )?;
             Ok(())
@@ -482,8 +474,8 @@ pub mod pallet {
                 !AssetsByAddresses::<T>::contains_key(network_id, address),
                 Error::<T>::TokenAlreadyRegistered
             );
-            let target = AppAddresses::<T>::get(network_id, AssetKind::Sidechain)
-                .ok_or(Error::<T>::AppIsNotRegistered)?;
+            let target =
+                AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
             let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
 
@@ -526,8 +518,8 @@ pub mod pallet {
                 !AssetsByAddresses::<T>::contains_key(network_id, address),
                 Error::<T>::TokenAlreadyRegistered
             );
-            let target = AppAddresses::<T>::get(network_id, AssetKind::Sidechain)
-                .ok_or(Error::<T>::AppIsNotRegistered)?;
+            let target =
+                AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
 
             Self::register_asset_inner(
                 network_id,
@@ -566,8 +558,8 @@ pub mod pallet {
                 !TokenAddresses::<T>::contains_key(network_id, &asset_id),
                 Error::<T>::TokenAlreadyRegistered
             );
-            let target = AppAddresses::<T>::get(network_id, AssetKind::Thischain)
-                .ok_or(Error::<T>::AppIsNotRegistered)?;
+            let target =
+                AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             let asset_info = T::AssetRegistry::get_raw_info(asset_id.clone());
 
             let message = RegisterNativeAssetPayload {
@@ -589,56 +581,8 @@ pub mod pallet {
         }
 
         #[pallet::call_index(6)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_fungible_app())]
-        pub fn register_fungible_app(
-            origin: OriginFor<T>,
-            network_id: EVMChainId,
-            contract: H160,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(
-                !AppAddresses::<T>::contains_key(network_id, AssetKind::Thischain),
-                Error::<T>::AppAlreadyRegistered
-            );
-            ensure!(
-                !AppAddresses::<T>::contains_key(network_id, AssetKind::Sidechain),
-                Error::<T>::AppAlreadyRegistered
-            );
-            AppAddresses::<T>::insert(network_id, AssetKind::Thischain, contract);
-            AppAddresses::<T>::insert(network_id, AssetKind::Sidechain, contract);
-            T::AppRegistry::register_app(network_id, contract)?;
-            Ok(())
-        }
-
-        #[pallet::call_index(7)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_native_app())]
-        pub fn register_existing_native_app(
-            origin: OriginFor<T>,
-            network_id: EVMChainId,
-            contract: H160,
-            asset_id: AssetIdOf<T>,
-            sidechain_precision: u8,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(
-                !AppAddresses::<T>::contains_key(network_id, AssetKind::Native),
-                Error::<T>::AppAlreadyRegistered
-            );
-            AppAddresses::<T>::insert(network_id, AssetKind::Native, contract);
-            NativeAssetIds::<T>::insert(network_id, &asset_id);
-            SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
-            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
-            T::AppRegistry::register_app(network_id, contract)?;
-            Self::deposit_event(Event::AssetRegistered {
-                network_id,
-                asset_id,
-            });
-            Ok(())
-        }
-
-        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
-        pub fn register_native_app(
+        pub fn register_network(
             origin: OriginFor<T>,
             network_id: EVMChainId,
             contract: H160,
@@ -648,23 +592,49 @@ pub mod pallet {
         ) -> DispatchResult {
             ensure_root(origin)?;
             ensure!(
-                !AppAddresses::<T>::contains_key(network_id, AssetKind::Native),
+                !AppAddresses::<T>::contains_key(network_id),
                 Error::<T>::AppAlreadyRegistered
             );
             let asset_id = T::AssetRegistry::register_asset(network_id.into(), name, symbol)?;
-            AppAddresses::<T>::insert(network_id, AssetKind::Native, contract);
-            NativeAssetIds::<T>::insert(network_id, &asset_id);
-            SidechainPrecision::<T>::insert(network_id, &asset_id, sidechain_precision);
-            T::AssetRegistry::manage_asset(network_id.into(), asset_id.clone())?;
+            AppAddresses::<T>::insert(network_id, contract);
             T::AppRegistry::register_app(network_id, contract)?;
-            Self::deposit_event(Event::AssetRegistered {
+            Self::register_asset_inner(
                 network_id,
                 asset_id,
-            });
+                H160::zero(),
+                AssetKind::Sidechain,
+                sidechain_precision,
+            )?;
             Ok(())
         }
 
-        #[pallet::call_index(9)]
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_native_app())]
+        pub fn register_network_with_existing_asset(
+            origin: OriginFor<T>,
+            network_id: EVMChainId,
+            contract: H160,
+            asset_id: AssetIdOf<T>,
+            sidechain_precision: u8,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                !AppAddresses::<T>::contains_key(network_id),
+                Error::<T>::AppAlreadyRegistered
+            );
+            AppAddresses::<T>::insert(network_id, contract);
+            T::AppRegistry::register_app(network_id, contract)?;
+            Self::register_asset_inner(
+                network_id,
+                asset_id,
+                H160::zero(),
+                AssetKind::Sidechain,
+                sidechain_precision,
+            )?;
+            Ok(())
+        }
+
+        #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
         pub fn claim_relayer_fees(
             origin: OriginFor<T>,
@@ -749,7 +719,7 @@ pub mod pallet {
             sidechain_precision: u8,
         ) -> DispatchResult {
             ensure!(
-                AppAddresses::<T>::contains_key(network_id, asset_kind),
+                AppAddresses::<T>::contains_key(network_id),
                 Error::<T>::AppIsNotRegistered
             );
             ensure!(
@@ -777,8 +747,8 @@ pub mod pallet {
         ) -> Result<H256, DispatchError> {
             let asset_kind = AssetKinds::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
-            let target = AppAddresses::<T>::get(network_id, asset_kind)
-                .ok_or(Error::<T>::AppIsNotRegistered)?;
+            let target =
+                AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             let sidechain_precision = SidechainPrecision::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
@@ -799,12 +769,8 @@ pub mod pallet {
                 &amount,
             )?;
 
-            let token_address = if asset_kind == AssetKind::Native {
-                H160::zero()
-            } else {
-                TokenAddresses::<T>::get(network_id, &asset_id)
-                    .ok_or(Error::<T>::TokenIsNotRegistered)?
-            };
+            let token_address = TokenAddresses::<T>::get(network_id, &asset_id)
+                .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
             let message = MintPayload {
                 token: token_address,
@@ -906,17 +872,13 @@ pub mod pallet {
                 return vec![];
             };
             AssetKinds::<T>::iter_prefix(network_id)
-                .filter_map(|(asset_id, asset_kind)| {
-                    let app_kind = match asset_kind {
-                        AssetKind::Sidechain | AssetKind::Thischain => EVMAppKind::FAApp,
-                        AssetKind::Native => EVMAppKind::EthApp,
-                    };
+                .filter_map(|(asset_id, _asset_kind)| {
                     TokenAddresses::<T>::get(network_id, &asset_id)
                         .zip(SidechainPrecision::<T>::get(network_id, &asset_id))
                         .map(|(evm_address, precision)| {
                             Some(BridgeAssetInfo::EVM(EVMAssetInfo {
                                 asset_id: T::AssetIdConverter::convert(asset_id),
-                                app_kind,
+                                app_kind: EVMAppKind::FAApp,
                                 evm_address,
                                 precision,
                             }))
@@ -928,15 +890,11 @@ pub mod pallet {
 
         fn list_apps() -> Vec<BridgeAppInfo> {
             AppAddresses::<T>::iter()
-                .map(|(network_id, asset_kind, evm_address)| {
-                    let app_kind = match asset_kind {
-                        AssetKind::Thischain | AssetKind::Sidechain => EVMAppKind::FAApp,
-                        AssetKind::Native => EVMAppKind::EthApp,
-                    };
+                .map(|(network_id, evm_address)| {
                     BridgeAppInfo::EVM(
                         network_id.into(),
                         EVMAppInfo {
-                            app_kind,
+                            app_kind: EVMAppKind::FAApp,
                             evm_address,
                         },
                     )
@@ -968,7 +926,8 @@ impl<T: Config> bridge_types::traits::EVMBridgeWithdrawFee<T::AccountId, AssetId
     ) -> DispatchResult {
         let gas = T::OutboundChannel::submit_gas(chain_id)?.saturating_add(TRANSFER_MAX_GAS.into());
         let fee_asset = Self::get_network_fee_asset(chain_id)?;
-        let base_fee = Self::get_latest_base_fee(chain_id)?.saturating_add(T::PriorityFee::get());
+        let base_fee =
+            Self::get_latest_base_fee(chain_id)?.saturating_add(T::PriorityFee::get().into());
         let fee = gas.saturating_mul(base_fee);
         let sidechain_precision = SidechainPrecision::<T>::get(chain_id, &fee_asset)
             .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -995,8 +954,8 @@ impl<T: Config> EVMFeeHandler<AssetIdOf<T>> for Pallet<T> {
         Ok(base_fee.base_fee)
     }
     fn get_network_fee_asset(network_id: EVMChainId) -> Result<AssetIdOf<T>, DispatchError> {
-        let asset_id =
-            NativeAssetIds::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
+        let asset_id = AssetsByAddresses::<T>::get(network_id, H160::zero())
+            .ok_or(Error::<T>::AppIsNotRegistered)?;
         Ok(asset_id)
     }
 
