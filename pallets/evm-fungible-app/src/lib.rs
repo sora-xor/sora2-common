@@ -193,7 +193,7 @@ pub mod pallet {
         type BaseFeeLifetime: Get<BlockNumberFor<Self>>;
 
         #[pallet::constant]
-        type PriorityFee: Get<U256>;
+        type PriorityFee: Get<u128>;
 
         type WeightInfo: WeightInfo;
     }
@@ -926,7 +926,8 @@ impl<T: Config> bridge_types::traits::EVMBridgeWithdrawFee<T::AccountId, AssetId
     ) -> DispatchResult {
         let gas = T::OutboundChannel::submit_gas(chain_id)?.saturating_add(TRANSFER_MAX_GAS.into());
         let fee_asset = Self::get_network_fee_asset(chain_id)?;
-        let base_fee = Self::get_latest_base_fee(chain_id)?.saturating_add(T::PriorityFee::get());
+        let base_fee =
+            Self::get_latest_base_fee(chain_id)?.saturating_add(T::PriorityFee::get().into());
         let fee = gas.saturating_mul(base_fee);
         let sidechain_precision = SidechainPrecision::<T>::get(chain_id, &fee_asset)
             .ok_or(Error::<T>::TokenIsNotRegistered)?;
