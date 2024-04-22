@@ -134,8 +134,8 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
-    use sp_runtime::traits::Convert;
     use sp_runtime::traits::Zero;
+    use sp_runtime::traits::{Convert, Hash};
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> =
@@ -685,16 +685,12 @@ pub mod pallet {
 
     impl<T: Config> Pallet<T> {
         pub fn get_claim_prehashed_message(network_id: EVMChainId, who: &T::AccountId) -> H256 {
-            let message = (
+            sp_runtime::traits::Keccak256::hash_of(&(
                 "claim-relayer-fees",
                 &who,
                 frame_system::Pallet::<T>::account_nonce(who),
                 network_id,
-            )
-                .encode();
-            let res = sp_core::keccak_256(&message).into();
-            println!("Message {:?}", res);
-            res
+            ))
         }
 
         pub fn ensure_can_claim_relayer_fees(
@@ -706,7 +702,8 @@ pub mod pallet {
             let message = Self::get_claim_prehashed_message(network_id, who);
             let pk = sp_io::crypto::secp256k1_ecdsa_recover(&signature.0, &message.0)
                 .map_err(|_| Error::<T>::InvalidSignature)?;
-            let recovered_address = H160::from_slice(&sp_core::keccak_256(&pk)[12..]);
+            let recovered_address =
+                H160::from_slice(&sp_runtime::traits::Keccak256::hash(&pk)[12..]);
             ensure!(recovered_address == relayer, Error::<T>::InvalidSignature);
             Ok(())
         }
