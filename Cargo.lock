@@ -1035,28 +1035,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "digest-provider"
-version = "0.1.1"
-dependencies = [
- "bridge-types",
- "ethabi",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-consensus-beefy",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-mmr-primitives",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "dispatch"
 version = "0.1.1"
 dependencies = [
