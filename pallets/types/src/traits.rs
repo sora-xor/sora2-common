@@ -36,15 +36,15 @@ use core::fmt::Debug;
 
 use crate::types::AssetKind;
 use crate::types::AuxiliaryDigestItem;
+use crate::EVMChainId;
+use crate::GenericTimepoint;
 use crate::H256;
 use crate::U256;
 use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus, RawAssetInfo},
     GenericAccount, GenericNetworkId,
 };
-use crate::{EVMChainId, GenericTimepoint};
 use codec::FullCodec;
-use ethereum_types::Address;
 use frame_support::weights::Weight;
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
@@ -52,6 +52,7 @@ use frame_support::{
 };
 use frame_system::{Config, RawOrigin};
 use scale_info::TypeInfo;
+use sp_core::H160;
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::traits::MaybeSerializeDeserialize;
 use sp_std::prelude::*;
@@ -83,6 +84,10 @@ pub trait OutboundChannel<NetworkId, AccountId, Additional> {
     ) -> Result<H256, DispatchError>;
 
     fn submit_weight() -> Weight;
+}
+
+pub trait EVMOutboundChannel {
+    fn submit_gas(chain_id: EVMChainId) -> Result<U256, DispatchError>;
 }
 
 /// Dispatch a message
@@ -145,6 +150,24 @@ pub trait BridgeApp<AccountId, Recipient, AssetId, Balance> {
     fn refund_weight() -> Weight;
 
     fn is_asset_supported_weight() -> Weight;
+}
+
+pub trait EVMBridgeWithdrawFee<AccountId, AssetId> {
+    fn withdraw_transfer_fee(
+        who: &AccountId,
+        chain_id: EVMChainId,
+        asset_id: AssetId,
+    ) -> DispatchResult;
+}
+
+impl<AccountId, AssetId> EVMBridgeWithdrawFee<AccountId, AssetId> for () {
+    fn withdraw_transfer_fee(
+        _who: &AccountId,
+        _chain_id: EVMChainId,
+        _asset_id: AssetId,
+    ) -> DispatchResult {
+        Err(DispatchError::Unavailable)
+    }
 }
 
 impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, AssetId, Balance>
@@ -259,59 +282,27 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
     }
 }
 
-/// Trait for tracking Ethereum-based network transaction fee paid by relayer for messages relayed
-/// from Sora2 network to Ethereum-based network.
-pub trait GasTracker<Balance> {
-    /// Records fee paid.
-    /// `network_id`: Ethereum-like network ID
-    /// `batch_nonce`: relayed batch nonce
-    /// `ethereum_relayer_address`: address of relayer on Ethereum-based network (who paid fee)
-    /// `gas_used`: gas used for batch relaying
-    /// `gas_price`: base fee on Ethereum-based network for batch relaying
-    /// fee is `gas_used` * `gas_price`
-    fn record_tx_fee(
-        network_id: GenericNetworkId,
-        message_id: u64,
-        ethereum_relayer_address: Address,
-        gas_used: U256,
-        gas_price: U256,
-    );
-}
-
-impl<Balance> GasTracker<Balance> for () {
-    fn record_tx_fee(
-        _network_id: GenericNetworkId,
-        _batch_nonce: u64,
-        _ethereum_relayer_address: Address,
-        _gas_used: U256,
-        _gas_price: U256,
-    ) {
-    }
-}
-
 /// Trait for gas price oracle on Ethereum-based networks.
-pub trait EthereumGasPriceOracle {
-    /// Returns base fee for the block by block hash.
-    fn get_base_fee(
-        network_id: EVMChainId,
-        header_hash: H256,
-    ) -> Result<Option<U256>, DispatchError>;
-
+pub trait EVMFeeHandler<AssetId> {
     /// Returns base fee for the best block.
-    fn get_best_block_base_fee(network_id: EVMChainId) -> Result<Option<U256>, DispatchError>;
+    fn get_latest_base_fee(network_id: EVMChainId) -> Result<U256, DispatchError>;
+    /// Get asset id of the sidechain native asset
+    fn get_network_fee_asset(network_id: EVMChainId) -> Result<AssetId, DispatchError>;
+    /// Fee was paid for transaction in sidechain
+    fn on_fee_paid(network_id: EVMChainId, relayer: H160, amount: U256);
+    /// Update base fee
+    fn update_base_fee(network_id: EVMChainId, new_base_fee: U256);
 }
 
-impl EthereumGasPriceOracle for () {
-    fn get_base_fee(
-        _network_id: EVMChainId,
-        _header_hash: H256,
-    ) -> Result<Option<U256>, DispatchError> {
-        Ok(Some(U256::zero()))
+impl<AssetId> EVMFeeHandler<AssetId> for () {
+    fn get_latest_base_fee(_network_id: EVMChainId) -> Result<U256, DispatchError> {
+        Err(DispatchError::Unavailable)
     }
-
-    fn get_best_block_base_fee(_network_id: EVMChainId) -> Result<Option<U256>, DispatchError> {
-        Ok(Some(U256::zero()))
+    fn get_network_fee_asset(_network_id: EVMChainId) -> Result<AssetId, DispatchError> {
+        Err(DispatchError::Unavailable)
     }
+    fn on_fee_paid(_network_id: EVMChainId, _relayer: H160, _amount: U256) {}
+    fn update_base_fee(_network_id: EVMChainId, _new_base_fee: U256) {}
 }
 
 /// Trait that every origin (like Ethereum origin or Parachain origin) should implement
@@ -428,6 +419,20 @@ pub trait BridgeAssetLocker<AccountId> {
     fn unlock_asset(
         network_id: GenericNetworkId,
         asset_kind: AssetKind,
+        who: &AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> DispatchResult;
+
+    fn withdraw_fee(
+        network_id: GenericNetworkId,
+        who: &AccountId,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> DispatchResult;
+
+    fn refund_fee(
+        network_id: GenericNetworkId,
         who: &AccountId,
         asset_id: &Self::AssetId,
         amount: &Self::Balance,

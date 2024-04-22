@@ -1,27 +1,13 @@
 use crate::MainnetAssetId;
+use crate::{H160, H256, U256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
 use ethabi::Token;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_core::{Get, RuntimeDebug, H160, H256, U256};
+use sp_core::{Get, RuntimeDebug};
 use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
-
-/// Verification input for the message verifier.
-///
-/// This data type allows us to support multiple verification schemes. In the near future,
-/// A light-client scheme will be added too.
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, scale_info::TypeInfo)]
-pub struct Proof {
-    // The block hash of the block in which the receipt was included.
-    pub block_hash: H256,
-    // The index of the transaction (and receipt) within the block.
-    // !!! Untrusted value used just for logging purposes.
-    pub tx_index: u32,
-    // Proof values
-    pub data: Vec<Vec<u8>>,
-}
 
 #[derive(
     Clone,
@@ -40,10 +26,8 @@ pub enum EVMAppKind {
     /// Used for native token transfers
     EthApp,
     /// Used for ERC20 tokens
-    #[cfg_attr(feature = "std", serde(rename = "erc20App"))]
-    ERC20App,
-    /// Used for this chain native tokens
-    SidechainApp,
+    #[cfg_attr(feature = "std", serde(rename = "faApp"))]
+    FAApp,
     /// Legacy HASHI bridge contract
     HashiBridge,
     /// Legacy XOR master contract
@@ -173,6 +157,47 @@ pub struct Message<MaxPayload: Get<u32>> {
     pub payload: BoundedVec<u8, MaxPayload>,
 }
 
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxMessages, MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub enum Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    #[cfg_attr(feature = "std", serde(rename = "outbound"))]
+    Outbound(OutboundCommitment<MaxMessages, MaxPayload>),
+    #[cfg_attr(feature = "std", serde(rename = "inbound"))]
+    Inbound(InboundCommitment<MaxPayload>),
+    #[cfg_attr(feature = "std", serde(rename = "statusReport"))]
+    StatusReport(StatusReport<MaxPayload>),
+    #[cfg_attr(feature = "std", serde(rename = "statusReport"))]
+    BaseFeeUpdate(BaseFeeUpdate),
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPayload> {
+    pub fn hash(&self) -> H256 {
+        match self {
+            Commitment::Inbound(commitment) => commitment.hash(),
+            Commitment::Outbound(commitment) => commitment.hash(),
+            Commitment::StatusReport(commitment) => commitment.hash(),
+            Commitment::BaseFeeUpdate(commitment) => commitment.hash(),
+        }
+    }
+
+    pub fn nonce(&self) -> u64 {
+        match self {
+            Commitment::Inbound(commitment) => commitment.nonce,
+            Commitment::Outbound(commitment) => commitment.nonce,
+            Commitment::StatusReport(commitment) => commitment.nonce,
+            Commitment::BaseFeeUpdate(_) => 0,
+        }
+    }
+}
+
 /// Wire-format for commitment
 #[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -184,7 +209,7 @@ pub struct Message<MaxPayload: Get<u32>> {
 )]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
-pub struct Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+pub struct OutboundCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     /// A batch nonce for replay protection and ordering.
     pub nonce: u64,
     /// Total maximum gas that can be used by all messages in the commit.
@@ -194,7 +219,7 @@ pub struct Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     pub messages: BoundedVec<Message<MaxPayload>, MaxMessages>,
 }
 
-impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPayload> {
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> OutboundCommitment<MaxMessages, MaxPayload> {
     pub fn hash(&self) -> H256 {
         // Batch(uint256,(address,uint64,uint256,uint256,bytes)[])
         let messages: Vec<Token> = self
@@ -220,13 +245,96 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
     }
 }
 
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct InboundCommitment<MaxPayload: Get<u32>> {
+    /// Source contract of the message.
+    pub source: H160,
+    /// Batch nonce for replay protection and ordering.
+    pub nonce: u64,
+    /// Block number at which the message was committed.
+    pub block_number: u64,
+    /// Message payload.
+    pub payload: BoundedVec<u8, MaxPayload>,
+}
+
+impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
+    pub fn hash(&self) -> H256 {
+        ("evm-inbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+    }
+}
+
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxMessages))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct StatusReport<MaxMessages: Get<u32>> {
+    /// Source contract of the event
+    pub source: H160,
+    /// Block number at which the event was emitted.
+    pub block_number: u64,
+    /// Relayer which submitted the messages.
+    pub relayer: H160,
+    /// Batch nonce for replay protection and ordering.
+    pub nonce: u64,
+    /// Message payload.
+    pub results: BoundedVec<bool, MaxMessages>,
+    /// Gas spent by the relayer.
+    pub gas_spent: U256,
+    /// Base fee paid by the relayer.
+    pub base_fee: U256,
+}
+
+impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
+    pub fn hash(&self) -> H256 {
+        ("evm-status-report", self)
+            .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+    }
+}
+
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxMessages))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct BaseFeeUpdate {
+    /// Updated base fee
+    pub new_base_fee: U256,
+}
+
+impl BaseFeeUpdate {
+    pub fn hash(&self) -> H256 {
+        ("base-fee-update", self)
+            .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
+    }
+}
+
 #[test]
 fn test_commitment_hash() {
     use hex_literal::hex;
 
     pub type MaxU32 = sp_runtime::traits::ConstU32<{ u32::MAX }>;
 
-    let commitment: Commitment<MaxU32, MaxU32> = Commitment {
+    let commitment: OutboundCommitment<MaxU32, MaxU32> = OutboundCommitment {
         nonce: 1,
         total_max_gas: 123.into(),
         messages: BoundedVec::default(),

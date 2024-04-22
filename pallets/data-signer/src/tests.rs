@@ -30,7 +30,7 @@
 
 use super::Call;
 use crate::{mock::*, Error};
-use bridge_types::{SubNetworkId, H256, U256};
+use bridge_types::{SubNetworkId, H256};
 use frame_support::{assert_noop, assert_ok};
 use sp_core::{
     bounded::BoundedVec,
@@ -300,7 +300,7 @@ fn it_fails_add_peer_already_exists() {
 #[test]
 fn it_fails_add_peer_evm_network_not_supported() {
     new_test_ext().execute_with(|| {
-        let network_id = bridge_types::GenericNetworkId::EVM(U256::from(1));
+        let network_id = bridge_types::GenericNetworkId::EVM(H256::from_low_u64_be(1));
         let (peers, _) = test_peers();
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 
@@ -376,7 +376,7 @@ fn it_fails_remove_peer_pending_update() {
 #[test]
 fn it_fails_remove_peer_evm_network_not_supported() {
     new_test_ext().execute_with(|| {
-        let network_id = bridge_types::GenericNetworkId::EVM(U256::from(1));
+        let network_id = bridge_types::GenericNetworkId::EVM(H256::from_low_u64_be(1));
         let (peers, _) = test_peers();
         let peers: BoundedVec<ecdsa::Public, BridgeMaxPeers> = peers.try_into().unwrap();
 

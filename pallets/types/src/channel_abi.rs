@@ -35,28 +35,28 @@ use ethabi::{Function, Param, ParamType, StateMutability, Token};
 use frame_support::RuntimeDebug;
 use sp_std::prelude::*;
 
-fn authorize_operator_function() -> Function {
+fn register_app_function() -> Function {
     Function {
-        name: "authorizeDefaultOperator".into(),
+        name: "registerApp".into(),
         constant: None,
         state_mutability: StateMutability::NonPayable,
         outputs: vec![],
         inputs: vec![Param {
-            name: "operator".into(),
+            name: "newApp".into(),
             kind: ParamType::Address,
             internal_type: None,
         }],
     }
 }
 
-fn revoke_operator_function() -> Function {
+fn remove_app_function() -> Function {
     Function {
-        name: "revokeDefaultOperator".into(),
+        name: "removeApp".into(),
         constant: None,
         state_mutability: StateMutability::NonPayable,
         outputs: vec![],
         inputs: vec![Param {
-            name: "operator".into(),
+            name: "app".into(),
             kind: ParamType::Address,
             internal_type: None,
         }],
@@ -65,28 +65,28 @@ fn revoke_operator_function() -> Function {
 
 // Message to Ethereum (ABI-encoded)
 #[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct DeregisterOperatorPayload {
-    pub operator: H160,
+pub struct RemoveAppPayload {
+    pub app: H160,
 }
 
-impl DeregisterOperatorPayload {
+impl RemoveAppPayload {
     /// ABI-encode this payload
     pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.operator)];
-        revoke_operator_function().encode_input(tokens.as_ref())
+        let tokens = &[Token::Address(self.app)];
+        remove_app_function().encode_input(tokens.as_ref())
     }
 }
 
 // Message to Ethereum (ABI-encoded)
 #[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RegisterOperatorPayload {
-    pub operator: H160,
+pub struct RegisterAppPayload {
+    pub app: H160,
 }
 
-impl RegisterOperatorPayload {
+impl RegisterAppPayload {
     /// ABI-encode this payload
     pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.operator)];
-        authorize_operator_function().encode_input(tokens.as_ref())
+        let tokens = &[Token::Address(self.app)];
+        register_app_function().encode_input(tokens.as_ref())
     }
 }
