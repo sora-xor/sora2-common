@@ -972,7 +972,8 @@ impl<T: Config> EVMFeeHandler<AssetIdOf<T>> for Pallet<T> {
         evm_block_number: u64,
     ) -> bool {
         let Ok(base_fee) = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable) else {
-            return false;
+            // Probably it's first base fee update
+            return true;
         };
         base_fee.evm_block_number < evm_block_number
     }

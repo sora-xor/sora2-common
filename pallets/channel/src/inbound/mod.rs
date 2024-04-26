@@ -174,6 +174,8 @@ pub mod pallet {
         ContractExists,
         /// Call encoding failed.
         CallEncodeFailed,
+        /// Invalid base fee update.
+        InvalidBaseFeeUpdate,
     }
 
     impl<T: Config> Pallet<T> {
@@ -342,7 +344,15 @@ pub mod pallet {
                     Self::ensure_evm_channel(chain_id, status_report.channel)?;
                     Self::ensure_reported_nonce(network_id, status_report.nonce)?;
                 }
-                bridge_types::evm::Commitment::BaseFeeUpdate(_) => {}
+                bridge_types::evm::Commitment::BaseFeeUpdate(update) => {
+                    if !T::EVMFeeHandler::can_update_base_fee(
+                        chain_id,
+                        update.new_base_fee,
+                        update.evm_block_number,
+                    ) {
+                        return Err(Error::<T>::InvalidBaseFeeUpdate.into());
+                    }
+                }
                 bridge_types::evm::Commitment::Outbound(_) => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
                 }
