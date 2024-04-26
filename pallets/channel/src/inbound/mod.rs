@@ -312,7 +312,11 @@ pub mod pallet {
                     T::EVMFeeHandler::on_fee_paid(chain_id, status_report.relayer, fee_paid)
                 }
                 bridge_types::evm::Commitment::BaseFeeUpdate(update) => {
-                    T::EVMFeeHandler::update_base_fee(chain_id, update.new_base_fee)
+                    T::EVMFeeHandler::update_base_fee(
+                        chain_id,
+                        update.new_base_fee,
+                        update.evm_block_number,
+                    )
                 }
                 bridge_types::evm::Commitment::Outbound(_) => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);

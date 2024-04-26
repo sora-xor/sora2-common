@@ -126,7 +126,7 @@ benchmarks! {
         let relayer = H160::from_slice(&sp_core::keccak_256(&pk)[12..]);
 
         let network_id = BASE_NETWORK_ID;
-        crate::Pallet::<T>::update_base_fee(BASE_NETWORK_ID, 10u64.into());
+        crate::Pallet::<T>::update_base_fee(BASE_NETWORK_ID, 10u64.into(), 1u64);
         Currencies::<T>::deposit(asset_id.clone(), &caller, 1_000_000_000_000_000_000u128.into())?;
         crate::Pallet::<T>::withdraw_transfer_fee(&caller, BASE_NETWORK_ID, asset_id.clone())?;
         crate::Pallet::<T>::on_fee_paid(BASE_NETWORK_ID, relayer, 100u64.into());

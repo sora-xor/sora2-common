@@ -111,6 +111,7 @@ where
 pub struct BaseFeeInfo<BlockNumber> {
     pub base_fee: U256,
     pub updated: BlockNumber,
+    pub evm_block_number: u64,
 }
 
 #[frame_support::pallet]
@@ -303,6 +304,8 @@ pub mod pallet {
         InvalidSignature,
         NothingToClaim,
         NotEnoughFeesCollected,
+        BaseFeeIsNotAvailable,
+        InvalidBaseFeeUpdate,
     }
 
     #[pallet::genesis_config]
@@ -943,11 +946,12 @@ impl<T: Config> bridge_types::traits::EVMBridgeWithdrawFee<T::AccountId, AssetId
 
 impl<T: Config> EVMFeeHandler<AssetIdOf<T>> for Pallet<T> {
     fn get_latest_base_fee(network_id: EVMChainId) -> Result<U256, DispatchError> {
-        let base_fee = BaseFees::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
-        if frame_system::Pallet::<T>::block_number() > base_fee.updated + T::BaseFeeLifetime::get()
-        {
-            return Err(Error::<T>::BaseFeeLifetimeExceeded.into());
-        }
+        let base_fee = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable)?;
+        ensure!(
+            frame_system::Pallet::<T>::block_number()
+                <= base_fee.updated + T::BaseFeeLifetime::get(),
+            Error::<T>::BaseFeeLifetimeExceeded
+        );
         Ok(base_fee.base_fee)
     }
     fn get_network_fee_asset(network_id: EVMChainId) -> Result<AssetIdOf<T>, DispatchError> {
@@ -962,14 +966,28 @@ impl<T: Config> EVMFeeHandler<AssetIdOf<T>> for Pallet<T> {
         })
     }
 
-    fn update_base_fee(network_id: EVMChainId, new_base_fee: U256) {
-        let block_number = frame_system::Pallet::<T>::block_number();
-        BaseFees::<T>::insert(
-            network_id,
-            BaseFeeInfo {
-                base_fee: new_base_fee,
-                updated: block_number,
-            },
-        );
+    fn can_update_base_fee(
+        network_id: EVMChainId,
+        _new_base_fee: U256,
+        evm_block_number: u64,
+    ) -> bool {
+        let Ok(base_fee) = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable) else {
+            return false;
+        };
+        base_fee.evm_block_number < evm_block_number
+    }
+
+    fn update_base_fee(network_id: EVMChainId, new_base_fee: U256, evm_block_number: u64) {
+        if Self::can_update_base_fee(network_id, new_base_fee, evm_block_number) {
+            let block_number = frame_system::Pallet::<T>::block_number();
+            BaseFees::<T>::insert(
+                network_id,
+                BaseFeeInfo {
+                    base_fee: new_base_fee,
+                    updated: block_number,
+                    evm_block_number,
+                },
+            );
+        }
     }
 }

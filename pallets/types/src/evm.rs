@@ -321,6 +321,8 @@ impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
 pub struct BaseFeeUpdate {
     /// Updated base fee
     pub new_base_fee: U256,
+    /// EVM block number of base fee
+    pub evm_block_number: u64,
 }
 
 impl BaseFeeUpdate {
