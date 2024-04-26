@@ -291,7 +291,13 @@ pub trait EVMFeeHandler<AssetId> {
     /// Fee was paid for transaction in sidechain
     fn on_fee_paid(network_id: EVMChainId, relayer: H160, amount: U256);
     /// Update base fee
-    fn update_base_fee(network_id: EVMChainId, new_base_fee: U256);
+    fn update_base_fee(network_id: EVMChainId, new_base_fee: U256, evm_block_number: u64);
+    /// Verify base fee update parameters
+    fn can_update_base_fee(
+        network_id: EVMChainId,
+        new_base_fee: U256,
+        evm_block_number: u64,
+    ) -> bool;
 }
 
 impl<AssetId> EVMFeeHandler<AssetId> for () {
@@ -302,7 +308,14 @@ impl<AssetId> EVMFeeHandler<AssetId> for () {
         Err(DispatchError::Unavailable)
     }
     fn on_fee_paid(_network_id: EVMChainId, _relayer: H160, _amount: U256) {}
-    fn update_base_fee(_network_id: EVMChainId, _new_base_fee: U256) {}
+    fn update_base_fee(_network_id: EVMChainId, _new_base_fee: U256, _evm_block_number: u64) {}
+    fn can_update_base_fee(
+        _network_id: EVMChainId,
+        _new_base_fee: U256,
+        _evm_block_number: u64,
+    ) -> bool {
+        false
+    }
 }
 
 /// Trait that every origin (like Ethereum origin or Parachain origin) should implement

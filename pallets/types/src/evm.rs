@@ -256,6 +256,8 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> OutboundCommitment<MaxMessages
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct InboundCommitment<MaxPayload: Get<u32>> {
+    /// Channel contract address.
+    pub channel: H160,
     /// Source contract of the message.
     pub source: H160,
     /// Batch nonce for replay protection and ordering.
@@ -283,8 +285,8 @@ impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
 #[scale_info(skip_type_params(MaxMessages))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct StatusReport<MaxMessages: Get<u32>> {
-    /// Source contract of the event
-    pub source: H160,
+    /// Channel contract address.
+    pub channel: H160,
     /// Block number at which the event was emitted.
     pub block_number: u64,
     /// Relayer which submitted the messages.
@@ -319,6 +321,8 @@ impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
 pub struct BaseFeeUpdate {
     /// Updated base fee
     pub new_base_fee: U256,
+    /// EVM block number of base fee
+    pub evm_block_number: u64,
 }
 
 impl BaseFeeUpdate {

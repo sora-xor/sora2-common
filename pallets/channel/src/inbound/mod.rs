@@ -174,6 +174,8 @@ pub mod pallet {
         ContractExists,
         /// Call encoding failed.
         CallEncodeFailed,
+        /// Invalid base fee update.
+        InvalidBaseFeeUpdate,
     }
 
     impl<T: Config> Pallet<T> {
@@ -312,7 +314,11 @@ pub mod pallet {
                     T::EVMFeeHandler::on_fee_paid(chain_id, status_report.relayer, fee_paid)
                 }
                 bridge_types::evm::Commitment::BaseFeeUpdate(update) => {
-                    T::EVMFeeHandler::update_base_fee(chain_id, update.new_base_fee)
+                    T::EVMFeeHandler::update_base_fee(
+                        chain_id,
+                        update.new_base_fee,
+                        update.evm_block_number,
+                    )
                 }
                 bridge_types::evm::Commitment::Outbound(_) => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
@@ -331,14 +337,22 @@ pub mod pallet {
             let network_id = GenericNetworkId::EVM(chain_id);
             match commitment {
                 bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
-                    Self::ensure_evm_channel(chain_id, inbound_commitment.source)?;
+                    Self::ensure_evm_channel(chain_id, inbound_commitment.channel)?;
                     Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
                 }
                 bridge_types::evm::Commitment::StatusReport(status_report) => {
-                    Self::ensure_evm_channel(chain_id, status_report.source)?;
+                    Self::ensure_evm_channel(chain_id, status_report.channel)?;
                     Self::ensure_reported_nonce(network_id, status_report.nonce)?;
                 }
-                bridge_types::evm::Commitment::BaseFeeUpdate(_) => {}
+                bridge_types::evm::Commitment::BaseFeeUpdate(update) => {
+                    if !T::EVMFeeHandler::can_update_base_fee(
+                        chain_id,
+                        update.new_base_fee,
+                        update.evm_block_number,
+                    ) {
+                        return Err(Error::<T>::InvalidBaseFeeUpdate.into());
+                    }
+                }
                 bridge_types::evm::Commitment::Outbound(_) => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
                 }
