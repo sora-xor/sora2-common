@@ -331,11 +331,11 @@ pub mod pallet {
             let network_id = GenericNetworkId::EVM(chain_id);
             match commitment {
                 bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
-                    Self::ensure_evm_channel(chain_id, inbound_commitment.source)?;
+                    Self::ensure_evm_channel(chain_id, inbound_commitment.channel)?;
                     Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
                 }
                 bridge_types::evm::Commitment::StatusReport(status_report) => {
-                    Self::ensure_evm_channel(chain_id, status_report.source)?;
+                    Self::ensure_evm_channel(chain_id, status_report.channel)?;
                     Self::ensure_reported_nonce(network_id, status_report.nonce)?;
                 }
                 bridge_types::evm::Commitment::BaseFeeUpdate(_) => {}
