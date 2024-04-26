@@ -123,7 +123,7 @@ benchmarks! {
 
         // We need to have full public key to get Ethereum address, but sp_core public key don't have such conversion method.
         let pk = sp_io::crypto::secp256k1_ecdsa_recover(&signature.0, &message.0).map_err(|_| "Failed to recover signature").unwrap();
-        let relayer = H160::from_slice(&sp_core::keccak_256(&pk)[12..]);
+        let relayer = H160::from_slice(&sp_io::hashing::keccak_256(&pk)[12..]);
 
         let network_id = BASE_NETWORK_ID;
         crate::Pallet::<T>::update_base_fee(BASE_NETWORK_ID, 10u64.into(), 1u64);
