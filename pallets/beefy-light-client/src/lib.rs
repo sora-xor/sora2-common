@@ -50,7 +50,6 @@ use sp_io::hashing::keccak_256;
 use sp_runtime::traits::Hash;
 use sp_runtime::traits::Keccak256;
 use sp_std::collections::vec_deque::VecDeque;
-// use frame_support::traits::GenesisBuild;
 
 pub const MMR_ROOT_HISTORY_SIZE: usize = 30;
 pub const THRESHOLD_NUMERATOR: u32 = 22;
