@@ -160,7 +160,8 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
 /// A type of asset registered on a bridge.
 ///
 /// - Thischain: a Sora asset.
-/// - Sidechain: an Ethereum token.
+/// - Sidechain: token from another chain.
+/// - Native: native token from another chain.
 #[derive(
     Clone,
     Copy,

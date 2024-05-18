@@ -379,6 +379,24 @@ impl<T: Config> bridge_types::traits::BridgeAssetLocker<T::AccountId> for Pallet
         }
         Ok(())
     }
+
+    fn refund_fee(
+            _network_id: GenericNetworkId,
+            _who: &T::AccountId,
+            _asset_id: &Self::AssetId,
+            _amount: &Self::Balance,
+        ) -> DispatchResult {
+            Err(DispatchError::Unavailable)
+    }
+
+    fn withdraw_fee(
+            _network_id: GenericNetworkId,
+            _who: &T::AccountId,
+            _asset_id: &Self::AssetId,
+            _amount: &Self::Balance,
+        ) -> DispatchResult {
+            Err(DispatchError::Unavailable)
+    }
 }
 
 impl<T: Config>

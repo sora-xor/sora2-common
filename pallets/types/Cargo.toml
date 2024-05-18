@@ -11,6 +11,7 @@ edition = "2021"
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
   "derive",
 ] }
+log = { version = "0.4.20" }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 ethbloom = { version = "0.13.0", default-features = false, features = [
   "rlp",

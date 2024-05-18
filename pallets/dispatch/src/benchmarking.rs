@@ -65,10 +65,10 @@ benchmarks_instance_pallet! {
             crate::Event::<T, I>: Into<<T as frame_system::Config>::RuntimeEvent>
     }
     dispatch_success {
-        let message_id = MessageId::basic(GenericNetworkId::EVM(1.into()), GenericNetworkId::Sub(SubNetworkId::Mainnet), 1);
+        let message_id = MessageId::basic(GenericNetworkId::EVM([1u8; 32].into()), GenericNetworkId::Sub(SubNetworkId::Mainnet), 1);
     }: {
         crate::Pallet::<T, I>::dispatch(
-            1.into(),
+            [1u8; 32].into(),
             message_id,
             Default::default(),
             // system.remark()
@@ -83,10 +83,10 @@ benchmarks_instance_pallet! {
     }
 
     dispatch_decode_failed {
-        let message_id = MessageId::basic(GenericNetworkId::EVM(1.into()), GenericNetworkId::Sub(SubNetworkId::Mainnet), 1);
+        let message_id = MessageId::basic(GenericNetworkId::EVM([1u8; 32].into()), GenericNetworkId::Sub(SubNetworkId::Mainnet), 1);
     }: {
         crate::Pallet::<T, I>::dispatch(
-            1.into(),
+            [1u8; 32].into(),
             message_id,
             Default::default(),
             &[],

@@ -28,65 +28,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(deprecated)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::H160;
-use ethabi::{Function, Param, ParamType, StateMutability, Token};
-use sp_core::RuntimeDebug;
-use sp_std::prelude::*;
-
-fn register_app_function() -> Function {
-    Function {
-        name: "registerApp".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "newApp".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
-    }
-}
-
-fn remove_app_function() -> Function {
-    Function {
-        name: "removeApp".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "app".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
-    }
-}
-
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RemoveAppPayload {
-    pub app: H160,
-}
-
-impl RemoveAppPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
-        remove_app_function().encode_input(tokens.as_ref())
-    }
-}
-
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RegisterAppPayload {
-    pub app: H160,
-}
-
-impl RegisterAppPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
-        register_app_function().encode_input(tokens.as_ref())
-    }
-}
+pub mod inbound;
+pub mod outbound;

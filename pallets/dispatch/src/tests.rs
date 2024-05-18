@@ -23,7 +23,7 @@ fn test_dispatch_bridge_message() {
 
         System::set_block_number(1);
         Dispatch::dispatch(
-            2u32.into(),
+            H256::from_low_u64_be(2),
             id,
             Default::default(),
             &message,
@@ -56,7 +56,7 @@ fn test_message_decode_failed() {
 
         System::set_block_number(1);
         Dispatch::dispatch(
-            2u32.into(),
+            H256::from_low_u64_be(2),
             id,
             Default::default(),
             &message,
@@ -91,7 +91,7 @@ fn test_message_rejected() {
 
         System::set_block_number(1);
         Dispatch::dispatch(
-            2u32.into(),
+            H256::from_low_u64_be(2),
             id,
             Default::default(),
             &message,

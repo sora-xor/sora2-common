@@ -28,65 +28,47 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(deprecated)]
+//! BridgeInboundChannel pallet benchmarking
 
-use crate::H160;
-use ethabi::{Function, Param, ParamType, StateMutability, Token};
-use sp_core::RuntimeDebug;
+use super::*;
+use bridge_types::GenericNetworkId;
+use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
+use frame_system::{self, RawOrigin};
 use sp_std::prelude::*;
 
-fn register_app_function() -> Function {
-    Function {
-        name: "registerApp".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "newApp".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
+const BASE_NETWORK_ID: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
+
+#[allow(unused_imports)]
+use crate::inbound::Pallet as BridgeInboundChannel;
+
+// This collection of benchmarks should include a benchmark for each
+// call dispatched by the channel, i.e. each "app" pallet function
+// that can be invoked by MessageDispatch. The most expensive call
+// should be used in the `submit` benchmark.
+//
+// We rely on configuration via chain spec of the app pallets because
+// we don't have access to their storage here.
+benchmarks! {
+    // Benchmark `submit` extrinsic under worst case conditions:
+    // * `submit` dispatches the DotApp::unlock call
+    // * `unlock` call successfully unlocks DOT
+    submit {
+        let messages = vec![];
+        let commitment = bridge_types::GenericCommitment::Sub(
+            bridge_types::substrate::Commitment {
+                messages: messages.try_into().unwrap(),
+                nonce: 1u64,
+            }
+        );
+        let proof = T::Verifier::valid_proof().unwrap();
+    }: _(RawOrigin::None, BASE_NETWORK_ID, commitment, proof)
+    verify {
+        assert_eq!(1, <ChannelNonces<T>>::get(BASE_NETWORK_ID));
     }
 }
 
-fn remove_app_function() -> Function {
-    Function {
-        name: "removeApp".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "app".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
-    }
-}
-
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RemoveAppPayload {
-    pub app: H160,
-}
-
-impl RemoveAppPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
-        remove_app_function().encode_input(tokens.as_ref())
-    }
-}
-
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RegisterAppPayload {
-    pub app: H160,
-}
-
-impl RegisterAppPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
-        register_app_function().encode_input(tokens.as_ref())
-    }
-}
+impl_benchmark_test_suite!(
+    BridgeInboundChannel,
+    crate::inbound::test::new_tester(),
+    crate::inbound::test::Test,
+);

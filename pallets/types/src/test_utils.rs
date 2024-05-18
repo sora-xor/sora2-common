@@ -157,6 +157,10 @@ impl<T> BridgeAssetLockerImpl<T> {
         let hash = sp_runtime::traits::BlakeTwo256::hash_of(&(b"bridge-lock-account", &network_id));
         AccountId32::new(hash.0)
     }
+    pub fn bridge_fee_account(network_id: GenericNetworkId) -> AccountId32 {
+        let hash = sp_runtime::traits::BlakeTwo256::hash_of(&(b"bridge-fee-account", &network_id));
+        AccountId32::new(hash.0)
+    }
 }
 
 impl<T: traits::MultiCurrency<AccountId32>> BridgeAssetLocker<AccountId32>
@@ -204,6 +208,28 @@ where
                 T::deposit(*asset_id, who, *amount)?;
             }
         }
+        Ok(())
+    }
+
+    fn refund_fee(
+        network_id: GenericNetworkId,
+        who: &AccountId32,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        let bridge_acc = Self::bridge_fee_account(network_id);
+        T::transfer(*asset_id, &bridge_acc, who, *amount)?;
+        Ok(())
+    }
+
+    fn withdraw_fee(
+        network_id: GenericNetworkId,
+        who: &AccountId32,
+        asset_id: &Self::AssetId,
+        amount: &Self::Balance,
+    ) -> frame_support::dispatch::DispatchResult {
+        let bridge_acc = Self::bridge_fee_account(network_id);
+        T::transfer(*asset_id, who, &bridge_acc, *amount)?;
         Ok(())
     }
 }

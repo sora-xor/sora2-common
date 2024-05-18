@@ -323,3 +323,34 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         None
     }
 }
+
+pub struct MultiEVMVerifier<T>(PhantomData<T>);
+
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct MultiEVMProof {
+    pub proof: Vec<ecdsa::Signature>,
+}
+
+impl<T: Config> bridge_types::traits::Verifier for MultiEVMVerifier<T> {
+    type Proof = MultiEVMProof;
+
+    fn verify(
+        network_id: GenericNetworkId,
+        commitment_hash: H256,
+        proof: &Self::Proof,
+    ) -> DispatchResult {
+        let this_network_id = T::ThisNetworkId::get();
+        let approved_hash = Keccak256::hash_of(&(network_id, this_network_id, commitment_hash));
+        Pallet::<T>::verify_signatures(network_id, approved_hash, &proof.proof)?;
+        Ok(())
+    }
+
+    fn verify_weight(proof: &Self::Proof) -> Weight {
+        <T as Config>::WeightInfo::verifier_verify(proof.proof.len() as u32)
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn valid_proof() -> Option<Self::Proof> {
+        None
+    }
+}

@@ -31,15 +31,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub mod channel_abi;
-pub mod difficulty;
-pub mod ethashdata;
-pub mod ethashproof;
 pub mod evm;
-pub mod header;
-pub mod log;
-mod mpt;
-pub mod network_config;
-pub mod receipt;
 pub mod substrate;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
@@ -50,14 +42,8 @@ pub mod utils;
 use codec::{Decode, Encode};
 pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
 use sp_core::{Get, RuntimeDebug};
-use sp_std::vec;
-use sp_std::vec::Vec;
 use staging_xcm as xcm;
-
-pub use header::{Header, HeaderId};
 pub use log::Log;
-pub use receipt::Receipt;
-
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
@@ -83,7 +69,7 @@ impl From<ethabi::Error> for DecodeError {
     }
 }
 
-pub type EVMChainId = U256;
+pub type EVMChainId = H256;
 
 #[derive(
     Encode,
@@ -125,10 +111,7 @@ pub enum SubNetworkId {
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericNetworkId {
     // deserializes value either from hex or decimal
-    #[cfg_attr(
-        feature = "std",
-        serde(deserialize_with = "deserialize_u256", rename = "evm")
-    )]
+    #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(EVMChainId),
     Sub(SubNetworkId),
     #[cfg_attr(feature = "std", serde(rename = "evmLegacy"))]
@@ -235,15 +218,15 @@ pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages, MaxPayload> {
     pub fn hash(&self) -> H256 {
         match self {
-            GenericCommitment::EVM(commitment) => commitment.hash(),
             GenericCommitment::Sub(commitment) => commitment.hash(),
+            GenericCommitment::EVM(commitment) => commitment.hash(),
         }
     }
 
     pub fn nonce(&self) -> u64 {
         match self {
             GenericCommitment::Sub(commitment) => commitment.nonce,
-            GenericCommitment::EVM(commitment) => commitment.nonce,
+            GenericCommitment::EVM(commitment) => commitment.nonce(),
         }
     }
 }
@@ -283,7 +266,8 @@ impl TryInto<LiberlandAssetId> for GenericAssetId {
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum GenericBalance {
     Substrate(MainnetBalance),
-    EVM(U256),
+    /// EVM ABI uses big endian for integers, but scale codec uses little endian
+    EVM(H256),
 }
 
 impl TryInto<MainnetBalance> for GenericBalance {
@@ -328,54 +312,26 @@ impl From<u32> for LiberlandAssetId {
     }
 }
 
-pub fn import_digest(network_id: &EVMChainId, header: &Header) -> Vec<u8>
-where
-    EVMChainId: Encode,
-    Header: Encode,
-{
-    let mut digest = vec![];
-    network_id.encode_to(&mut digest);
-    header.encode_to(&mut digest);
-    digest
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub enum GenericBridgeMessage<MaxPayload: Get<u32>> {
+    Sub(substrate::BridgeMessage<MaxPayload>),
+    EVM(evm::Message<MaxPayload>),
 }
 
-/// Deserializes U256 from either hex or decimal string.
-#[cfg(feature = "std")]
-fn deserialize_u256<'de, D>(deserializer: D) -> Result<U256, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let network_id = String::deserialize(deserializer)?;
-    if let Some(network_id) = network_id.strip_prefix("0x") {
-        let network_id = U256::from_str_radix(network_id, 16).map_err(serde::de::Error::custom)?;
-        Ok(network_id)
-    } else {
-        let network_id = U256::from_str_radix(&network_id, 10).map_err(serde::de::Error::custom)?;
-        Ok(network_id)
+impl<N: Get<u32>> GenericBridgeMessage<N> {
+    pub fn payload(&self) -> &[u8] {
+        match self {
+            GenericBridgeMessage::Sub(message) => &message.payload,
+            GenericBridgeMessage::EVM(message) => &message.payload,
+        }
     }
-}
-
-#[test]
-fn test_serde_generic_network_id() {
-    // MAX_CHAIN_ID from https://github.com/ethereum/EIPs/issues/2294
-    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
-    let json = serde_json::to_string(&expected).expect("must serialize");
-    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
-    assert_eq!(actual, expected);
-}
-
-#[test]
-fn test_generic_network_id_deserialization_hex() {
-    let json = String::from("{\"evm\":\"0x7fffffffffffffdb\"}");
-    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
-    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
-    assert_eq!(actual, expected);
-}
-
-#[test]
-fn test_generic_network_id_deserialization_dec() {
-    let json = String::from("{\"evm\":\"9223372036854775771\"}");
-    let expected = GenericNetworkId::EVM(9223372036854775771u64.into());
-    let actual: GenericNetworkId = serde_json::from_str(&json).expect("must deserialize");
-    assert_eq!(actual, expected);
 }
