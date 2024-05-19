@@ -60,7 +60,7 @@ pub mod pallet {
     use bridge_types::evm::AdditionalEVMInboundData;
     use bridge_types::types::MessageStatus;
     use bridge_types::{EVMChainId, GenericNetworkId, GenericTimepoint};
-    use frame_support::log::warn;
+    use log::warn;
     use frame_support::pallet_prelude::{InvalidTransaction, *};
     use frame_support::traits::StorageVersion;
     use frame_support::weights::Weight;

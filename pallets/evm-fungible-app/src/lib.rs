@@ -68,13 +68,14 @@ use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetLocker};
 use bridge_types::{EVMChainId, MainnetAccountId, MainnetAssetId};
 use bridge_types::{H160, U256};
 use codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
 use sp_core::Get;
 use sp_runtime::traits::Zero;
 use sp_std::prelude::*;
+use sp_runtime::DispatchError;
 
 pub use pallet::*;
 pub use weights::WeightInfo;
@@ -327,7 +328,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             for (network_id, contract) in self.apps.iter() {
                 AppAddresses::<T>::insert(network_id, contract);

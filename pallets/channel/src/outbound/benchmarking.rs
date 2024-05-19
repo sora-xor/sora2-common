@@ -90,9 +90,9 @@ benchmarks! {
             timepoint: Default::default(),
         })).unwrap();
 
-        let interval: T::BlockNumber = 10u32.into();
+        let interval: BlockNumberFor<T> = 10u32.into();
         Interval::<T>::put(interval);
-        let block_number: T::BlockNumber = 12u32.into();
+        let block_number: BlockNumberFor<T> = 12u32.into();
 
     }: { BridgeOutboundChannel::<T>::on_initialize(block_number) }
     verify {
