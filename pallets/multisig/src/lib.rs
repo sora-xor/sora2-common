@@ -68,7 +68,6 @@ use sp_runtime::{
     traits::{Dispatchable, Zero},
     Percent,
 };
-#[cfg(feature = "std")]
 use sp_runtime::{Deserialize, Serialize};
 use sp_std::prelude::*;
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -634,7 +633,6 @@ pub mod pallet {
         pub accounts: Vec<(T::AccountId, MultisigAccount<T::AccountId>)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -704,8 +702,7 @@ pub struct Multisig<BlockNumber, Balance, AccountId> {
     pub approvals: Vec<AccountId>,
 }
 
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
 pub struct MultisigAccount<AccountId> {
     /// Parties of the account.
     pub signatories: Vec<AccountId>,

@@ -316,7 +316,6 @@ pub mod pallet {
         pub assets: Vec<(EVMChainId, AssetIdOf<T>, H160, AssetKind, u8)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {

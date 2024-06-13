@@ -35,7 +35,6 @@ use crate::substrate::SubAssetInfo;
 use crate::{GenericTimepoint, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_consensus_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
 use sp_core::{Get, RuntimeDebug};
@@ -172,8 +171,9 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
     RuntimeDebug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    serde::Serialize,
+    serde::Deserialize
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum AssetKind {
     Thischain,
