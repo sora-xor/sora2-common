@@ -30,7 +30,7 @@
 #![allow(clippy::large_enum_variant)]
 
 use crate::{H160, H256};
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -52,6 +52,21 @@ pub type ParachainAssetId = xcm::v3::AssetId;
 pub type EVMAssetId = H160;
 
 pub type EVMAccountId = H160;
+
+pub type TonAccountId = TonAddress;
+
+pub type TonAssetId = TonAddress;
+
+pub type TonBalance = crate::U256;
+
+#[derive(
+    Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TonAddress {
+    pub workchain: i32,
+    pub hash_part: [u8; 32],
+}
 
 /// We use `H256` instead of `U256` to make easier support of EVM abi encoded uint256
 pub type EVMBalance = H256;
@@ -146,6 +161,23 @@ impl SubstrateBridgeMessageEncode for FAAppCall {
     }
 }
 
+/// Message to FAApp pallet
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum JettonAppCall {
+    Transfer {
+        token: TonAssetId,
+        sender: TonAccountId,
+        recipient: MainnetAccountId,
+        amount: TonBalance,
+    },
+}
+
+impl SubstrateBridgeMessageEncode for JettonAppCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::JettonApp(self).encode()
+    }
+}
+
 /// Message to XCMApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppCall {
@@ -208,6 +240,7 @@ pub enum BridgeCall {
     MultisigVerifier(MultisigVerifierCall),
     SubstrateApp(SubstrateAppCall),
     FAApp(FAAppCall),
+    JettonApp(JettonAppCall),
 }
 
 impl SubstrateBridgeMessageEncode for BridgeCall {

@@ -116,6 +116,7 @@ pub enum GenericNetworkId {
     Sub(SubNetworkId),
     #[cfg_attr(feature = "std", serde(rename = "evmLegacy"))]
     EVMLegacy(u32),
+    TON,
 }
 
 impl GenericNetworkId {
