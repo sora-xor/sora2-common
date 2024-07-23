@@ -47,6 +47,7 @@ use sp_core::Get;
 use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
+use substrate::TonAddress;
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -163,6 +164,7 @@ pub enum GenericAccount {
     Parachain(xcm::VersionedMultiLocation),
     Unknown,
     Root,
+    TON(TonAddress),
 }
 
 impl TryInto<MainnetAccountId> for GenericAccount {

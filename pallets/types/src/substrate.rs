@@ -64,8 +64,8 @@ pub type TonBalance = crate::U256;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddress {
-    pub workchain: i32,
     pub hash_part: [u8; 32],
+    pub workchain: i32,
 }
 
 /// We use `H256` instead of `U256` to make easier support of EVM abi encoded uint256
@@ -305,5 +305,19 @@ pub struct Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPayload> {
     pub fn hash(&self) -> H256 {
         sp_runtime::traits::Keccak256::hash_of(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BridgeCall;
+    use codec::Decode;
+
+    #[test]
+    fn test_jetton_call_decode() {
+        let encoded =hex_literal::hex!("060080020000000000000000000000000000000000000000000000000000000000000010013C00491CBCBD593861A4BE542220C8AD41D6CF3E8C8E1ABDEA13CFE13B8C9060000000000000000000000000000000000000000000000000000000000000003800000000000000000000000000000002");
+        let call = <BridgeCall as Decode>::decode(&mut &encoded[..]).unwrap();
+        println!("Call: {call:?}");
+        assert!(false);
     }
 }
