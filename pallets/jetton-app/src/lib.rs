@@ -165,12 +165,6 @@ pub mod pallet {
 
         type BridgeAssetLocker: BridgeAssetLocker<Self::AccountId>;
 
-        #[pallet::constant]
-        type BaseFeeLifetime: Get<BlockNumberFor<Self>>;
-
-        #[pallet::constant]
-        type PriorityFee: Get<u128>;
-
         type WeightInfo: WeightInfo;
     }
 
