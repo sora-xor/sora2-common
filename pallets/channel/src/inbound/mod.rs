@@ -58,7 +58,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use bridge_types::evm::AdditionalEVMInboundData;
-    use bridge_types::types::MessageStatus;
+    use bridge_types::types::{GenericAdditionalInboundData, MessageStatus};
     use bridge_types::{EVMChainId, GenericNetworkId, GenericTimepoint};
     use frame_support::log::warn;
     use frame_support::pallet_prelude::{InvalidTransaction, *};
@@ -76,14 +76,11 @@ pub mod pallet {
         type Verifier: Verifier;
 
         /// Verifier module for message verification.
-        type SubstrateMessageDispatch: MessageDispatch<Self, SubNetworkId, MessageId, ()>;
-
-        /// Verifier module for message verification.
-        type EVMMessageDispatch: MessageDispatch<
+        type MessageDispatch: MessageDispatch<
             Self,
-            EVMChainId,
+            GenericNetworkId,
             MessageId,
-            AdditionalEVMInboundData,
+            GenericAdditionalInboundData,
         >;
 
         type OutboundChannel: OutboundChannel<
@@ -192,7 +189,7 @@ pub mod pallet {
                         <T as frame_system::Config>::BlockWeights::get().max_block
                     }
                     bridge_types::evm::Commitment::Inbound(commitment) => {
-                        T::EVMMessageDispatch::dispatch_weight(&commitment.payload)
+                        T::MessageDispatch::dispatch_weight(&commitment.payload)
                     }
                     bridge_types::evm::Commitment::StatusReport(_) => Default::default(),
                     bridge_types::evm::Commitment::BaseFeeUpdate(_) => Default::default(),
@@ -200,7 +197,7 @@ pub mod pallet {
                 bridge_types::GenericCommitment::Sub(commitment) => commitment
                     .messages
                     .iter()
-                    .map(|m| T::SubstrateMessageDispatch::dispatch_weight(&m.payload))
+                    .map(|m| T::MessageDispatch::dispatch_weight(&m.payload))
                     .fold(Weight::zero(), |acc, w| acc.saturating_add(w)),
             };
 
@@ -271,14 +268,15 @@ pub mod pallet {
                         T::ThisNetworkId::get(),
                         inbound_commitment.nonce,
                     );
-                    T::EVMMessageDispatch::dispatch(
-                        chain_id,
+                    T::MessageDispatch::dispatch(
+                        chain_id.into(),
                         message_id,
                         GenericTimepoint::EVM(inbound_commitment.block_number),
                         &inbound_commitment.payload,
                         AdditionalEVMInboundData {
                             source: inbound_commitment.source,
-                        },
+                        }
+                        .into(),
                     );
                 }
                 bridge_types::evm::Commitment::StatusReport(status_report) => {
@@ -377,12 +375,12 @@ pub mod pallet {
                     commitment.nonce,
                     idx as u64,
                 );
-                T::SubstrateMessageDispatch::dispatch(
-                    sub_network_id,
+                T::MessageDispatch::dispatch(
+                    sub_network_id.into(),
                     message_id,
                     message.timepoint,
                     &message.payload,
-                    (),
+                    GenericAdditionalInboundData::Sub,
                 );
             }
             Ok(())

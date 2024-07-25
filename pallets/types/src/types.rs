@@ -369,6 +369,18 @@ pub enum GenericAdditionalInboundData {
     TON(AdditionalTONInboundData),
 }
 
+impl From<AdditionalEVMInboundData> for GenericAdditionalInboundData {
+    fn from(value: AdditionalEVMInboundData) -> Self {
+        Self::EVM(value)
+    }
+}
+
+impl From<AdditionalTONInboundData> for GenericAdditionalInboundData {
+    fn from(value: AdditionalTONInboundData) -> Self {
+        Self::TON(value)
+    }
+}
+
 #[derive(
     Clone,
     Copy,
