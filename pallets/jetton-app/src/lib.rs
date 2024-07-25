@@ -62,7 +62,6 @@ mod tests;
 
 use bridge_types::substrate::JettonAppCall;
 use bridge_types::{MainnetAccountId, MainnetAssetId};
-use bridge_types::{H160, U256};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
@@ -98,18 +97,17 @@ where
 pub mod pallet {
     use super::*;
 
-    use bridge_types::substrate::{TonAddress, TonAssetId};
+    use bridge_types::substrate::{TonAddress, TonAddressWithPrefix, TonBalance};
     use bridge_types::traits::BridgeAssetLocker;
     use bridge_types::traits::{
-        AppRegistry, BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry,
-        MessageStatusNotifier,
+        BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry, MessageStatusNotifier,
     };
     use bridge_types::types::{
         AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, GenericAdditionalInboundData,
         MessageStatus, TonAppInfo, TonAssetInfo,
     };
     use bridge_types::MainnetAssetId;
-    use bridge_types::{EVMChainId, GenericAccount, GenericNetworkId, H256};
+    use bridge_types::{GenericAccount, GenericNetworkId, H256};
     use frame_support::{fail, pallet_prelude::*};
     use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
@@ -153,14 +151,12 @@ pub mod pallet {
 
         type AssetRegistry: BridgeAssetRegistry<Self::AccountId, AssetIdOf<Self>>;
 
-        type AppRegistry: AppRegistry<EVMChainId, H160>;
-
         type AssetIdConverter: Convert<AssetIdOf<Self>, MainnetAssetId>;
 
         type BalancePrecisionConverter: BalancePrecisionConverter<
             AssetIdOf<Self>,
             BalanceOf<Self>,
-            U256,
+            TonBalance,
         >;
 
         type BridgeAssetLocker: BridgeAssetLocker<Self::AccountId>;
@@ -213,12 +209,12 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn token_address)]
-    pub(super) type TokenAddresses<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, TonAssetId>;
+    pub(super) type TokenAddresses<T: Config> = StorageMap<_, Identity, AssetIdOf<T>, TonAddress>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_by_address)]
     pub(super) type AssetsByAddresses<T: Config> =
-        StorageMap<_, Identity, TonAssetId, AssetIdOf<T>>;
+        StorageMap<_, Identity, TonAddress, AssetIdOf<T>>;
 
     #[pallet::storage]
     #[pallet::getter(fn sidechain_precision)]
@@ -241,6 +237,7 @@ pub mod pallet {
         /// Wrong bridge request status, must be Failed
         WrongRequestStatus,
         OperationNotSupported,
+        WrongAccountPrefix,
     }
 
     #[pallet::genesis_config]
@@ -288,10 +285,10 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
             origin: OriginFor<T>,
-            token: TonAssetId,
-            sender: TonAddress,
+            token: TonAddressWithPrefix,
+            sender: TonAddressWithPrefix,
             recipient: T::AccountId,
-            amount: U256,
+            amount: TonBalance,
         ) -> DispatchResult {
             let CallOriginOutput {
                 network_id: GenericNetworkId::TON,
@@ -301,6 +298,8 @@ pub mod pallet {
             } = T::CallOrigin::ensure_origin(origin.clone())? else {
                 fail!(DispatchError::BadOrigin);
             };
+            let sender = sender.address().ok_or(Error::<T>::WrongAccountPrefix)?;
+            let token = token.address().ok_or(Error::<T>::WrongAccountPrefix)?;
             let asset_id = AssetsByAddresses::<T>::get(token)
                 // should never return this error, because called from Ethereum
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -415,7 +414,7 @@ pub mod pallet {
         }
     }
 
-    impl<T: Config> BridgeApp<T::AccountId, H160, AssetIdOf<T>, BalanceOf<T>> for Pallet<T> {
+    impl<T: Config> BridgeApp<T::AccountId, TonAddress, AssetIdOf<T>, BalanceOf<T>> for Pallet<T> {
         fn is_asset_supported(_network_id: GenericNetworkId, _asset_id: AssetIdOf<T>) -> bool {
             false
         }
@@ -424,7 +423,7 @@ pub mod pallet {
             _network_id: GenericNetworkId,
             _asset_id: AssetIdOf<T>,
             _sender: T::AccountId,
-            _recipient: H160,
+            _recipient: TonAddress,
             _amount: BalanceOf<T>,
         ) -> Result<H256, DispatchError> {
             frame_support::fail!(Error::<T>::InvalidNetwork);

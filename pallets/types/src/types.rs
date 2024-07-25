@@ -377,6 +377,7 @@ pub enum GenericAdditionalInboundData {
     Eq,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    Default,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct AdditionalTONInboundData {

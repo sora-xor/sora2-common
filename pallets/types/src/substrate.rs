@@ -53,19 +53,53 @@ pub type EVMAssetId = H160;
 
 pub type EVMAccountId = H160;
 
-pub type TonAccountId = TonAddress;
-
-pub type TonAssetId = TonAddress;
-
-pub type TonBalance = crate::U256;
+// We use u128 encoding in our contracts
+pub type TonBalance = u128;
 
 #[derive(
-    Clone, Copy, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo, MaxEncodedLen,
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+    Default,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddress {
-    pub hash_part: [u8; 32],
     pub workchain: i32,
+    pub hash_part: [u8; 32],
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    MaxEncodedLen,
+    Default,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub struct TonAddressWithPrefix {
+    pub prefix: u8,
+    pub workchain: i32,
+    pub hash_part: [u8; 32],
+}
+
+impl TonAddressWithPrefix {
+    pub fn address(&self) -> Option<TonAddress> {
+        Some(TonAddress {
+            workchain: self.workchain,
+            hash_part: self.hash_part,
+        })
+    }
 }
 
 /// We use `H256` instead of `U256` to make easier support of EVM abi encoded uint256
@@ -165,8 +199,8 @@ impl SubstrateBridgeMessageEncode for FAAppCall {
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum JettonAppCall {
     Transfer {
-        token: TonAssetId,
-        sender: TonAccountId,
+        token: TonAddressWithPrefix,
+        sender: TonAddressWithPrefix,
         recipient: MainnetAccountId,
         amount: TonBalance,
     },
