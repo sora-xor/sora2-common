@@ -358,10 +358,12 @@ pub struct GenericCommitmentWithBlock<BlockNumber, MaxMessages: Get<u32>, MaxPay
     Eq,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    Default,
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum GenericAdditionalInboundData {
+    #[default]
     Sub,
     EVM(AdditionalEVMInboundData),
     TON(AdditionalTONInboundData),
