@@ -120,6 +120,12 @@ pub enum GenericNetworkId {
     TON,
 }
 
+impl Default for GenericNetworkId {
+    fn default() -> Self {
+        Self::Sub(Default::default())
+    }
+}
+
 impl GenericNetworkId {
     pub fn evm(self) -> Option<EVMChainId> {
         match self {
