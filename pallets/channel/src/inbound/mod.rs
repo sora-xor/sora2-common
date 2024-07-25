@@ -58,6 +58,7 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use bridge_types::evm::AdditionalEVMInboundData;
+    use bridge_types::ton::{AdditionalTONInboundData, TonAddress, TonNetworkId};
     use bridge_types::types::{GenericAdditionalInboundData, MessageStatus};
     use bridge_types::{EVMChainId, GenericNetworkId, GenericTimepoint};
     use frame_support::log::warn;
@@ -138,6 +139,10 @@ pub mod pallet {
     pub type EVMChannelAddresses<T: Config> =
         StorageMap<_, Identity, EVMChainId, H160, OptionQuery>;
 
+    #[pallet::storage]
+    pub type TONChannelAddresses<T: Config> =
+        StorageMap<_, Identity, TonNetworkId, TonAddress, OptionQuery>;
+
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
@@ -194,6 +199,9 @@ pub mod pallet {
                     bridge_types::evm::Commitment::StatusReport(_) => Default::default(),
                     bridge_types::evm::Commitment::BaseFeeUpdate(_) => Default::default(),
                 },
+                bridge_types::GenericCommitment::TON(bridge_types::ton::Commitment::Inbound(
+                    commitment,
+                )) => T::MessageDispatch::dispatch_weight(&commitment.payload),
                 bridge_types::GenericCommitment::Sub(commitment) => commitment
                     .messages
                     .iter()
@@ -211,6 +219,13 @@ pub mod pallet {
         fn ensure_evm_channel(chain_id: EVMChainId, channel: H160) -> DispatchResult {
             let channel_address =
                 EVMChannelAddresses::<T>::get(chain_id).ok_or(Error::<T>::InvalidNetwork)?;
+            ensure!(channel_address == channel, Error::<T>::InvalidSourceChannel);
+            Ok(())
+        }
+
+        fn ensure_ton_channel(network_id: TonNetworkId, channel: TonAddress) -> DispatchResult {
+            let channel_address =
+                TONChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
             ensure!(channel_address == channel, Error::<T>::InvalidSourceChannel);
             Ok(())
         }
@@ -248,6 +263,49 @@ pub mod pallet {
                     Ok(())
                 }
             })?;
+            Ok(())
+        }
+
+        fn handle_ton_commitment(
+            network_id: TonNetworkId,
+            commitment: bridge_types::ton::Commitment<T::MaxMessagePayloadSize>,
+        ) -> DispatchResult {
+            Self::verify_ton_commitment(network_id, &commitment)?;
+            let network_id = GenericNetworkId::TON(network_id);
+            match commitment {
+                bridge_types::ton::Commitment::Inbound(inbound_commitment) => {
+                    Self::update_channel_nonce(network_id, inbound_commitment.nonce)?;
+                    let message_id = MessageId::basic(
+                        network_id,
+                        T::ThisNetworkId::get(),
+                        inbound_commitment.nonce,
+                    );
+                    T::MessageDispatch::dispatch(
+                        network_id.into(),
+                        message_id,
+                        GenericTimepoint::TON(inbound_commitment.transaction_id),
+                        &inbound_commitment.payload,
+                        AdditionalTONInboundData {
+                            source: inbound_commitment.source,
+                        }
+                        .into(),
+                    );
+                }
+            }
+            Ok(())
+        }
+
+        fn verify_ton_commitment(
+            ton_network_id: TonNetworkId,
+            commitment: &bridge_types::ton::Commitment<T::MaxMessagePayloadSize>,
+        ) -> DispatchResult {
+            let network_id = GenericNetworkId::TON(ton_network_id);
+            match commitment {
+                bridge_types::ton::Commitment::Inbound(inbound_commitment) => {
+                    Self::ensure_ton_channel(ton_network_id, inbound_commitment.channel)?;
+                    Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
+                }
+            }
             Ok(())
         }
 
@@ -424,6 +482,10 @@ pub mod pallet {
                     GenericNetworkId::Sub(sub_network_id),
                     bridge_types::GenericCommitment::Sub(sub_commitment),
                 ) => Self::handle_sub_commitment(sub_network_id, sub_commitment)?,
+                (
+                    GenericNetworkId::TON(ton_network_id),
+                    bridge_types::GenericCommitment::TON(ton_commitment),
+                ) => Self::handle_ton_commitment(ton_network_id, ton_commitment)?,
                 _ => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
                 }
@@ -440,6 +502,18 @@ pub mod pallet {
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             EVMChannelAddresses::<T>::insert(network_id, channel_address);
+            Ok(().into())
+        }
+
+        #[pallet::call_index(2)]
+        #[pallet::weight(0)]
+        pub fn register_ton_channel(
+            origin: OriginFor<T>,
+            network_id: TonNetworkId,
+            channel_address: TonAddress,
+        ) -> DispatchResultWithPostInfo {
+            ensure_root(origin)?;
+            TONChannelAddresses::<T>::insert(network_id, channel_address);
             Ok(().into())
         }
     }

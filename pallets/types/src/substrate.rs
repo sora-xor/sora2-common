@@ -29,8 +29,9 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #![allow(clippy::large_enum_variant)]
 
+use crate::ton::{TonAddressWithPrefix, TonBalance};
 use crate::{H160, H256};
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, Encode};
 use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
@@ -52,55 +53,6 @@ pub type ParachainAssetId = xcm::v3::AssetId;
 pub type EVMAssetId = H160;
 
 pub type EVMAccountId = H160;
-
-// We use u128 encoding in our contracts
-pub type TonBalance = u128;
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-    Default,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TonAddress {
-    pub workchain: i32,
-    pub hash_part: [u8; 32],
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    MaxEncodedLen,
-    Default,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TonAddressWithPrefix {
-    pub prefix: u8,
-    pub workchain: i32,
-    pub hash_part: [u8; 32],
-}
-
-impl TonAddressWithPrefix {
-    pub fn address(&self) -> Option<TonAddress> {
-        Some(TonAddress {
-            workchain: self.workchain,
-            hash_part: self.hash_part,
-        })
-    }
-}
 
 /// We use `H256` instead of `U256` to make easier support of EVM abi encoded uint256
 pub type EVMBalance = H256;

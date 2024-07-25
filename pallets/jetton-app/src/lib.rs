@@ -97,14 +97,15 @@ where
 pub mod pallet {
     use super::*;
 
-    use bridge_types::substrate::{TonAddress, TonAddressWithPrefix, TonBalance};
+    use bridge_types::ton::{TonAddress, TonAddressWithPrefix, TonBalance, TonNetworkId};
+    use bridge_types::ton::{TonAppInfo, TonAssetInfo};
     use bridge_types::traits::BridgeAssetLocker;
     use bridge_types::traits::{
         BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry, MessageStatusNotifier,
     };
     use bridge_types::types::{
         AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, GenericAdditionalInboundData,
-        MessageStatus, TonAppInfo, TonAssetInfo,
+        MessageStatus,
     };
     use bridge_types::MainnetAssetId;
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
@@ -200,8 +201,8 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    #[pallet::getter(fn app_address)]
-    pub(super) type AppAddress<T: Config> = StorageValue<_, TonAddress>;
+    #[pallet::getter(fn app_info)]
+    pub(super) type AppInfo<T: Config> = StorageValue<_, (TonNetworkId, TonAddress)>;
 
     #[pallet::storage]
     #[pallet::getter(fn asset_kind)]
@@ -243,7 +244,7 @@ pub mod pallet {
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
         /// [address]
-        pub app: Option<TonAddress>,
+        pub app: Option<(TonNetworkId, TonAddress)>,
         /// Vec<[asset_id, address, kind, precision]>
         pub assets: Vec<(AssetIdOf<T>, TonAddress, AssetKind, u8)>,
     }
@@ -262,7 +263,7 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             if let Some(app) = &self.app {
-                AppAddress::<T>::set(Some(*app));
+                AppInfo::<T>::set(Some(*app));
                 for (asset_id, address, asset_kind, precision) in self.assets.iter() {
                     Pallet::<T>::register_asset_inner(
                         asset_id.clone(),
@@ -291,7 +292,7 @@ pub mod pallet {
             amount: TonBalance,
         ) -> DispatchResult {
             let CallOriginOutput {
-                network_id: GenericNetworkId::TON,
+                network_id: GenericNetworkId::TON(network_id),
                 message_id,
                 timepoint,
                 additional: GenericAdditionalInboundData::TON(additional),
@@ -305,11 +306,12 @@ pub mod pallet {
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let asset_kind =
                 AssetKinds::<T>::get(&asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
-            let app_address = AppAddress::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
+            let (app_network_id, app_address) =
+                AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
             let sidechain_precision =
                 SidechainPrecision::<T>::get(&asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
 
-            if additional.source != app_address {
+            if additional.source != app_address || network_id != app_network_id {
                 return Err(DispatchError::BadOrigin);
             }
 
@@ -321,7 +323,7 @@ pub mod pallet {
             .ok_or(Error::<T>::WrongAmount)?;
             ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
             T::BridgeAssetLocker::unlock_asset(
-                GenericNetworkId::TON,
+                GenericNetworkId::TON(network_id),
                 asset_kind,
                 &recipient,
                 &asset_id,
@@ -329,7 +331,7 @@ pub mod pallet {
             )?;
 
             T::MessageStatusNotifier::inbound_request(
-                GenericNetworkId::TON,
+                GenericNetworkId::TON(network_id),
                 message_id,
                 GenericAccount::TON(sender),
                 recipient.clone(),
@@ -363,9 +365,9 @@ pub mod pallet {
                 !AssetsByAddresses::<T>::contains_key(address),
                 Error::<T>::TokenAlreadyRegistered
             );
-            let _target = AppAddress::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
-
-            let asset_id = T::AssetRegistry::register_asset(GenericNetworkId::TON, name, symbol)?;
+            let (network_id, _) = AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
+            let asset_id =
+                T::AssetRegistry::register_asset(GenericNetworkId::TON(network_id), name, symbol)?;
 
             Self::register_asset_inner(asset_id, address, AssetKind::Sidechain, decimals)?;
             Ok(())
@@ -384,8 +386,6 @@ pub mod pallet {
                 !AssetsByAddresses::<T>::contains_key(address),
                 Error::<T>::TokenAlreadyRegistered
             );
-            let _target = AppAddress::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
-
             Self::register_asset_inner(asset_id, address, AssetKind::Sidechain, decimals)?;
 
             Ok(())
@@ -399,7 +399,7 @@ pub mod pallet {
             asset_kind: AssetKind,
             sidechain_precision: u8,
         ) -> DispatchResult {
-            ensure!(AppAddress::<T>::exists(), Error::<T>::AppIsNotRegistered);
+            let (network_id, _) = AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
             ensure!(
                 !TokenAddresses::<T>::contains_key(&asset_id),
                 Error::<T>::TokenAlreadyRegistered
@@ -408,7 +408,7 @@ pub mod pallet {
             AssetsByAddresses::<T>::insert(contract, &asset_id);
             AssetKinds::<T>::insert(&asset_id, asset_kind);
             SidechainPrecision::<T>::insert(&asset_id, sidechain_precision);
-            T::AssetRegistry::manage_asset(GenericNetworkId::TON, asset_id.clone())?;
+            T::AssetRegistry::manage_asset(GenericNetworkId::TON(network_id), asset_id.clone())?;
             Self::deposit_event(Event::AssetRegistered { asset_id });
             Ok(())
         }
@@ -440,30 +440,36 @@ pub mod pallet {
         }
 
         fn list_supported_assets(network_id: GenericNetworkId) -> Vec<BridgeAssetInfo> {
-            if network_id != GenericNetworkId::TON {
-                return vec![];
-            }
-            AssetKinds::<T>::iter()
-                .filter_map(|(asset_id, _asset_kind)| {
-                    TokenAddresses::<T>::get(&asset_id)
-                        .zip(SidechainPrecision::<T>::get(&asset_id))
-                        .map(|(address, precision)| {
-                            Some(BridgeAssetInfo::Ton(TonAssetInfo {
-                                asset_id: T::AssetIdConverter::convert(asset_id),
-                                address,
-                                precision,
-                            }))
+            let app_info = AppInfo::<T>::get();
+            if let Some((app_network_id, _)) = app_info {
+                if network_id != GenericNetworkId::TON(app_network_id) {
+                    vec![]
+                } else {
+                    AssetKinds::<T>::iter()
+                        .filter_map(|(asset_id, _asset_kind)| {
+                            TokenAddresses::<T>::get(&asset_id)
+                                .zip(SidechainPrecision::<T>::get(&asset_id))
+                                .map(|(address, precision)| {
+                                    Some(BridgeAssetInfo::Ton(TonAssetInfo {
+                                        asset_id: T::AssetIdConverter::convert(asset_id),
+                                        address,
+                                        precision,
+                                    }))
+                                })
+                                .unwrap_or_default()
                         })
-                        .unwrap_or_default()
-                })
-                .collect()
+                        .collect()
+                }
+            } else {
+                vec![]
+            }
         }
 
         fn list_apps() -> Vec<BridgeAppInfo> {
-            let address = AppAddress::<T>::get();
-            if let Some(address) = address {
+            let app_info = AppInfo::<T>::get();
+            if let Some((network_id, address)) = app_info {
                 vec![BridgeAppInfo::TON(
-                    GenericNetworkId::TON,
+                    GenericNetworkId::TON(network_id),
                     TonAppInfo { address },
                 )]
             } else {

@@ -35,6 +35,7 @@ pub mod evm;
 pub mod substrate;
 #[cfg(any(feature = "test", test))]
 pub mod test_utils;
+pub mod ton;
 pub mod traits;
 pub mod types;
 pub mod utils;
@@ -47,7 +48,7 @@ use sp_core::Get;
 use derivative::Derivative;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use substrate::TonAddress;
+use ton::{TonAddress, TonBalance, TonNetworkId, TonTransactionId};
 
 #[derive(Debug)]
 pub enum DecodeError {
@@ -117,7 +118,7 @@ pub enum GenericNetworkId {
     Sub(SubNetworkId),
     #[cfg_attr(feature = "std", serde(rename = "evmLegacy"))]
     EVMLegacy(u32),
-    TON,
+    TON(TonNetworkId),
 }
 
 impl Default for GenericNetworkId {
@@ -206,6 +207,7 @@ pub enum GenericTimepoint {
     Pending,
     #[default]
     Unknown,
+    TON(TonTransactionId),
 }
 
 #[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
@@ -222,6 +224,8 @@ pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     Sub(substrate::Commitment<MaxMessages, MaxPayload>),
     #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(evm::Commitment<MaxMessages, MaxPayload>),
+    #[cfg_attr(feature = "std", serde(rename = "ton"))]
+    TON(ton::Commitment<MaxPayload>),
 }
 
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages, MaxPayload> {
@@ -229,6 +233,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
         match self {
             GenericCommitment::Sub(commitment) => commitment.hash(),
             GenericCommitment::EVM(commitment) => commitment.hash(),
+            GenericCommitment::TON(commitment) => commitment.hash(),
         }
     }
 
@@ -236,6 +241,7 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages,
         match self {
             GenericCommitment::Sub(commitment) => commitment.nonce,
             GenericCommitment::EVM(commitment) => commitment.nonce(),
+            GenericCommitment::TON(commitment) => commitment.nonce(),
         }
     }
 }
@@ -277,6 +283,7 @@ pub enum GenericBalance {
     Substrate(MainnetBalance),
     /// EVM ABI uses big endian for integers, but scale codec uses little endian
     EVM(H256),
+    TON(TonBalance),
 }
 
 impl TryInto<MainnetBalance> for GenericBalance {

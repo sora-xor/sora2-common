@@ -302,7 +302,7 @@ pub mod pallet {
                     error!("EVMLegacy messages are not supported by this channel (if you noticed this message, please report it)");
                     return <T as Config>::WeightInfo::on_initialize_no_messages();
                 }
-                GenericNetworkId::TON => {
+                GenericNetworkId::TON(_) => {
                     error!("TON messages are not supported yet by this channel (if you noticed this message, please report it)");
                     return <T as Config>::WeightInfo::on_initialize_no_messages();
                 }

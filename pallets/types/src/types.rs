@@ -31,8 +31,9 @@
 //! Types for representing messages
 
 use crate::evm::{AdditionalEVMInboundData, EVMAppInfo, EVMAssetInfo, EVMLegacyAssetInfo};
-use crate::substrate::{SubAssetInfo, TonAddress};
-use crate::{GenericTimepoint, MainnetAssetId, H256};
+use crate::substrate::SubAssetInfo;
+use crate::ton::{AdditionalTONInboundData, TonAppInfo, TonAssetInfo};
+use crate::{GenericTimepoint, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
 use frame_support::RuntimeDebug;
@@ -379,61 +380,6 @@ impl From<AdditionalTONInboundData> for GenericAdditionalInboundData {
     fn from(value: AdditionalTONInboundData) -> Self {
         Self::TON(value)
     }
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-    Default,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct AdditionalTONInboundData {
-    pub source: TonAddress,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-/// Information about Jetton in TON network
-pub struct TonAssetInfo {
-    /// Thischain asset id
-    pub asset_id: MainnetAssetId,
-    /// Contract address
-    pub address: TonAddress,
-    /// Sidechain asset precision
-    pub precision: u8,
-}
-
-#[derive(
-    Clone,
-    Copy,
-    RuntimeDebug,
-    Encode,
-    Decode,
-    PartialEq,
-    Eq,
-    scale_info::TypeInfo,
-    codec::MaxEncodedLen,
-)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-pub struct TonAppInfo {
-    pub address: TonAddress,
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";
