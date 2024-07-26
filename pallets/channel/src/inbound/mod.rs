@@ -540,6 +540,11 @@ pub mod pallet {
                         bridge_types::GenericCommitment::Sub(sub_commitment),
                     ) => Self::verify_sub_commitment(*sub_network_id, sub_commitment)
                         .map_err(|_| InvalidTransaction::BadProof)?,
+                    (
+                        GenericNetworkId::TON(ton_network_id),
+                        bridge_types::GenericCommitment::TON(ton_commitment),
+                    ) => Self::verify_ton_commitment(*ton_network_id, ton_commitment)
+                        .map_err(|_| InvalidTransaction::BadProof)?,
                     _ => {
                         return Err(InvalidTransaction::BadProof.into());
                     }
