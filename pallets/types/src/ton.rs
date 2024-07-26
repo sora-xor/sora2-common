@@ -30,12 +30,13 @@
 
 use codec::{Decode, Encode, MaxEncodedLen};
 use derivative::Derivative;
+use ethereum_types::H128;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{Get, RuntimeDebug, H256};
 use sp_runtime::{traits::Hash, BoundedVec};
 
-use crate::MainnetAssetId;
+use crate::{MainnetAssetId, MainnetBalance};
 
 #[derive(
     Encode,
@@ -57,8 +58,21 @@ pub enum TonNetworkId {
     Testnet,
 }
 
-// We use u128 encoding in our contracts
-pub type TonBalance = u128;
+// TON encodes integers as big-endian and we use uint128 in our contracts
+#[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
+pub struct TonBalance(pub H128);
+
+impl TonBalance {
+    pub fn balance(&self) -> MainnetBalance {
+        u128::from_be_bytes(self.0.to_fixed_bytes())
+    }
+}
+
+impl core::fmt::Debug for TonBalance {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_tuple("TonBalance").field(&self.balance()).finish()
+    }
+}
 
 #[derive(
     Clone,
@@ -74,8 +88,17 @@ pub type TonBalance = u128;
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddress {
-    pub workchain: i32,
-    pub hash_part: [u8; 32],
+    pub workchain: i8,
+    pub address: H256,
+}
+
+impl TonAddress {
+    pub fn new(workchain: i8, address: H256) -> Self {
+        Self { workchain, address }
+    }
+    pub fn empty() -> Self {
+        Self::new(0, H256::zero())
+    }
 }
 
 #[derive(
@@ -93,7 +116,7 @@ pub struct TonAddress {
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonTransactionId {
     pub lt: i64,
-    pub hash: [u8; 32],
+    pub hash: H256,
 }
 
 #[derive(
@@ -110,17 +133,20 @@ pub struct TonTransactionId {
 )]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddressWithPrefix {
-    pub prefix: u8,
-    pub workchain: i32,
-    pub hash_part: [u8; 32],
+    prefix: u8,
+    address: TonAddress,
 }
 
 impl TonAddressWithPrefix {
+    pub fn new(prefix: u8, address: TonAddress) -> Self {
+        Self { prefix, address }
+    }
     pub fn address(&self) -> Option<TonAddress> {
-        Some(TonAddress {
-            workchain: self.workchain,
-            hash_part: self.hash_part,
-        })
+        if self.prefix == 4 || (self.address == TonAddress::empty() && self.prefix == 0) {
+            Some(self.address)
+        } else {
+            None
+        }
     }
 }
 

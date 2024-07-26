@@ -390,6 +390,51 @@ pub mod pallet {
 
             Ok(())
         }
+
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        pub fn register_network(
+            origin: OriginFor<T>,
+            network_id: TonNetworkId,
+            contract: TonAddress,
+            symbol: AssetSymbolOf<T>,
+            name: AssetNameOf<T>,
+            decimals: u8,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(!AppInfo::<T>::exists(), Error::<T>::AppAlreadyRegistered);
+            AppInfo::<T>::put((network_id, contract));
+            let asset_id =
+                T::AssetRegistry::register_asset(GenericNetworkId::TON(network_id), name, symbol)?;
+            Self::register_asset_inner(
+                asset_id,
+                TonAddress::empty(),
+                AssetKind::Sidechain,
+                decimals,
+            )?;
+            Ok(())
+        }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        pub fn register_network_with_existing_asset(
+            origin: OriginFor<T>,
+            network_id: TonNetworkId,
+            contract: TonAddress,
+            asset_id: AssetIdOf<T>,
+            decimals: u8,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(!AppInfo::<T>::exists(), Error::<T>::AppAlreadyRegistered);
+            AppInfo::<T>::put((network_id, contract));
+            Self::register_asset_inner(
+                asset_id,
+                TonAddress::empty(),
+                AssetKind::Sidechain,
+                decimals,
+            )?;
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
