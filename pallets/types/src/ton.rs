@@ -60,9 +60,12 @@ pub enum TonNetworkId {
 
 // TON encodes integers as big-endian and we use uint128 in our contracts
 #[derive(Encode, Decode, Clone, PartialEq, Eq, scale_info::TypeInfo)]
-pub struct TonBalance(pub H128);
+pub struct TonBalance(H128);
 
 impl TonBalance {
+    pub fn new(balance: u128) -> Self {
+        TonBalance(H128(balance.to_be_bytes()))
+    }
     pub fn balance(&self) -> MainnetBalance {
         u128::from_be_bytes(self.0.to_fixed_bytes())
     }
