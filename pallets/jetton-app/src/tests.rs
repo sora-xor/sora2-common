@@ -111,7 +111,7 @@ fn mint_fails_with_zero_amount() {
                 .into(),
                 token.into(),
                 sender.into(),
-                recipient.clone(),
+                recipient,
                 amount.into(),
             ),
             Error::<Test>::WrongAmount
@@ -143,7 +143,7 @@ fn mint_fails_without_app() {
                 .into(),
                 token.into(),
                 sender.into(),
-                recipient.clone(),
+                recipient,
                 amount.into(),
             ),
             Error::<Test>::TokenIsNotRegistered
@@ -193,7 +193,7 @@ fn mint_fails_with_wrong_address() {
                 .into(),
                 token.into(),
                 TonAddressWithPrefix::new(11, sender),
-                recipient.clone(),
+                recipient,
                 amount.into(),
             ),
             Error::<Test>::WrongAccountPrefix
@@ -224,7 +224,7 @@ fn mint_fails_with_wrong_asset() {
                 .into(),
                 TonAddress::new(0, H256::random()).into(),
                 sender.into(),
-                recipient.clone(),
+                recipient,
                 amount.into(),
             ),
             Error::<Test>::TokenIsNotRegistered
@@ -278,7 +278,7 @@ fn mint_fails_with_bad_origin() {
                 .into(),
                 token.into(),
                 sender.into(),
-                recipient.clone(),
+                recipient,
                 amount.into(),
             ),
             DispatchError::BadOrigin

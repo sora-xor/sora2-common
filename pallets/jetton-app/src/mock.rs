@@ -255,7 +255,8 @@ impl jetton_app::Config for Test {
 
 #[derive(Default)]
 pub struct ExtBuilder {
-    accounts: Vec<(AccountId, Balance, Vec<(AssetId, Balance)>)>,
+    balances: Vec<(AccountId, Balance)>,
+    token_balances: Vec<(AccountId, AssetId, Balance)>,
     app: Option<(TonNetworkId, TonAddress)>,
     assets: Vec<(AssetId, TonAddress, AssetKind, u8)>,
 }
@@ -267,11 +268,8 @@ impl ExtBuilder {
 
     pub fn with_ton() -> Self {
         Self {
-            accounts: vec![(
-                Keyring::Bob.into(),
-                1_000_000_000_000_000_000u128,
-                vec![(TON, 1_000_000_000_000_000_000u128)],
-            )],
+            balances: vec![(Keyring::Bob.into(), 1_000_000_000_000_000_000u128)],
+            token_balances: vec![(Keyring::Bob.into(), TON, 1_000_000_000_000_000_000u128)],
             app: Some((BASE_NETWORK_ID, TON_APP_ADDRESS)),
             assets: vec![(TON, TON_ADDRESS, AssetKind::Sidechain, 18)],
         }
@@ -282,21 +280,17 @@ impl ExtBuilder {
             .build_storage::<Test>()
             .unwrap();
 
-        let mut balances = vec![];
-        let mut tokens = vec![];
-        for (account, balance, token_balances) in self.accounts {
-            balances.push((account.clone(), balance));
-            for (token, balance) in token_balances {
-                tokens.push((account.clone(), token, balance));
-            }
+        pallet_balances::GenesisConfig::<Test> {
+            balances: self.balances,
         }
-        pallet_balances::GenesisConfig::<Test> { balances }
-            .assimilate_storage(&mut storage)
-            .unwrap();
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
-        tokens::GenesisConfig::<Test> { balances: tokens }
-            .assimilate_storage(&mut storage)
-            .unwrap();
+        tokens::GenesisConfig::<Test> {
+            balances: self.token_balances,
+        }
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
         GenesisBuild::<Test>::assimilate_storage(
             &jetton_app::GenesisConfig {
