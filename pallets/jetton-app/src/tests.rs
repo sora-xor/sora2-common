@@ -28,63 +28,55 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use crate::mock::{
-    new_tester, AccountId, FungibleApp, RuntimeEvent, RuntimeOrigin, System, Test, Tokens,
-    BASE_NETWORK_ID, ETH, XOR,
-};
-use crate::Error;
-use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
-use bridge_types::evm::AdditionalEVMInboundData;
-use bridge_types::types::{AssetKind, CallOriginOutput};
-use bridge_types::{EVMChainId, H160};
+use crate::mock::*;
+use crate::*;
+use bridge_types::ton::AdditionalTONInboundData;
+use bridge_types::ton::TonAddress;
+use bridge_types::ton::TonAddressWithPrefix;
+use bridge_types::types::CallOriginOutput;
+use bridge_types::types::GenericAdditionalInboundData;
 use frame_support::assert_noop;
 use frame_support::assert_ok;
+use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
 use traits::MultiCurrency;
+
+use crate::mock::{BASE_NETWORK_ID, TON};
 
 fn last_event() -> RuntimeEvent {
     System::events().pop().expect("Event expected").event
 }
 
 #[test]
-fn mints_after_handling_ethereum_event() {
-    new_tester().execute_with(|| {
-        let peer_contract = H160::repeat_byte(2);
-        let asset_id = XOR;
-        let token = TokenAddresses::<Test>::get(BASE_NETWORK_ID, asset_id).unwrap();
-        let sender = H160::repeat_byte(3);
+fn mints_after_ton_transfer() {
+    ExtBuilder::with_ton().build().execute_with(|| {
+        let asset_id = TON;
+        let token = TokenAddresses::<Test>::get(asset_id).unwrap();
+        let sender = TonAddress::new(0, H256::repeat_byte(2));
         let recipient: AccountId = Keyring::Charlie.into();
         let bob: AccountId = Keyring::Bob.into();
         let amount = 10;
 
         Tokens::deposit(asset_id, &bob, 500).unwrap();
-        assert_ok!(FungibleApp::burn(
-            RuntimeOrigin::signed(bob),
-            BASE_NETWORK_ID,
-            asset_id,
-            H160::repeat_byte(9),
-            amount
-        ));
 
-        assert_ok!(FungibleApp::mint(
+        assert_ok!(JettonApp::mint(
             dispatch::RawOrigin::new(CallOriginOutput {
-                network_id: BASE_NETWORK_ID,
-                additional: AdditionalEVMInboundData {
-                    source: peer_contract,
-                },
+                network_id: BASE_NETWORK_ID.into(),
+                additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                    source: TON_APP_ADDRESS
+                }),
                 ..Default::default()
             })
             .into(),
-            token,
-            sender,
+            token.into(),
+            sender.into(),
             recipient.clone(),
             amount.into(),
         ));
         assert_eq!(Tokens::total_balance(asset_id, &recipient), amount);
 
         assert_eq!(
-            RuntimeEvent::FungibleApp(crate::Event::<Test>::Minted {
-                network_id: BASE_NETWORK_ID,
+            RuntimeEvent::JettonApp(crate::Event::<Test>::Minted {
                 asset_id,
                 sender,
                 recipient,
@@ -96,28 +88,30 @@ fn mints_after_handling_ethereum_event() {
 }
 
 #[test]
-fn mint_zero_amount_must_fail() {
-    new_tester().execute_with(|| {
-        let peer_contract = H160::repeat_byte(2);
-        let asset_id = XOR;
-        let token = TokenAddresses::<Test>::get(BASE_NETWORK_ID, asset_id).unwrap();
-        let sender = H160::repeat_byte(3);
+fn mint_fails_with_zero_amount() {
+    ExtBuilder::with_ton().build().execute_with(|| {
+        let asset_id = TON;
+        let token = TokenAddresses::<Test>::get(asset_id).unwrap();
+        let sender = TonAddress::new(0, H256::repeat_byte(2));
         let recipient: AccountId = Keyring::Charlie.into();
-        let amount = 0;
+        let bob: AccountId = Keyring::Bob.into();
+        let amount = 0u32;
+
+        Tokens::deposit(asset_id, &bob, 500).unwrap();
 
         assert_noop!(
-            FungibleApp::mint(
+            JettonApp::mint(
                 dispatch::RawOrigin::new(CallOriginOutput {
-                    network_id: BASE_NETWORK_ID,
-                    additional: AdditionalEVMInboundData {
-                        source: peer_contract,
-                    },
+                    network_id: BASE_NETWORK_ID.into(),
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TON_APP_ADDRESS
+                    }),
                     ..Default::default()
                 })
                 .into(),
-                token,
-                sender,
-                recipient,
+                token.into(),
+                sender.into(),
+                recipient.clone(),
                 amount.into(),
             ),
             Error::<Test>::WrongAmount
@@ -126,149 +120,201 @@ fn mint_zero_amount_must_fail() {
 }
 
 #[test]
-fn burn_should_emit_bridge_event() {
-    new_tester().execute_with(|| {
-        let asset_id = XOR;
-        let recipient = H160::repeat_byte(2);
+fn mint_fails_without_app() {
+    ExtBuilder::empty().build().execute_with(|| {
+        let asset_id = TON;
+        let token = TON_APP_ADDRESS;
+        let sender = TonAddress::new(0, H256::repeat_byte(2));
+        let recipient: AccountId = Keyring::Charlie.into();
         let bob: AccountId = Keyring::Bob.into();
-        let amount = 20;
-        Tokens::deposit(asset_id, &bob, 500).unwrap();
+        let amount = 10u32;
 
-        assert_ok!(FungibleApp::burn(
-            RuntimeOrigin::signed(bob.clone()),
-            BASE_NETWORK_ID,
-            asset_id,
-            recipient,
-            amount
-        ));
-
-        assert_eq!(
-            RuntimeEvent::FungibleApp(crate::Event::<Test>::Burned {
-                network_id: BASE_NETWORK_ID,
-                asset_id,
-                sender: bob,
-                recipient,
-                amount
-            }),
-            last_event()
-        );
-    });
-}
-
-#[test]
-fn burn_zero_amount_must_fail() {
-    new_tester().execute_with(|| {
-        let asset_id = XOR;
-        let recipient = H160::repeat_byte(2);
-        let bob: AccountId = Keyring::Bob.into();
-        let amount = 0;
         Tokens::deposit(asset_id, &bob, 500).unwrap();
 
         assert_noop!(
-            FungibleApp::burn(
-                RuntimeOrigin::signed(bob),
-                BASE_NETWORK_ID,
-                asset_id,
-                recipient,
-                amount
+            JettonApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID.into(),
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TON_APP_ADDRESS
+                    }),
+                    ..Default::default()
+                })
+                .into(),
+                token.into(),
+                sender.into(),
+                recipient.clone(),
+                amount.into(),
             ),
-            Error::<Test>::WrongAmount
+            Error::<Test>::TokenIsNotRegistered
         );
     });
 }
 
 #[test]
-fn test_register_asset_internal() {
-    new_tester().execute_with(|| {
-        let asset_id = ETH;
-        let who = AppAddresses::<Test>::get(BASE_NETWORK_ID).unwrap();
-        let origin = dispatch::RawOrigin::new(CallOriginOutput {
-            network_id: BASE_NETWORK_ID,
-            additional: AdditionalEVMInboundData { source: who },
-            ..Default::default()
-        });
-        let address = H160::repeat_byte(98);
-        assert!(!TokenAddresses::<Test>::contains_key(
-            BASE_NETWORK_ID,
-            asset_id
-        ));
-        FungibleApp::register_asset_internal(origin.into(), asset_id, address).unwrap();
-        assert_eq!(
-            AssetKinds::<Test>::get(BASE_NETWORK_ID, asset_id),
-            Some(AssetKind::Thischain)
+fn mint_fails_with_wrong_address() {
+    ExtBuilder::with_ton().build().execute_with(|| {
+        let asset_id = TON;
+        let token = TokenAddresses::<Test>::get(asset_id).unwrap();
+        let sender = TonAddress::new(0, H256::repeat_byte(2));
+        let recipient: AccountId = Keyring::Charlie.into();
+        let bob: AccountId = Keyring::Bob.into();
+        let amount = 10u32;
+
+        Tokens::deposit(asset_id, &bob, 500).unwrap();
+
+        assert_noop!(
+            JettonApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID.into(),
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TON_APP_ADDRESS
+                    }),
+                    ..Default::default()
+                })
+                .into(),
+                TonAddressWithPrefix::new(11, token),
+                sender.into(),
+                recipient.clone(),
+                amount.into(),
+            ),
+            Error::<Test>::WrongAccountPrefix
         );
-        assert!(TokenAddresses::<Test>::contains_key(
-            BASE_NETWORK_ID,
-            asset_id
-        ));
-    })
+
+        assert_noop!(
+            JettonApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID.into(),
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TON_APP_ADDRESS
+                    }),
+                    ..Default::default()
+                })
+                .into(),
+                token.into(),
+                TonAddressWithPrefix::new(11, sender),
+                recipient.clone(),
+                amount.into(),
+            ),
+            Error::<Test>::WrongAccountPrefix
+        );
+    });
 }
 
 #[test]
-fn test_register_erc20_asset() {
-    new_tester().execute_with(|| {
-        let address = H160::repeat_byte(98);
-        let network_id = BASE_NETWORK_ID;
-        assert!(!AssetsByAddresses::<Test>::contains_key(
-            network_id, address
-        ));
-        FungibleApp::register_sidechain_asset(
-            RuntimeOrigin::root(),
-            network_id,
-            address,
-            "ETH".to_string().into(),
-            "ETH".to_string().into(),
-            18,
-        )
-        .unwrap();
-        assert!(AssetsByAddresses::<Test>::contains_key(network_id, address));
-    })
+fn mint_fails_with_wrong_asset() {
+    ExtBuilder::with_ton().build().execute_with(|| {
+        let asset_id = TON;
+        let sender = TonAddress::new(0, H256::repeat_byte(2));
+        let recipient: AccountId = Keyring::Charlie.into();
+        let bob: AccountId = Keyring::Bob.into();
+        let amount = 10u32;
+
+        Tokens::deposit(asset_id, &bob, 500).unwrap();
+
+        assert_noop!(
+            JettonApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID.into(),
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TON_APP_ADDRESS
+                    }),
+                    ..Default::default()
+                })
+                .into(),
+                TonAddress::new(0, H256::random()).into(),
+                sender.into(),
+                recipient.clone(),
+                amount.into(),
+            ),
+            Error::<Test>::TokenIsNotRegistered
+        );
+    });
 }
 
 #[test]
-fn test_register_native_asset() {
-    new_tester().execute_with(|| {
-        let asset_id = ETH;
-        let network_id = BASE_NETWORK_ID;
-        assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
-        FungibleApp::register_thischain_asset(RuntimeOrigin::root(), network_id, asset_id).unwrap();
-        assert!(!TokenAddresses::<Test>::contains_key(network_id, asset_id));
-    })
-}
+fn mint_fails_with_bad_origin() {
+    ExtBuilder::with_ton().build().execute_with(|| {
+        let asset_id = TON;
+        let token = TokenAddresses::<Test>::get(asset_id).unwrap();
+        let sender = TonAddress::new(0, H256::repeat_byte(2));
+        let recipient: AccountId = Keyring::Charlie.into();
+        let bob: AccountId = Keyring::Bob.into();
+        let amount = 10u32;
 
-#[test]
-fn test_register_erc20_app() {
-    new_tester().execute_with(|| {
-        let address = H160::repeat_byte(98);
-        let network_id = EVMChainId::from_low_u64_be(2);
-        assert!(!AppAddresses::<Test>::contains_key(network_id,));
-        FungibleApp::register_network_with_existing_asset(
-            RuntimeOrigin::root(),
-            network_id,
-            address,
-            ETH,
-            18,
-        )
-        .unwrap();
-        assert!(AppAddresses::<Test>::contains_key(network_id,));
-    })
+        Tokens::deposit(asset_id, &bob, 500).unwrap();
+
+        assert_noop!(
+            JettonApp::mint(
+                frame_system::RawOrigin::Root.into(),
+                token.into(),
+                sender.into(),
+                recipient.clone(),
+                amount.into(),
+            ),
+            DispatchError::BadOrigin
+        );
+
+        assert_noop!(
+            JettonApp::mint(
+                frame_system::RawOrigin::Signed(Keyring::Alice.into()).into(),
+                token.into(),
+                sender.into(),
+                recipient.clone(),
+                amount.into(),
+            ),
+            DispatchError::BadOrigin
+        );
+
+        assert_noop!(
+            JettonApp::mint(
+                dispatch::RawOrigin::new(CallOriginOutput {
+                    network_id: BASE_NETWORK_ID.into(),
+                    additional: GenericAdditionalInboundData::TON(AdditionalTONInboundData {
+                        source: TonAddress::new(0, H256::repeat_byte(2))
+                    }),
+                    ..Default::default()
+                })
+                .into(),
+                token.into(),
+                sender.into(),
+                recipient.clone(),
+                amount.into(),
+            ),
+            DispatchError::BadOrigin
+        );
+    });
 }
 
 #[test]
 fn test_register_network() {
-    new_tester().execute_with(|| {
-        let address = H160::repeat_byte(98);
-        let network_id = EVMChainId::from_low_u64_be(2);
-        assert!(!AppAddresses::<Test>::contains_key(network_id,));
-        FungibleApp::register_network(
+    ExtBuilder::empty().build().execute_with(|| {
+        assert!(!AppInfo::<Test>::exists());
+        JettonApp::register_network(
             RuntimeOrigin::root(),
-            network_id,
-            address,
-            "ETH".into(),
-            "ETH".into(),
+            BASE_NETWORK_ID,
+            TON_APP_ADDRESS,
+            "TON".into(),
+            "TON".into(),
             18,
         )
         .unwrap();
-        assert!(AppAddresses::<Test>::contains_key(network_id,));
+        assert!(AppInfo::<Test>::exists());
+    })
+}
+
+#[test]
+fn test_register_network_with_existing_asset() {
+    ExtBuilder::empty().build().execute_with(|| {
+        assert!(!AppInfo::<Test>::exists());
+        JettonApp::register_network_with_existing_asset(
+            RuntimeOrigin::root(),
+            BASE_NETWORK_ID,
+            TON_APP_ADDRESS,
+            TON,
+            18,
+        )
+        .unwrap();
+        assert!(AppInfo::<Test>::exists());
     })
 }

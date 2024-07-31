@@ -162,6 +162,12 @@ impl From<SubNetworkId> for GenericNetworkId {
     }
 }
 
+impl From<TonNetworkId> for GenericNetworkId {
+    fn from(id: TonNetworkId) -> Self {
+        GenericNetworkId::TON(id)
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug, scale_info::TypeInfo)]
 pub enum GenericAccount {

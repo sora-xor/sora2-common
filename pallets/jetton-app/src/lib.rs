@@ -352,46 +352,6 @@ pub mod pallet {
         // Common exstrinsics
 
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset())]
-        pub fn register_sidechain_asset(
-            origin: OriginFor<T>,
-            address: TonAddress,
-            symbol: AssetSymbolOf<T>,
-            name: AssetNameOf<T>,
-            decimals: u8,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(
-                !AssetsByAddresses::<T>::contains_key(address),
-                Error::<T>::TokenAlreadyRegistered
-            );
-            let (network_id, _) = AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
-            let asset_id =
-                T::AssetRegistry::register_asset(GenericNetworkId::TON(network_id), name, symbol)?;
-
-            Self::register_asset_inner(asset_id, address, AssetKind::Sidechain, decimals)?;
-            Ok(())
-        }
-
-        #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
-        pub fn register_existing_sidechain_asset(
-            origin: OriginFor<T>,
-            address: TonAddress,
-            asset_id: AssetIdOf<T>,
-            decimals: u8,
-        ) -> DispatchResult {
-            ensure_root(origin)?;
-            ensure!(
-                !AssetsByAddresses::<T>::contains_key(address),
-                Error::<T>::TokenAlreadyRegistered
-            );
-            Self::register_asset_inner(asset_id, address, AssetKind::Sidechain, decimals)?;
-
-            Ok(())
-        }
-
-        #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
         pub fn register_network(
             origin: OriginFor<T>,
@@ -415,7 +375,7 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::call_index(4)]
+        #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
         pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,

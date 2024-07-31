@@ -77,6 +77,30 @@ impl core::fmt::Debug for TonBalance {
     }
 }
 
+impl From<u128> for TonBalance {
+    fn from(value: u128) -> Self {
+        TonBalance::new(value)
+    }
+}
+
+impl From<u64> for TonBalance {
+    fn from(value: u64) -> Self {
+        TonBalance::new(value as u128)
+    }
+}
+
+impl From<u32> for TonBalance {
+    fn from(value: u32) -> Self {
+        TonBalance::new(value as u128)
+    }
+}
+
+impl From<TonBalance> for u128 {
+    fn from(value: TonBalance) -> Self {
+        value.balance()
+    }
+}
+
 #[derive(
     Clone,
     Copy,
@@ -96,10 +120,10 @@ pub struct TonAddress {
 }
 
 impl TonAddress {
-    pub fn new(workchain: i8, address: H256) -> Self {
+    pub const fn new(workchain: i8, address: H256) -> Self {
         Self { workchain, address }
     }
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self::new(0, H256::zero())
     }
 }
@@ -150,6 +174,12 @@ impl TonAddressWithPrefix {
         } else {
             None
         }
+    }
+}
+
+impl From<TonAddress> for TonAddressWithPrefix {
+    fn from(value: TonAddress) -> Self {
+        Self::new(4, value)
     }
 }
 

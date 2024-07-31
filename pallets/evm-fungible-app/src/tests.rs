@@ -35,8 +35,8 @@ use crate::mock::{
 use crate::Error;
 use crate::{AppAddresses, AssetKinds, AssetsByAddresses, TokenAddresses};
 use bridge_types::evm::AdditionalEVMInboundData;
-use bridge_types::types::{AssetKind, CallOriginOutput};
-use bridge_types::{EVMChainId, H160};
+use bridge_types::types::{AssetKind, CallOriginOutput, GenericAdditionalInboundData};
+use bridge_types::{EVMChainId, GenericNetworkId, H160};
 use frame_support::assert_noop;
 use frame_support::assert_ok;
 use sp_keyring::AccountKeyring as Keyring;
@@ -68,10 +68,10 @@ fn mints_after_handling_ethereum_event() {
 
         assert_ok!(FungibleApp::mint(
             dispatch::RawOrigin::new(CallOriginOutput {
-                network_id: BASE_NETWORK_ID,
-                additional: AdditionalEVMInboundData {
+                network_id: GenericNetworkId::EVM(BASE_NETWORK_ID),
+                additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData {
                     source: peer_contract,
-                },
+                }),
                 ..Default::default()
             })
             .into(),
@@ -108,10 +108,10 @@ fn mint_zero_amount_must_fail() {
         assert_noop!(
             FungibleApp::mint(
                 dispatch::RawOrigin::new(CallOriginOutput {
-                    network_id: BASE_NETWORK_ID,
-                    additional: AdditionalEVMInboundData {
+                    network_id: GenericNetworkId::EVM(BASE_NETWORK_ID),
+                    additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData {
                         source: peer_contract,
-                    },
+                    }),
                     ..Default::default()
                 })
                 .into(),
@@ -183,8 +183,8 @@ fn test_register_asset_internal() {
         let asset_id = ETH;
         let who = AppAddresses::<Test>::get(BASE_NETWORK_ID).unwrap();
         let origin = dispatch::RawOrigin::new(CallOriginOutput {
-            network_id: BASE_NETWORK_ID,
-            additional: AdditionalEVMInboundData { source: who },
+            network_id: GenericNetworkId::EVM(BASE_NETWORK_ID),
+            additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData { source: who }),
             ..Default::default()
         });
         let address = H160::repeat_byte(98);

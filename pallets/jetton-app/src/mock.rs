@@ -28,28 +28,24 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-use bridge_types::traits::{AppRegistry, BalancePrecisionConverter, BridgeAssetRegistry};
-use bridge_types::traits::{EVMOutboundChannel, OutboundChannel};
+use bridge_types::ton::{TonAddress, TonBalance, TonNetworkId};
+use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetRegistry};
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::evm::{AdditionalEVMInboundData, AdditionalEVMOutboundData};
-use bridge_types::types::AssetKind;
-use bridge_types::H160;
+use bridge_types::types::{AssetKind, GenericAdditionalInboundData};
+use bridge_types::GenericNetworkId;
 use bridge_types::H256;
-use bridge_types::{EVMChainId, GenericNetworkId, U256};
-use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
 use sp_runtime::{DispatchError, MultiSignature};
 use traits::parameter_type_with_key;
 
-use crate as fungible_app;
+use crate as jetton_app;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -58,8 +54,7 @@ type Balance = u128;
 type Amount = i128;
 
 pub const XOR: AssetId = H256::repeat_byte(1);
-pub const DAI: AssetId = H256::repeat_byte(2);
-pub const ETH: AssetId = H256::repeat_byte(3);
+pub const TON: AssetId = H256::repeat_byte(2);
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -72,7 +67,7 @@ frame_support::construct_runtime!(
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        FungibleApp: fungible_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        JettonApp: jetton_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -80,7 +75,9 @@ pub type Signature = MultiSignature;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
-pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
+pub const BASE_NETWORK_ID: TonNetworkId = TonNetworkId::Testnet;
+pub const TON_APP_ADDRESS: TonAddress = TonAddress::new(0, H256::repeat_byte(1));
+pub const TON_ADDRESS: TonAddress = TonAddress::empty();
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -150,7 +147,7 @@ impl tokens::Config for Test {
 }
 
 parameter_types! {
-    pub const GetBaseAssetId: AssetId = H256::zero();
+    pub const GetBaseAssetId: AssetId = XOR;
 }
 
 impl currencies::Config for Test {
@@ -163,7 +160,7 @@ impl currencies::Config for Test {
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OriginOutput =
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
@@ -183,35 +180,23 @@ parameter_types! {
     pub const ThisNetworkId: bridge_types::GenericNetworkId = bridge_types::GenericNetworkId::Sub(bridge_types::SubNetworkId::Mainnet);
 }
 
-pub struct AppRegistryImpl;
-
-impl AppRegistry<EVMChainId, H160> for AppRegistryImpl {
-    fn register_app(_network_id: EVMChainId, _app: H160) -> DispatchResult {
-        Ok(())
-    }
-
-    fn deregister_app(_network_id: EVMChainId, _app: H160) -> DispatchResult {
-        Ok(())
-    }
-}
-
 pub struct BalancePrecisionConverterImpl;
 
-impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConverterImpl {
+impl BalancePrecisionConverter<AssetId, Balance, TonBalance> for BalancePrecisionConverterImpl {
     fn from_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
-        amount: U256,
-    ) -> Option<(Balance, U256)> {
-        Some((amount.try_into().ok()?, amount))
+        amount: TonBalance,
+    ) -> Option<(Balance, TonBalance)> {
+        Some((amount.balance(), amount))
     }
 
     fn to_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<(Balance, U256)> {
-        Some((amount, amount.into()))
+    ) -> Option<(Balance, TonBalance)> {
+        Some((amount, TonBalance::new(amount)))
     }
 }
 
@@ -255,89 +240,78 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
     }
 }
 
-pub struct OutboundChannelImpl;
-
-impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData> for OutboundChannelImpl {
-    fn submit(
-        _network_id: EVMChainId,
-        _who: &system::RawOrigin<AccountId>,
-        _payload: &[u8],
-        _additional: AdditionalEVMOutboundData,
-    ) -> Result<H256, DispatchError> {
-        Ok(H256::random())
-    }
-
-    fn submit_weight() -> frame_support::weights::Weight {
-        frame_support::weights::Weight::from_all(1)
-    }
-}
-
-impl EVMOutboundChannel for OutboundChannelImpl {
-    fn submit_gas(_chain_id: EVMChainId) -> Result<U256, DispatchError> {
-        Ok(U256::one())
-    }
-}
-
-impl fungible_app::Config for Test {
+impl jetton_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type OutboundChannel = OutboundChannelImpl;
     type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
     >;
     type WeightInfo = ();
     type MessageStatusNotifier = ();
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
-    type AppRegistry = AppRegistryImpl;
     type AssetRegistry = BridgeAssetRegistryImpl;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
-    type BaseFeeLifetime = ConstU64<100>;
-    type PriorityFee = ConstU128<5_000_000_000>;
 }
 
-pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+#[derive(Default)]
+pub struct ExtBuilder {
+    accounts: Vec<(AccountId, Balance, Vec<(AssetId, Balance)>)>,
+    app: Option<(TonNetworkId, TonAddress)>,
+    assets: Vec<(AssetId, TonAddress, AssetKind, u8)>,
+}
+
+impl ExtBuilder {
+    pub fn empty() -> Self {
+        Self::default()
+    }
+
+    pub fn with_ton() -> Self {
+        Self {
+            accounts: vec![(
+                Keyring::Bob.into(),
+                1_000_000_000_000_000_000u128,
+                vec![(TON, 1_000_000_000_000_000_000u128)],
+            )],
+            app: Some((BASE_NETWORK_ID, TON_APP_ADDRESS)),
+            assets: vec![(TON, TON_ADDRESS, AssetKind::Sidechain, 18)],
+        }
+    }
+
+    pub fn build(self) -> sp_io::TestExternalities {
+        let mut storage = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+
+        let mut balances = vec![];
+        let mut tokens = vec![];
+        for (account, balance, token_balances) in self.accounts {
+            balances.push((account.clone(), balance));
+            for (token, balance) in token_balances {
+                tokens.push((account.clone(), token, balance));
+            }
+        }
+        pallet_balances::GenesisConfig::<Test> { balances }
+            .assimilate_storage(&mut storage)
+            .unwrap();
+
+        tokens::GenesisConfig::<Test> { balances: tokens }
+            .assimilate_storage(&mut storage)
+            .unwrap();
+
+        GenesisBuild::<Test>::assimilate_storage(
+            &jetton_app::GenesisConfig {
+                app: self.app,
+                assets: self.assets,
+            },
+            &mut storage,
+        )
         .unwrap();
 
-    let bob: AccountId = Keyring::Bob.into();
-    pallet_balances::GenesisConfig::<Test> {
-        balances: vec![(bob, 1_000_000_000_000_000_000u128)],
+        let mut ext: sp_io::TestExternalities = storage.into();
+        ext.execute_with(|| System::set_block_number(1));
+        ext.register_extension(sp_keystore::KeystoreExt(std::sync::Arc::new(
+            sp_keystore::testing::KeyStore::new(),
+        )));
+        ext
     }
-    .assimilate_storage(&mut storage)
-    .unwrap();
-
-    GenesisBuild::<Test>::assimilate_storage(
-        &fungible_app::GenesisConfig {
-            apps: vec![
-                (BASE_NETWORK_ID, H160::repeat_byte(1)),
-                (BASE_NETWORK_ID, H160::repeat_byte(2)),
-            ],
-            assets: vec![
-                (
-                    BASE_NETWORK_ID,
-                    XOR,
-                    H160::repeat_byte(3),
-                    AssetKind::Thischain,
-                    18,
-                ),
-                (
-                    BASE_NETWORK_ID,
-                    DAI,
-                    H160::repeat_byte(4),
-                    AssetKind::Sidechain,
-                    18,
-                ),
-            ],
-        },
-        &mut storage,
-    )
-    .unwrap();
-
-    let mut ext: sp_io::TestExternalities = storage.into();
-    ext.execute_with(|| System::set_block_number(1));
-    ext.register_extension(sp_keystore::KeystoreExt(std::sync::Arc::new(
-        sp_keystore::testing::KeyStore::new(),
-    )));
-    ext
 }

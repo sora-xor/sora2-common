@@ -36,7 +36,9 @@ use bridge_types::traits::BridgeAssetRegistry;
 use bridge_types::traits::EVMBridgeWithdrawFee;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
+use bridge_types::types::GenericAdditionalInboundData;
 use bridge_types::EVMChainId;
+use bridge_types::GenericNetworkId;
 use bridge_types::H256;
 use currencies::Pallet as Currencies;
 use frame_benchmarking::{account, benchmarks, whitelisted_caller};
@@ -49,7 +51,7 @@ pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::repeat_byte(1);
 
 benchmarks! {
     where_clause {where
-        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>>>,
+        <T as frame_system::Config>::RuntimeOrigin: From<dispatch::RawOrigin<CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>>>,
         AssetNameOf<T>: From<Vec<u8>>,
         AssetSymbolOf<T>: From<Vec<u8>>,
         BalanceOf<T>: From<u128>,
@@ -77,7 +79,7 @@ benchmarks! {
         crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), asset_id.clone(), 18).unwrap();
         let asset_kind = AssetKinds::<T>::get(BASE_NETWORK_ID, &asset_id).unwrap();
         let caller = AppAddresses::<T>::get(BASE_NETWORK_ID).unwrap();
-        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: caller}, ..Default::default()});
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: GenericNetworkId::EVM(BASE_NETWORK_ID), additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData{source: caller}), ..Default::default()});
 
         let recipient: T::AccountId = account("recipient", 0, 0);
         let sender = H160::zero();
@@ -172,7 +174,7 @@ benchmarks! {
         crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), base_asset_id, 18).unwrap();
         let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"DAI".to_vec().into(), b"DAI".to_vec().into())?;
         let who = AppAddresses::<T>::get(BASE_NETWORK_ID).unwrap();
-        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: BASE_NETWORK_ID, additional: AdditionalEVMInboundData{source: who}, ..Default::default()});
+        let origin = dispatch::RawOrigin::new(CallOriginOutput {network_id: GenericNetworkId::EVM(BASE_NETWORK_ID), additional: GenericAdditionalInboundData::EVM(AdditionalEVMInboundData{source: who}), ..Default::default()});
         let address = H160::repeat_byte(98);
         assert!(!TokenAddresses::<T>::contains_key(BASE_NETWORK_ID, &asset_id));
     }: _(origin, asset_id.clone(), address)

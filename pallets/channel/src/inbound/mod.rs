@@ -281,7 +281,7 @@ pub mod pallet {
                         inbound_commitment.nonce,
                     );
                     T::MessageDispatch::dispatch(
-                        network_id.into(),
+                        network_id,
                         message_id,
                         GenericTimepoint::TON(inbound_commitment.transaction_id),
                         &inbound_commitment.payload,

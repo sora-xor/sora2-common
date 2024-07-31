@@ -33,8 +33,8 @@ use bridge_types::traits::{EVMOutboundChannel, OutboundChannel};
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
-use bridge_types::evm::{AdditionalEVMInboundData, AdditionalEVMOutboundData};
-use bridge_types::types::AssetKind;
+use bridge_types::evm::AdditionalEVMOutboundData;
+use bridge_types::types::{AssetKind, GenericAdditionalInboundData};
 use bridge_types::H160;
 use bridge_types::H256;
 use bridge_types::{EVMChainId, GenericNetworkId, U256};
@@ -163,7 +163,7 @@ impl currencies::Config for Test {
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OriginOutput =
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = u64;
     type Hashing = Keccak256;
@@ -282,7 +282,7 @@ impl fungible_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = OutboundChannelImpl;
     type CallOrigin = dispatch::EnsureAccount<
-        bridge_types::types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
+        bridge_types::types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
     >;
     type WeightInfo = ();
     type MessageStatusNotifier = ();
