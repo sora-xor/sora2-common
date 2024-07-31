@@ -352,7 +352,7 @@ pub mod pallet {
         // Common exstrinsics
 
         #[pallet::call_index(1)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_network())]
         pub fn register_network(
             origin: OriginFor<T>,
             network_id: TonNetworkId,
@@ -376,7 +376,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(2)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_existing_sidechain_asset())]
+        #[pallet::weight(<T as Config>::WeightInfo::register_network_with_existing_asset())]
         pub fn register_network_with_existing_asset(
             origin: OriginFor<T>,
             network_id: TonNetworkId,
@@ -491,7 +491,7 @@ pub mod pallet {
         }
 
         fn transfer_weight() -> Weight {
-            <T as Config>::WeightInfo::burn()
+            Default::default()
         }
     }
 }
