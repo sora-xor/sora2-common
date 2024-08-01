@@ -30,8 +30,9 @@
 
 //! Types for representing messages
 
-use crate::evm::{EVMAppInfo, EVMAssetInfo, EVMLegacyAssetInfo};
+use crate::evm::{AdditionalEVMInboundData, EVMAppInfo, EVMAssetInfo, EVMLegacyAssetInfo};
 use crate::substrate::SubAssetInfo;
+use crate::ton::{AdditionalTONInboundData, TonAppInfo, TonAssetInfo};
 use crate::{GenericTimepoint, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
@@ -245,6 +246,7 @@ pub enum BridgeAssetInfo {
     /// Substrate network asset info
     Sub(SubAssetInfo),
     Liberland,
+    Ton(TonAssetInfo),
 }
 
 #[derive(
@@ -264,6 +266,7 @@ pub enum BridgeAppInfo {
     EVM(GenericNetworkId, EVMAppInfo),
     /// There's only one app supported for substrate bridge
     Sub(GenericNetworkId),
+    TON(GenericNetworkId, TonAppInfo),
 }
 
 #[derive(
@@ -343,6 +346,39 @@ pub struct RawAssetInfo {
 pub struct GenericCommitmentWithBlock<BlockNumber, MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     pub block_number: BlockNumber,
     pub commitment: crate::GenericCommitment<MaxMessages, MaxPayload>,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    RuntimeDebug,
+    Encode,
+    Decode,
+    PartialEq,
+    Eq,
+    scale_info::TypeInfo,
+    codec::MaxEncodedLen,
+    Default,
+)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+pub enum GenericAdditionalInboundData {
+    #[default]
+    Sub,
+    EVM(AdditionalEVMInboundData),
+    TON(AdditionalTONInboundData),
+}
+
+impl From<AdditionalEVMInboundData> for GenericAdditionalInboundData {
+    fn from(value: AdditionalEVMInboundData) -> Self {
+        Self::EVM(value)
+    }
+}
+
+impl From<AdditionalTONInboundData> for GenericAdditionalInboundData {
+    fn from(value: AdditionalTONInboundData) -> Self {
+        Self::TON(value)
+    }
 }
 
 pub const TECH_ACCOUNT_PREFIX: &[u8] = b"trustless-evm-bridge";

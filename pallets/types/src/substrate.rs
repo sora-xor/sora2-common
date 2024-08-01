@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #![allow(clippy::large_enum_variant)]
 
+use crate::ton::{TonAddressWithPrefix, TonBalance};
 use crate::{H160, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
@@ -146,6 +147,23 @@ impl SubstrateBridgeMessageEncode for FAAppCall {
     }
 }
 
+/// Message to FAApp pallet
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum JettonAppCall {
+    Transfer {
+        token: TonAddressWithPrefix,
+        sender: TonAddressWithPrefix,
+        recipient: MainnetAccountId,
+        amount: TonBalance,
+    },
+}
+
+impl SubstrateBridgeMessageEncode for JettonAppCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::JettonApp(self).encode()
+    }
+}
+
 /// Message to XCMApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum XCMAppCall {
@@ -208,6 +226,7 @@ pub enum BridgeCall {
     MultisigVerifier(MultisigVerifierCall),
     SubstrateApp(SubstrateAppCall),
     FAApp(FAAppCall),
+    JettonApp(JettonAppCall),
 }
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
@@ -272,5 +291,18 @@ pub struct Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPayload> {
     pub fn hash(&self) -> H256 {
         sp_runtime::traits::Keccak256::hash_of(self)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BridgeCall;
+    use codec::Decode;
+
+    #[test]
+    fn test_jetton_call_decode() {
+        let encoded =hex_literal::hex!("06000000000000000000000000000000000000000000000000000000000000000000000004004F0012472F2F564E18692F950888322B5075B3CFA32386AF7A84F3F84EE32418000000000000000000000000000000000000000000000000000000000000000E0000000000000000000000003B9ACA00");
+        let call = <BridgeCall as Decode>::decode(&mut &encoded[..]).unwrap();
+        println!("Call: {call:?}");
     }
 }

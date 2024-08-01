@@ -35,8 +35,8 @@
 use super::*;
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::traits::MessageDispatch;
+use bridge_types::types::GenericAdditionalInboundData;
 use bridge_types::types::MessageId;
-use bridge_types::EVMChainId;
 use bridge_types::GenericNetworkId;
 use bridge_types::SubNetworkId;
 use frame_benchmarking::benchmarks_instance_pallet;
@@ -58,8 +58,8 @@ benchmarks_instance_pallet! {
         where
             <T as crate::Config<I>>::OriginOutput:
                 bridge_types::traits::BridgeOriginOutput<
-                    NetworkId = EVMChainId,
-                    Additional = AdditionalEVMInboundData
+                    NetworkId = GenericNetworkId,
+                    Additional = GenericAdditionalInboundData
                 >,
             T: crate::Config<I, MessageId = MessageId>,
             crate::Event::<T, I>: Into<<T as frame_system::Config>::RuntimeEvent>
@@ -68,14 +68,14 @@ benchmarks_instance_pallet! {
         let message_id = MessageId::basic(GenericNetworkId::EVM([1u8; 32].into()), GenericNetworkId::Sub(SubNetworkId::Mainnet), 1);
     }: {
         crate::Pallet::<T, I>::dispatch(
-            [1u8; 32].into(),
+            H256::repeat_byte(1).into(),
             message_id,
             Default::default(),
             // system.remark()
             &[0, 0, 0],
             AdditionalEVMInboundData {
                 source: Default::default()
-            }
+            }.into()
         )
     }
     verify {
@@ -86,13 +86,13 @@ benchmarks_instance_pallet! {
         let message_id = MessageId::basic(GenericNetworkId::EVM([1u8; 32].into()), GenericNetworkId::Sub(SubNetworkId::Mainnet), 1);
     }: {
         crate::Pallet::<T, I>::dispatch(
-            [1u8; 32].into(),
+            H256::repeat_byte(1).into(),
             message_id,
             Default::default(),
             &[],
             AdditionalEVMInboundData {
                 source: Default::default()
-            }
+            }.into()
         )
     }
     verify {

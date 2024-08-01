@@ -1,7 +1,7 @@
 use super::*;
-use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::types;
-use bridge_types::EVMChainId;
+use bridge_types::types::GenericAdditionalInboundData;
+use bridge_types::GenericNetworkId;
 use frame_support::parameter_types;
 use frame_support::traits::{ConstU32, Everything};
 use sp_core::H256;
@@ -64,7 +64,8 @@ impl Contains<RuntimeCall> for CallFilter {
 
 impl dispatch::Config for Test {
     type RuntimeEvent = RuntimeEvent;
-    type OriginOutput = types::CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>;
+    type OriginOutput =
+        types::CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>;
     type Origin = RuntimeOrigin;
     type MessageId = types::MessageId;
     type Hashing = Keccak256;

@@ -55,8 +55,8 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "bridge-types/runtime-benchmarks",
-    "pallet-assets/std",
-    "pallet-balances/std",
+    "pallet-assets/runtime-benchmarks",
+    "pallet-balances/runtime-benchmarks",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

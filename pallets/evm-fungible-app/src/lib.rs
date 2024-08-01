@@ -129,7 +129,8 @@ pub mod pallet {
     };
     use bridge_types::traits::{BridgeAssetLocker, EVMOutboundChannel};
     use bridge_types::types::{
-        AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, MessageStatus,
+        AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, GenericAdditionalInboundData,
+        MessageStatus,
     };
     use bridge_types::MainnetAssetId;
     use bridge_types::{EVMChainId, GenericAccount, GenericNetworkId, H256};
@@ -167,7 +168,7 @@ pub mod pallet {
 
         type CallOrigin: EnsureOrigin<
             Self::RuntimeOrigin,
-            Success = CallOriginOutput<EVMChainId, H256, AdditionalEVMInboundData>,
+            Success = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
         >;
 
         type MessageStatusNotifier: MessageStatusNotifier<
@@ -359,11 +360,13 @@ pub mod pallet {
             amount: U256,
         ) -> DispatchResult {
             let CallOriginOutput {
-                network_id,
+                network_id: GenericNetworkId::EVM(network_id),
+                additional: GenericAdditionalInboundData::EVM(additional),
                 message_id,
                 timepoint,
-                additional,
-            } = T::CallOrigin::ensure_origin(origin.clone())?;
+            } = T::CallOrigin::ensure_origin(origin)? else {
+                frame_support::fail!(DispatchError::BadOrigin);
+            };
             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
                 // should never return this error, because called from Ethereum
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -421,10 +424,12 @@ pub mod pallet {
             contract: H160,
         ) -> DispatchResult {
             let CallOriginOutput {
-                network_id,
-                additional,
+                network_id: GenericNetworkId::EVM(network_id),
+                additional: GenericAdditionalInboundData::EVM(additional),
                 ..
-            } = T::CallOrigin::ensure_origin(origin)?;
+            } = T::CallOrigin::ensure_origin(origin)? else {
+                frame_support::fail!(DispatchError::BadOrigin);
+            };
 
             let app_address =
                 AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;

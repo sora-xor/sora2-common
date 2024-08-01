@@ -1,6 +1,6 @@
 [package]
 name = "dispatch"
-description = "Snowbridge Dispatch Pallet"
+description = "Dispatch Pallet"
 version = "0.1.1"
 edition = "2021"
 authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
