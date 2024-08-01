@@ -28,26 +28,26 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//! # EVM Fungible App
+//! # Jetton App
 //!
-//! An application that implements bridged fungible (ERC-20 and native) assets.
+//! An application that implements bridged fungible (Jettons and native) TON assets.
 //!
 //! ## Overview
 //!
-//! ETH balances are stored in the tightly-coupled [`asset`] runtime module. When an account holder
-//! burns some of their balance, a `Transfer` event is emitted. An external relayer will listen for
-//! this event and relay it to the other chain.
+//! Provides logic for interaction with fungible TON assets
+//! Sends and receives messages using bridge channels
 //!
 //! ## Interface
 //!
+//! ### Dispatchable Bridge Calls (incoming messages from TON)
+//!
+//! - `mint`: Mints given asset to user account
+//!
 //! ### Dispatchable Calls
 //!
-//! - `burn`: Burn an ERC20 token balance.
+//! - `register_network`: Register TON network with new asset connected to native TON asset
+//! - `register_network_with_existing_asset`: Register TON network with existing asset connected to native TON asset
 #![cfg_attr(not(feature = "std"), no_std)]
-
-pub const TRANSFER_MAX_GAS: u64 = 100_000;
-
-extern crate alloc;
 
 pub mod weights;
 
@@ -279,9 +279,25 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        // Internal calls to be used from Ethereum side.
+        // Internal calls to be used from TON side.
         // DON'T CHANGE ORDER
 
+        /// Mint bridged tokens to user account
+        ///
+        /// Arguments:
+        /// - `origin`: Bridge origin with information about network, source contract and etc.
+        /// - `token`: Jetton master contract address, or 0:00..00 with prefix 0 for native TON asset
+        /// - `sender`: Sender address on TON side
+        /// - `recipient`: User account to mint tokens
+        /// - `amount`: Amount of tokens to mint with TON network encoding and precision, so real amount could be different
+        ///
+        /// Fails if:
+        /// - Origin network is not registered
+        /// - Source contract (Jetton app) is not registered
+        /// - Token is not registered
+        /// - Sender or token address is wrong (for now we support only standart internal TON addresses)
+        /// - Amount precision could not be adjusted to thischain
+        /// - Failed to mint tokens for some reason
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -302,7 +318,7 @@ pub mod pallet {
             let sender = sender.address().ok_or(Error::<T>::WrongAccountPrefix)?;
             let token = token.address().ok_or(Error::<T>::WrongAccountPrefix)?;
             let asset_id = AssetsByAddresses::<T>::get(token)
-                // should never return this error, because called from Ethereum
+                // should never return this error, because called from trusted contract on TON
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
             let asset_kind =
                 AssetKinds::<T>::get(&asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
@@ -351,6 +367,20 @@ pub mod pallet {
 
         // Common exstrinsics
 
+        /// Register network with the new asset for native TON
+        ///
+        /// Arguments:
+        /// - `origin`: Only root can call this extrinsic
+        /// - `network_id`: TON network id
+        /// - `contract`: Jetton App contract address
+        /// - `symbol`: Asset symbol
+        /// - `name`: Asset name
+        /// - `decimals`: Sidechain precision of native TON
+        ///
+        /// Fails if:
+        /// - Origin is not root
+        /// - Network already registered
+        /// - Can't register asset
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::register_network())]
         pub fn register_network(
@@ -375,6 +405,18 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Register network with the new asset for native TON
+        ///
+        /// Arguments:
+        /// - `origin`: Only root can call this extrinsic
+        /// - `network_id`: TON network id
+        /// - `contract`: Jetton App contract address
+        /// - `asset_id`: Existing TON asset id
+        /// - `decimals`: Sidechain precision of native TON
+        ///
+        /// Fails if:
+        /// - Origin is not root
+        /// - Network already registered
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::register_network_with_existing_asset())]
         pub fn register_network_with_existing_asset(
