@@ -136,7 +136,8 @@ pub mod pallet {
             proof: &<T::Verifier as Verifier>::Proof,
         ) -> Weight {
             let commitment_weight = match commitment {
-                bridge_types::GenericCommitment::EVM(_) => {
+                bridge_types::GenericCommitment::EVM(_)
+                | bridge_types::GenericCommitment::TON(_) => {
                     <T as frame_system::Config>::BlockWeights::get().max_block
                 }
                 bridge_types::GenericCommitment::Sub(commitment) => commitment

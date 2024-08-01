@@ -59,6 +59,7 @@ std = [
   "codec/std",
   "scale-info/std",
   "ethabi/std",
+  "ethash/std",
   "ethbloom/std",
   "ethereum-types/std",
   "hex/std",
@@ -70,6 +71,8 @@ std = [
   "sp-runtime/std",
   "sp-std/std",
   "sp-beefy/std",
+  "frame-support/std",
+  "frame-system/std",
   "xcm/std",
 ]
 

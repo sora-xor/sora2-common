@@ -157,11 +157,8 @@ impl Verifier for MockVerifier {
 
     fn verify(network_id: GenericNetworkId, _hash: H256, _proof: &Vec<u8>) -> DispatchResult {
         let network_id = match network_id {
-            bridge_types::GenericNetworkId::EVM(_)
-            | bridge_types::GenericNetworkId::EVMLegacy(_) => {
-                return Err(Error::<Test>::InvalidNetwork.into())
-            }
             bridge_types::GenericNetworkId::Sub(ni) => ni,
+            _ => return Err(Error::<Test>::InvalidNetwork.into()),
         };
         if network_id == BASE_NETWORK_ID {
             Ok(())

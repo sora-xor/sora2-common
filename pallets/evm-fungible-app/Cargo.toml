@@ -1,7 +1,8 @@
 [package]
 name = "evm-fungible-app"
+description = "EVM Fungible App"
 version = "0.1.1"
-authors = ["Snowfork <contact@snowfork.com>"]
+authors = ['Polka Biome Ltd. <jihoon@tutanota.de>']
 edition = "2021"
 
 [package.metadata.docs.rs]

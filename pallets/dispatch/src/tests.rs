@@ -24,11 +24,11 @@ fn test_dispatch_bridge_message() {
 
         System::set_block_number(1);
         Dispatch::dispatch(
-            H256::from_low_u64_be(2),
+            H256::from_low_u64_be(2).into(),
             id,
             Default::default(),
             &message,
-            AdditionalEVMInboundData { source },
+            AdditionalEVMInboundData { source }.into(),
         );
 
         assert_eq!(
@@ -60,11 +60,11 @@ fn test_message_decode_failed() {
 
         System::set_block_number(1);
         Dispatch::dispatch(
-            H256::from_low_u64_be(2),
+            H256::from_low_u64_be(2).into(),
             id,
             Default::default(),
             &message,
-            AdditionalEVMInboundData { source },
+            AdditionalEVMInboundData { source }.into(),
         );
 
         assert_eq!(
@@ -95,11 +95,11 @@ fn test_message_rejected() {
 
         System::set_block_number(1);
         Dispatch::dispatch(
-            H256::from_low_u64_be(2),
+            H256::from_low_u64_be(2).into(),
             id,
             Default::default(),
             &message,
-            AdditionalEVMInboundData { source },
+            AdditionalEVMInboundData { source }.into(),
         );
 
         assert_eq!(

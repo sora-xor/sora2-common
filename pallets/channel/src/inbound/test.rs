@@ -29,8 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use super::*;
-use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::substrate::BridgeMessage;
+use bridge_types::types::GenericAdditionalInboundData;
 use codec::{Decode, Encode, MaxEncodedLen};
 
 use frame_support::traits::{Everything, UnfilteredDispatchable};
@@ -159,6 +159,7 @@ impl Verifier for MockVerifier {
     fn verify(network_id: GenericNetworkId, _hash: H256, _proof: &Vec<u8>) -> DispatchResult {
         let network_id = match network_id {
             bridge_types::GenericNetworkId::EVM(_)
+            | bridge_types::GenericNetworkId::TON(_)
             | bridge_types::GenericNetworkId::EVMLegacy(_) => {
                 return Err(Error::<Test>::InvalidNetwork.into())
             }
@@ -184,30 +185,15 @@ impl Verifier for MockVerifier {
 // Mock Dispatch
 pub struct MockMessageDispatch;
 
-impl MessageDispatch<Test, SubNetworkId, MessageId, ()> for MockMessageDispatch {
-    fn dispatch(_: SubNetworkId, _: MessageId, _: GenericTimepoint, _: &[u8], _: ()) {}
-
-    fn dispatch_weight(_: &[u8]) -> frame_support::weights::Weight {
-        Default::default()
-    }
-
-    #[cfg(feature = "runtime-benchmarks")]
-    fn successful_dispatch_event(
-        _: MessageId,
-    ) -> Option<<Test as frame_system::Config>::RuntimeEvent> {
-        None
-    }
-}
-
-impl MessageDispatch<Test, EVMChainId, MessageId, AdditionalEVMInboundData>
+impl MessageDispatch<Test, GenericNetworkId, MessageId, GenericAdditionalInboundData>
     for MockMessageDispatch
 {
     fn dispatch(
-        _: EVMChainId,
+        _: GenericNetworkId,
         _: MessageId,
         _: GenericTimepoint,
         _: &[u8],
-        _: AdditionalEVMInboundData,
+        _: GenericAdditionalInboundData,
     ) {
     }
 
@@ -265,8 +251,7 @@ impl bridge_inbound_channel::Config for Test {
     type OutboundChannel = OutboundChannelImpl;
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
-    type EVMMessageDispatch = MockMessageDispatch;
-    type SubstrateMessageDispatch = MockMessageDispatch;
+    type MessageDispatch = MockMessageDispatch;
     type UnsignedLongevity = ConstU64<100>;
     type UnsignedPriority = ConstU64<100>;
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
