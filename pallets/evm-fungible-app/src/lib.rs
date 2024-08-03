@@ -575,8 +575,8 @@ pub mod pallet {
 
             let message = abi::createNewTokenCall {
                 sidechainAssetId: EvmConverter::convert(T::AssetIdConverter::convert(asset_id)),
-                name: alloc::string::String::from_utf8_lossy(&asset_info.name).to_string(),
-                symbol: alloc::string::String::from_utf8_lossy(&asset_info.symbol).to_string(),
+                name: alloc::string::String::from_utf8_lossy(&asset_info.name).into_owned(),
+                symbol: alloc::string::String::from_utf8_lossy(&asset_info.symbol).into_owned(),
             }
             .abi_encode();
 
