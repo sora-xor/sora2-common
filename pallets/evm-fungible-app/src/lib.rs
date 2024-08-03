@@ -49,7 +49,6 @@ pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
 extern crate alloc;
 
-mod payload;
 pub mod weights;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -58,9 +57,11 @@ pub mod benchmarking;
 #[cfg(test)]
 mod mock;
 
+pub mod abi;
 #[cfg(test)]
 mod tests;
 
+use alloy_core::sol_types::SolCall;
 use bridge_types::substrate::FAAppCall;
 use bridge_types::traits::EVMFeeHandler;
 use bridge_types::traits::EVMOutboundChannel;
@@ -117,11 +118,9 @@ pub struct BaseFeeInfo<BlockNumber> {
 #[frame_support::pallet]
 pub mod pallet {
 
-    use crate::payload::*;
-
     use super::*;
 
-    use bridge_types::evm::*;
+    use bridge_types::evm::{EvmConverter, *};
     use bridge_types::traits::{
         AppRegistry, BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry,
         MessageStatusNotifier, OutboundChannel,
@@ -182,6 +181,8 @@ pub mod pallet {
         type AppRegistry: AppRegistry<EVMChainId, H160>;
 
         type AssetIdConverter: Convert<AssetIdOf<Self>, MainnetAssetId>;
+
+        type AccountIdConverter: Convert<Self::AccountId, MainnetAccountId>;
 
         type BalancePrecisionConverter: BalancePrecisionConverter<
             AssetIdOf<Self>,
@@ -495,15 +496,16 @@ pub mod pallet {
                 decimals,
             )?;
 
-            let message = AddTokenToWhitelistPayload {
-                address,
-                asset_kind: payload::EthAbiAssetKind::Evm,
-            };
+            let message = abi::addTokenToWhitelistCall {
+                token: bridge_types::evm::EvmConverter::convert(address),
+                assetType: abi::AssetType::Evm,
+            }
+            .abi_encode();
 
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                &message,
                 AdditionalEVMOutboundData {
                     target,
                     max_gas: 100000u64.into(),
@@ -537,15 +539,16 @@ pub mod pallet {
                 decimals,
             )?;
 
-            let message = AddTokenToWhitelistPayload {
-                address,
-                asset_kind: payload::EthAbiAssetKind::Evm,
-            };
+            let message = abi::addTokenToWhitelistCall {
+                token: bridge_types::evm::EvmConverter::convert(address),
+                assetType: abi::AssetType::Evm,
+            }
+            .abi_encode();
 
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                &message,
                 AdditionalEVMOutboundData {
                     target,
                     max_gas: 100000u64.into(),
@@ -570,16 +573,17 @@ pub mod pallet {
                 AppAddresses::<T>::get(network_id).ok_or(Error::<T>::AppIsNotRegistered)?;
             let asset_info = T::AssetRegistry::get_raw_info(asset_id.clone());
 
-            let message = RegisterNativeAssetPayload {
-                asset_id: T::AssetIdConverter::convert(asset_id),
-                name: asset_info.name,
-                symbol: asset_info.symbol,
-            };
+            let message = abi::createNewTokenCall {
+                sidechainAssetId: EvmConverter::convert(T::AssetIdConverter::convert(asset_id)),
+                name: String::from_utf8_lossy(&asset_info.name).to_string(),
+                symbol: String::from_utf8_lossy(&asset_info.symbol).to_string(),
+            }
+            .abi_encode();
 
             T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Root,
-                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                &message,
                 AdditionalEVMOutboundData {
                     target,
                     max_gas: 2000000u64.into(),
@@ -777,17 +781,18 @@ pub mod pallet {
             let token_address = TokenAddresses::<T>::get(network_id, &asset_id)
                 .ok_or(Error::<T>::TokenIsNotRegistered)?;
 
-            let message = MintPayload {
-                token: token_address,
-                sender: who.clone(),
-                recipient,
-                amount: sidechain_amount,
-            };
+            let message = abi::unlockCall {
+                token: EvmConverter::convert(token_address),
+                sender: EvmConverter::convert(T::AccountIdConverter::convert(who.clone())),
+                recipient: EvmConverter::convert(recipient),
+                amount: EvmConverter::convert(sidechain_amount),
+            }
+            .abi_encode();
 
             let message_id = T::OutboundChannel::submit(
                 network_id,
                 &RawOrigin::Signed(who.clone()),
-                &message.encode().map_err(|_| Error::<T>::CallEncodeFailed)?,
+                &message,
                 AdditionalEVMOutboundData {
                     target,
                     max_gas: TRANSFER_MAX_GAS.into(),

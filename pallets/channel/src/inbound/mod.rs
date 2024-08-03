@@ -30,6 +30,7 @@
 
 //! Channel for passing messages from ethereum to substrate.
 
+use alloy_core::sol_types::SolCall;
 use bridge_types::evm::AdditionalEVMOutboundData;
 use bridge_types::traits::{
     AppRegistry, EVMFeeHandler, MessageDispatch, MessageStatusNotifier, OutboundChannel, Verifier,
@@ -45,6 +46,7 @@ use frame_system::RawOrigin;
 mod benchmarking;
 
 pub mod weights;
+use sp_runtime::traits::Convert;
 pub use weights::WeightInfo;
 
 pub const EVM_GAS_OVERHEAD: u64 = 20000;
@@ -572,15 +574,15 @@ impl<T: Config> AppRegistry<EVMChainId, H160> for Pallet<T> {
     fn register_app(network_id: EVMChainId, app: H160) -> DispatchResult {
         let target = EVMChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
 
-        let message = bridge_types::channel_abi::RegisterAppPayload { app };
+        let message = bridge_types::channel_abi::registerAppCall {
+            newApp: bridge_types::evm::EvmConverter::convert(app),
+        }
+        .abi_encode();
 
         T::OutboundChannel::submit(
             network_id,
             &RawOrigin::Root,
-            message
-                .encode()
-                .map_err(|_| Error::<T>::CallEncodeFailed)?
-                .as_ref(),
+            &message,
             AdditionalEVMOutboundData {
                 target,
                 max_gas: 100000u64.into(),
@@ -592,15 +594,15 @@ impl<T: Config> AppRegistry<EVMChainId, H160> for Pallet<T> {
     fn deregister_app(network_id: EVMChainId, app: H160) -> DispatchResult {
         let target = EVMChannelAddresses::<T>::get(network_id).ok_or(Error::<T>::InvalidNetwork)?;
 
-        let message = bridge_types::channel_abi::RemoveAppPayload { app };
+        let message = bridge_types::channel_abi::removeAppCall {
+            app: bridge_types::evm::EvmConverter::convert(app),
+        }
+        .abi_encode();
 
         T::OutboundChannel::submit(
             network_id,
             &RawOrigin::Root,
-            message
-                .encode()
-                .map_err(|_| Error::<T>::CallEncodeFailed)?
-                .as_ref(),
+            &message,
             AdditionalEVMOutboundData {
                 target,
                 max_gas: 100000u64.into(),

@@ -15,7 +15,6 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
-rlp = { version = "0.5.2", default-features = false }
 hex-literal = { version = "0.4.1", default-features = false }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
@@ -30,9 +29,11 @@ traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies", default-features = false, optional = true }
 dispatch = { path = "../dispatch", default-features = false, optional = true }
 
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
-
 bridge-types = { path = "../types", default-features = false }
+
+alloy-core = { version = "0.7.7", default-features = false, features = [
+    "sol-types",
+] }
 
 [dev-dependencies]
 dispatch = { path = "../dispatch" }
@@ -60,11 +61,10 @@ std = [
     "sp-runtime/std",
     "bridge-types/std",
     "frame-benchmarking/std",
-    "ethabi/std",
     "traits/std",
     "currencies/std",
     "dispatch/std",
-    "rlp/std",
+    "alloy-core/std",
 ]
 runtime-benchmarks = [
     "frame-benchmarking",

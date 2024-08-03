@@ -290,6 +290,7 @@ impl fungible_app::Config for Test {
     type AppRegistry = AppRegistryImpl;
     type AssetRegistry = BridgeAssetRegistryImpl;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type AccountIdConverter = sp_runtime::traits::Identity;
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
     type BaseFeeLifetime = ConstU64<100>;
     type PriorityFee = ConstU128<5_000_000_000>;

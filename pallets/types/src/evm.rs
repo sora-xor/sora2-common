@@ -1,11 +1,13 @@
 use crate::MainnetAssetId;
 use crate::{H160, H256, U256};
+use alloy_core::sol_types::SolValue;
 use codec::{Decode, Encode};
 use derivative::Derivative;
-use ethabi::Token;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{Get, RuntimeDebug};
+use sp_runtime::traits::Convert;
+use sp_runtime::AccountId32;
 use sp_runtime::{traits::Hash, BoundedVec};
 use sp_std::prelude::*;
 
@@ -137,26 +139,6 @@ pub struct EVMLegacyAssetInfo {
     pub precision: Option<u8>,
 }
 
-/// Wire-format for committed messages
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[scale_info(skip_type_params(MaxPayload))]
-#[cfg_attr(feature = "std", serde(bound = ""))]
-pub struct Message<MaxPayload: Get<u32>> {
-    /// Target application on the Ethereum side.
-    pub target: H160,
-    /// Maximum gas this message can use on the Ethereum.
-    pub max_gas: U256,
-    /// Payload for target application.
-    pub payload: BoundedVec<u8, MaxPayload>,
-}
-
 #[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 #[derivative(
@@ -198,6 +180,26 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
     }
 }
 
+/// Wire-format for committed messages
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct Message<MaxPayload: Get<u32>> {
+    /// Target application on the Ethereum side.
+    pub target: H160,
+    /// Maximum gas this message can use on the Ethereum.
+    pub max_gas: U256,
+    /// Payload for target application.
+    pub payload: BoundedVec<u8, MaxPayload>,
+}
+
 /// Wire-format for commitment
 #[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
@@ -219,28 +221,54 @@ pub struct OutboundCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     pub messages: BoundedVec<Message<MaxPayload>, MaxMessages>,
 }
 
+pub use alloy_core::primitives::Address as EvmAddress;
+pub use alloy_core::primitives::B256 as EvmB256;
+pub use alloy_core::primitives::U256 as EvmU256;
+
+pub struct EvmConverter;
+
+impl Convert<U256, EvmU256> for EvmConverter {
+    fn convert(a: U256) -> EvmU256 {
+        let mut bytes = [0u8; 32];
+        a.to_little_endian(&mut bytes);
+        EvmU256::from_le_bytes(bytes)
+    }
+}
+
+impl Convert<H160, EvmAddress> for EvmConverter {
+    fn convert(a: H160) -> EvmAddress {
+        a.0.into()
+    }
+}
+
+impl Convert<H256, EvmB256> for EvmConverter {
+    fn convert(a: H256) -> EvmB256 {
+        a.0.into()
+    }
+}
+
+impl Convert<AccountId32, EvmB256> for EvmConverter {
+    fn convert(a: AccountId32) -> EvmB256 {
+        EvmB256::new(*a.as_ref())
+    }
+}
+
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> OutboundCommitment<MaxMessages, MaxPayload> {
     pub fn hash(&self) -> H256 {
-        // Batch(uint256,(address,uint64,uint256,uint256,bytes)[])
-        let messages: Vec<Token> = self
-            .messages
-            .iter()
-            .map(|message| {
-                Token::Tuple(vec![
-                    Token::Address(message.target),
-                    Token::Uint(message.max_gas),
-                    Token::Bytes(message.payload.clone().into()),
-                ])
-            })
-            .collect();
-        let commitment: Vec<Token> = vec![
-            Token::Uint(self.nonce.into()),
-            Token::Uint(self.total_max_gas),
-            Token::Array(messages),
-        ];
-        // Structs are represented as tuples in ABI
-        // https://docs.soliditylang.org/en/v0.8.15/abi-spec.html#mapping-solidity-to-abi-types
-        let input = ethabi::encode(&[Token::Tuple(commitment)]);
+        let batch = crate::channel_abi::Batch {
+            nonce: EvmU256::from(self.nonce),
+            total_max_gas: EvmConverter::convert(self.total_max_gas),
+            messages: self
+                .messages
+                .iter()
+                .map(|m| crate::channel_abi::Message {
+                    target: m.target.0.into(),
+                    max_gas: EvmConverter::convert(m.max_gas),
+                    payload: m.payload.to_vec().into(),
+                })
+                .collect(),
+        };
+        let input = batch.abi_encode();
         sp_runtime::traits::Keccak256::hash(&input)
     }
 }

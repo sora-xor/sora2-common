@@ -28,7 +28,6 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
 once_cell = { version = "1.5.2", default-features = false, features = [
     'alloc',
     'unstable',
@@ -40,7 +39,6 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies" }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
-rlp = { version = "0.5" }
 
 [features]
 default = ["std"]
@@ -55,7 +53,6 @@ std = [
     "sp-std/std",
     "sp-io/std",
     "bridge-types/std",
-    "ethabi/std",
 ]
 runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
@@ -64,7 +61,6 @@ runtime-benchmarks = [
     "frame-system/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "hex-literal",
-    "rlp",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

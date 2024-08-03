@@ -28,65 +28,49 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![allow(deprecated)]
-
-use crate::H160;
-use ethabi::{Function, Param, ParamType, StateMutability, Token};
-use frame_support::RuntimeDebug;
-use sp_std::prelude::*;
-
-fn register_app_function() -> Function {
-    Function {
-        name: "registerApp".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "newApp".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
+alloy_core::sol! {
+    struct Message {
+        address target;
+        uint256 max_gas;
+        bytes payload;
     }
-}
-
-fn remove_app_function() -> Function {
-    Function {
-        name: "removeApp".into(),
-        constant: None,
-        state_mutability: StateMutability::NonPayable,
-        outputs: vec![],
-        inputs: vec![Param {
-            name: "app".into(),
-            kind: ParamType::Address,
-            internal_type: None,
-        }],
+    struct Batch {
+        uint256 nonce;
+        // Must be equal to sum of `max_gas` in `messages`
+        uint256 total_max_gas;
+        Message[] messages;
     }
-}
 
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RemoveAppPayload {
-    pub app: H160,
-}
+    /* Events */
+    event MessageDispatched(address source, uint256 nonce, bytes payload);
 
-impl RemoveAppPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
-        remove_app_function().encode_input(tokens.as_ref())
-    }
-}
+    // Batch of messages was dispatched by relayer
+    // - result - message results bitmap
+    // - results_length - number of messages were dispatched
+    // - gas_spent - gas spent for batch submission. Since event emitted before tx committed, actual gas is greater
+    // (at least 10500 gas should be added).
+    // - base fee - current block base fee.
+    event BatchDispatched(
+        uint256 batch_nonce,
+        address relayer,
+        uint256 results,
+        uint256 results_length,
+        uint256 gas_spent,
+        uint256 base_fee
+    );
 
-// Message to Ethereum (ABI-encoded)
-#[derive(Copy, Clone, PartialEq, Eq, RuntimeDebug)]
-pub struct RegisterAppPayload {
-    pub app: H160,
-}
 
-impl RegisterAppPayload {
-    /// ABI-encode this payload
-    pub fn encode(&self) -> Result<Vec<u8>, ethabi::Error> {
-        let tokens = &[Token::Address(self.app)];
-        register_app_function().encode_input(tokens.as_ref())
-    }
+    event ChangePeers(address peerId, bool removal);
+
+    function submit(
+        Batch calldata batch,
+        uint8[] calldata v,
+        bytes32[] calldata r,
+        bytes32[] calldata s
+    ) external;
+    function submitMessage(bytes calldata payload) external;
+    function removePeerByPeer(address peerAddress) external returns (bool);
+    function addPeerByPeer(address peerAddress) external returns (bool);
+    function registerApp(address newApp) external returns (bool);
+    function removeApp(address app) external returns (bool);
 }

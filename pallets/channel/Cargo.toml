@@ -16,7 +16,6 @@ codec = { version = "3", package = "parity-scale-codec", default-features = fals
 ] }
 scale-info = { version = "2", default-features = false, features = ["derive"] }
 hex-literal = { version = "0.4.1", optional = true }
-rlp = { version = "0.5", default-features = false, optional = true }
 
 frame-benchmarking = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false, optional = true }
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -28,10 +27,9 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 pallet-timestamp = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
-once_cell = { version = "1.5.2", default-features = false, features = [
-    'alloc',
-    'unstable',
+
+alloy-core = { version = "0.7.7", default-features = false, features = [
+    "sol-types",
 ] }
 
 [dev-dependencies]
@@ -40,7 +38,6 @@ tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-traits" }
 currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v0.9.38", package = "orml-currencies" }
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
-rlp = { version = "0.5" }
 
 [features]
 default = ["std"]
@@ -55,7 +52,7 @@ std = [
     "sp-std/std",
     "sp-io/std",
     "bridge-types/std",
-    "ethabi/std",
+    "alloy-core/std",
 ]
 runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",
@@ -63,7 +60,6 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "hex-literal",
-    "rlp",
 ]
 
 try-runtime = ["frame-support/try-runtime"]

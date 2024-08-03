@@ -30,7 +30,6 @@ sp-mmr-primitives = { git = "https://github.com/paritytech/substrate.git", branc
 sp-beefy = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 
 bridge-types = { path = "../types", default-features = false }
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", package = "ethabi", default-features = false }
 
 [dev-dependencies]
 sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
