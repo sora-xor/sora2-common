@@ -44,9 +44,9 @@ use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
 use frame_system::RawOrigin;
+use log::error;
 use sp_core::H256;
 use sp_runtime::DispatchError;
-use log::error;
 
 use bridge_types::types::MessageNonce;
 
@@ -76,9 +76,9 @@ pub mod pallet {
     use bridge_types::GenericNetworkId;
     use bridge_types::GenericTimepoint;
     use frame_support::traits::StorageVersion;
+    use log::debug;
     use sp_core::U256;
     use sp_runtime::traits::Zero;
-    use log::debug;
 
     #[pallet::config]
     pub trait Config: frame_system::Config + pallet_timestamp::Config {

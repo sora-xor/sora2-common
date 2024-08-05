@@ -52,6 +52,7 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
+use codec::{Decode, Encode};
 use frame_support::{
     dispatch::{DispatchResultWithPostInfo, GetDispatchInfo, PostDispatchInfo},
     traits::{Currency, Get, ReservableCurrency},
@@ -61,20 +62,19 @@ use frame_support::{
     },
 };
 use frame_support::{ensure, Parameter};
+use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::{self as system, ensure_signed, RawOrigin};
+use scale_info::prelude::vec;
 use scale_info::TypeInfo;
 use sp_io::hashing::blake2_256;
+use sp_runtime::DispatchError;
+use sp_runtime::RuntimeDebug;
 use sp_runtime::{
     traits::{Dispatchable, Zero},
     Percent,
 };
 use sp_runtime::{Deserialize, Serialize};
 use sp_std::prelude::*;
-use frame_system::pallet_prelude::BlockNumberFor;
-use codec::{Encode, Decode};
-use sp_runtime::RuntimeDebug;
-use sp_runtime::DispatchError;
-use scale_info::prelude::vec;
 
 type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -646,10 +646,7 @@ pub mod pallet {
         fn build(&self) {
             {
                 let data = &self.accounts;
-                let data: &vec::Vec<(
-                    T::AccountId,
-                    MultisigAccount<T::AccountId>,
-                )> = data;
+                let data: &vec::Vec<(T::AccountId, MultisigAccount<T::AccountId>)> = data;
                 data.iter().for_each(|(k, v)| {
                     <Accounts<T> as frame_support::storage::StorageMap<
                         T::AccountId,
@@ -702,7 +699,9 @@ pub struct Multisig<BlockNumber, Balance, AccountId> {
     pub approvals: Vec<AccountId>,
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, Serialize, Deserialize)]
+#[derive(
+    Clone, Eq, PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo, Serialize, Deserialize,
+)]
 pub struct MultisigAccount<AccountId> {
     /// Parties of the account.
     pub signatories: Vec<AccountId>,

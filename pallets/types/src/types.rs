@@ -173,7 +173,7 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     serde::Serialize,
-    serde::Deserialize
+    serde::Deserialize,
 )]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum AssetKind {

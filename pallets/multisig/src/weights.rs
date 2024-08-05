@@ -37,15 +37,13 @@
 #![allow(unused_parens)]
 #![allow(unused_imports)]
 
-use frame_support::dispatch::{
-    DispatchErrorWithPostInfo, DispatchResultWithPostInfo, Pays,
-};
+use frame_support::dispatch::{DispatchErrorWithPostInfo, DispatchResultWithPostInfo, Pays};
 use frame_support::{
     traits::Get,
     weights::{constants::RocksDbWeight, Weight},
 };
-use sp_std::marker::PhantomData;
 use sp_runtime::DispatchError;
+use sp_std::marker::PhantomData;
 
 /// Weight functions needed for pallet_multisig.
 pub trait WeightInfo {
