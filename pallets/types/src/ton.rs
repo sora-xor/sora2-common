@@ -49,10 +49,9 @@ use crate::{MainnetAssetId, MainnetBalance};
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
-    Deserialize,
-    Serialize,
 )]
-#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum TonNetworkId {
     #[default]
     Mainnet,
@@ -113,9 +112,8 @@ impl From<TonBalance> for u128 {
     scale_info::TypeInfo,
     MaxEncodedLen,
     Default,
-    Serialize,
-    Deserialize,
 )]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddress {
     pub workchain: i8,
     pub address: H256,
