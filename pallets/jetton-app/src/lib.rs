@@ -62,10 +62,11 @@ mod tests;
 
 use bridge_types::substrate::JettonAppCall;
 use bridge_types::{MainnetAccountId, MainnetAssetId};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use sp_core::Get;
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 pub use pallet::*;
@@ -260,7 +261,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             if let Some(app) = &self.app {
                 AppInfo::<T>::set(Some(*app));
@@ -312,7 +313,8 @@ pub mod pallet {
                 message_id,
                 timepoint,
                 additional: GenericAdditionalInboundData::TON(additional),
-            } = T::CallOrigin::ensure_origin(origin.clone())? else {
+            } = T::CallOrigin::ensure_origin(origin.clone())?
+            else {
                 fail!(DispatchError::BadOrigin);
             };
             let sender = sender.address().ok_or(Error::<T>::WrongAccountPrefix)?;

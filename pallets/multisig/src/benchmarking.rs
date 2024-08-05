@@ -42,7 +42,7 @@ fn setup_multi<T: Config>(
     }
     signatories.sort();
     // Must first convert to outer call type.
-    let call: <T as Config>::Call = frame_system::Call::<T>::remark {
+    let call: <T as Config>::RuntimeCall = frame_system::Call::<T>::remark {
         remark: vec![0; z as usize],
     }
     .into();
@@ -83,7 +83,7 @@ benchmarks! {
         let (mut signatories, multi_account_id, call) = setup_multi::<T>(s, z)?;
         let call_hash = blake2_256(&call);
         let caller = signatories.pop().ok_or("signatories should have len 2 or more")?;
-    }: as_multi(RawOrigin::Signed(caller), multi_account_id.clone(), None, call, false, 0)
+    }: as_multi(RawOrigin::Signed(caller), multi_account_id.clone(), None, call, false, Weight::min_value())
     verify {
         assert!(Multisigs::<T>::contains_key(multi_account_id, call_hash));
     }
@@ -97,7 +97,7 @@ benchmarks! {
         let call_hash = blake2_256(&call);
         let caller = signatories.pop().ok_or("signatories should have len 2 or more")?;
         T::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-    }: as_multi(RawOrigin::Signed(caller), multi_account_id.clone(), None, call, true, 0)
+    }: as_multi(RawOrigin::Signed(caller), multi_account_id.clone(), None, call, true, Weight::min_value())
     verify {
         assert!(Multisigs::<T>::contains_key(multi_account_id, call_hash));
         assert!(Calls::<T>::contains_key(call_hash));
@@ -114,9 +114,9 @@ benchmarks! {
         // before the call, get the timepoint
         let timepoint = Multisig::<T>::thischain_timepoint();
         // Create the multi, storing for worst case
-        Multisig::<T>::as_multi(RawOrigin::Signed(caller).into(), multi_account_id.clone(), None, call.clone(), true, 0)?;
+        Multisig::<T>::as_multi(RawOrigin::Signed(caller).into(), multi_account_id.clone(), None, call.clone(), true, Weight::min_value())?;
         let caller2 = signatories.remove(0);
-    }: as_multi(RawOrigin::Signed(caller2), multi_account_id.clone(), Some(timepoint), call, false, 0)
+    }: as_multi(RawOrigin::Signed(caller2), multi_account_id.clone(), Some(timepoint), call, false, Weight::min_value())
     verify {
         let multisig = Multisigs::<T>::get(multi_account_id, call_hash).ok_or("multisig not created")?;
         assert_eq!(multisig.approvals.len(), 2);
@@ -134,13 +134,13 @@ benchmarks! {
         // before the call, get the timepoint
         let timepoint = Multisig::<T>::thischain_timepoint();
         // Create the multi, storing it for worst case
-        Multisig::<T>::as_multi(RawOrigin::Signed(caller).into(), multi_account_id.clone(), None, call.clone(), true, 0)?;
+        Multisig::<T>::as_multi(RawOrigin::Signed(caller).into(), multi_account_id.clone(), None, call.clone(), true, Weight::min_value())?;
         // Everyone except the first person approves
         for i in 1 .. needed_sigs - 1 {
             let mut signatories_loop = signatories.clone();
             let caller_loop = signatories_loop.remove(i as usize);
             let o = RawOrigin::Signed(caller_loop).into();
-            Multisig::<T>::as_multi(o, multi_account_id.clone(), Some(timepoint), call.clone(), false, 0)?;
+            Multisig::<T>::as_multi(o, multi_account_id.clone(), Some(timepoint), call.clone(), false, Weight::min_value())?;
             assert!(Multisigs::<T>::contains_key(&multi_account_id, call_hash), "{}, {}", s, i);
         }
         let caller2 = signatories.remove(0);

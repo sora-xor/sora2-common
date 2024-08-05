@@ -74,8 +74,8 @@ use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
 use sp_core::Get;
 use sp_runtime::traits::Zero;
-use sp_std::prelude::*;
 use sp_runtime::DispatchError;
+use sp_std::prelude::*;
 
 pub use pallet::*;
 pub use weights::WeightInfo;
@@ -364,7 +364,8 @@ pub mod pallet {
                 additional: GenericAdditionalInboundData::EVM(additional),
                 message_id,
                 timepoint,
-            } = T::CallOrigin::ensure_origin(origin)? else {
+            } = T::CallOrigin::ensure_origin(origin)?
+            else {
                 frame_support::fail!(DispatchError::BadOrigin);
             };
             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
@@ -427,7 +428,8 @@ pub mod pallet {
                 network_id: GenericNetworkId::EVM(network_id),
                 additional: GenericAdditionalInboundData::EVM(additional),
                 ..
-            } = T::CallOrigin::ensure_origin(origin)? else {
+            } = T::CallOrigin::ensure_origin(origin)?
+            else {
                 frame_support::fail!(DispatchError::BadOrigin);
             };
 
@@ -975,7 +977,8 @@ impl<T: Config> EVMFeeHandler<AssetIdOf<T>> for Pallet<T> {
         _new_base_fee: U256,
         evm_block_number: u64,
     ) -> bool {
-        let Ok(base_fee) = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable) else {
+        let Ok(base_fee) = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable)
+        else {
             // Probably it's first base fee update
             return true;
         };

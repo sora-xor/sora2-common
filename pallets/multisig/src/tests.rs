@@ -23,14 +23,13 @@ use super::*;
 
 use crate as multisig;
 use frame_support::{
-    assert_err, assert_noop, assert_ok, construct_runtime, dispatch::DispatchError,
-    parameter_types, weights::Weight,
+    assert_err, assert_noop, assert_ok, construct_runtime, parameter_types, weights::Weight,
 };
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
-    ModuleError, Perbill,
+    BuildStorage, DispatchError, ModuleError, Perbill,
 };
 
 // For testing the pallet, we construct most of a mock runtime. This means
@@ -51,13 +50,10 @@ impl frame_system::Config for Test {
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = u64;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
     type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
@@ -70,10 +66,14 @@ impl frame_system::Config for Test {
     type SS58Prefix = ();
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<16>;
+    type Nonce = u64;
+    type Block = Block;
 }
+
 parameter_types! {
     pub const ExistentialDeposit: u64 = 1;
 }
+
 impl pallet_balances::Config for Test {
     type MaxReserves = ();
     type ReserveIdentifier = ();
@@ -84,6 +84,10 @@ impl pallet_balances::Config for Test {
     type AccountStore = System;
     type WeightInfo = ();
     type MaxLocks = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 parameter_types! {
     pub const DepositBase: u64 = 1;
@@ -120,7 +124,7 @@ construct_runtime!(
         NodeBlock = Block,
         UncheckedExtrinsic = UncheckedExtrinsic
     {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+        System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Multisig: multisig::{Pallet, Call, Storage, Config<T>, Event<T>},
     }
@@ -133,8 +137,8 @@ use frame_support::traits::Contains;
 use pallet_balances::Call as BalancesCall;
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-    let mut t = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut t = frame_system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
     pallet_balances::GenesisConfig::<Test> {
         balances: vec![(1, 10), (2, 10), (3, 10), (4, 10), (5, 2)],
