@@ -61,11 +61,11 @@ pub mod pallet {
     use bridge_types::ton::{AdditionalTONInboundData, TonAddress, TonNetworkId};
     use bridge_types::types::{GenericAdditionalInboundData, MessageStatus};
     use bridge_types::{EVMChainId, GenericNetworkId, GenericTimepoint};
-    use log::warn;
     use frame_support::pallet_prelude::{InvalidTransaction, *};
     use frame_support::traits::StorageVersion;
     use frame_support::weights::Weight;
     use frame_system::{ensure_root, pallet_prelude::*};
+    use log::warn;
     use sp_core::H160;
     use sp_std::prelude::*;
 
@@ -505,7 +505,7 @@ pub mod pallet {
         }
 
         #[pallet::call_index(2)]
-        #[pallet::weight(0)]
+        #[pallet::weight({0})]
         pub fn register_ton_channel(
             origin: OriginFor<T>,
             network_id: TonNetworkId,

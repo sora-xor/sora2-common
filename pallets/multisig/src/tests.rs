@@ -27,7 +27,6 @@ use frame_support::{
 };
 use sp_core::H256;
 use sp_runtime::{
-    testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
     BuildStorage, DispatchError, ModuleError, Perbill,
 };
@@ -41,7 +40,6 @@ parameter_types! {
     pub const MaximumBlockLength: u32 = 2 * 1024;
     pub const AvailableBlockRatio: Perbill = Perbill::one();
 }
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 impl frame_system::Config for Test {
@@ -119,11 +117,7 @@ impl Config for Test {
 }
 
 construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic
-    {
+    pub enum Test {
         System: frame_system::{Pallet, Call, Config<T>, Storage, Event<T>},
         Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
         Multisig: multisig::{Pallet, Call, Storage, Config<T>, Event<T>},

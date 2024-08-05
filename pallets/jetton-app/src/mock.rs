@@ -37,17 +37,16 @@ use bridge_types::types::{AssetKind, GenericAdditionalInboundData};
 use bridge_types::GenericNetworkId;
 use bridge_types::H256;
 use frame_support::parameter_types;
-use frame_support::traits::{BuildGenesisConfig, Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_system as system;
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::testing::Header;
+
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
 use sp_runtime::{BuildStorage, DispatchError, MultiSignature};
 use traits::parameter_type_with_key;
 
 use crate as jetton_app;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type AssetId = H256;
 type Balance = u128;

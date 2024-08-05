@@ -34,13 +34,13 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::{OutboundChannel, TimepointProvider};
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::{assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use frame_system::RawOrigin;
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::testing::Header;
+
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
 use sp_runtime::{AccountId32, BuildStorage, MultiSignature};
 use sp_std::convert::From;
@@ -48,17 +48,12 @@ use traits::parameter_type_with_key;
 
 use crate::outbound as bridge_outbound_channel;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 const BASE_NETWORK_ID: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
 
 frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Test {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
