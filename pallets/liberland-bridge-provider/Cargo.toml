@@ -48,6 +48,7 @@ std = [
     "sp-runtime/std",
     "sp-std/std",
     "bridge-types/std",
+    "pallet-balances/std"
 ]
 runtime-benchmarks = [
     "frame-benchmarking",
