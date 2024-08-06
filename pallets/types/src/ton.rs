@@ -31,7 +31,6 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use derivative::Derivative;
 use ethereum_types::H128;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_core::{Get, RuntimeDebug, H256};
 use sp_runtime::{traits::Hash, BoundedVec};
@@ -49,9 +48,10 @@ use crate::{MainnetAssetId, MainnetBalance};
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
+#[serde(rename_all = "camelCase")]
 pub enum TonNetworkId {
     #[default]
     Mainnet,
@@ -112,8 +112,9 @@ impl From<TonBalance> for u128 {
     scale_info::TypeInfo,
     MaxEncodedLen,
     Default,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
 pub struct TonAddress {
     pub workchain: i8,
     pub address: H256,

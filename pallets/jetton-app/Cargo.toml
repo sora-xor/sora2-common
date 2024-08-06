@@ -45,7 +45,7 @@ bridge-types = { path = "../types", features = ["test"] }
 [features]
 default = ["std"]
 std = [
-    "serde",
+    "serde/std",
     "hex/std",
     "codec/std",
     "scale-info/std",
