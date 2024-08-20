@@ -40,7 +40,7 @@ sp-consensus-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", bra
 
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
 ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
-serde_json = { version = "1.0", features = ["alloc"], default_features = false, optional = true }
+serde_json = { version = "1.0", features = ["alloc"], default-features = false, optional = true }
 staging-xcm = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
 derivative = { version = "2.2.0", features = ["use_core"] }
 traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", default-features = false }
