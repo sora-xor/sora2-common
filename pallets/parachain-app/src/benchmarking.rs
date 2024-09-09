@@ -83,6 +83,14 @@ benchmarks! {
         assert_eq!(SidechainPrecision::<T>::iter_prefix(BASE_NETWORK_ID).count(), 1);
     }
 
+    bind_sidechain_asset {
+        let a in 1..100;
+        let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
+    }: _(RawOrigin::Root, BASE_NETWORK_ID, asset_id.clone(), [0u8; 32].into(), 6, (0..a).collect::<Vec<_>>(), 1u32.into())
+    verify {
+        assert_eq!(SidechainPrecision::<T>::get(BASE_NETWORK_ID, asset_id).unwrap(), 6);
+    }
+
     add_assetid_paraid {
         let asset_id = <T as Config>::AssetRegistry::register_asset(GenericNetworkId::Sub(Default::default()), Default::default(), Default::default())?;
         ParachainApp::<T>::register_thischain_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, asset_id.clone(), PARENT_PARACHAIN_ASSET, Default::default(), 1u32.into())?;

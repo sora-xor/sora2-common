@@ -559,7 +559,7 @@ fn it_fails_burn_outbound_channel_submit() {
 
 #[test]
 fn it_works_register_thischain_asset() {
-    new_tester_no_registered_assets().execute_with(|| {
+    new_tester().execute_with(|| {
         let origin = Origin::<Test>::Root;
         let network_id = SubNetworkId::Mainnet;
         let asset_id = AssetId::Xor;
@@ -581,6 +581,37 @@ fn it_works_register_thischain_asset() {
             network_id,
             asset_id,
             sidechain_asset,
+            allowed_parachains,
+            minimal_xcm_amount
+        ));
+    });
+}
+
+#[test]
+fn it_works_bind_sidechain_asset() {
+    new_tester_no_registered_assets().execute_with(|| {
+        let origin = Origin::<Test>::Root;
+        let network_id = SubNetworkId::Mainnet;
+        let asset_id = AssetId::USDT;
+        let sidechain_asset = ParachainAssetId::Concrete(MultiLocation::new(
+            1,
+            X2(
+                Parachain(PARA_A),
+                Junction::AccountId32 {
+                    network: None,
+                    id: Keyring::Bob.into(),
+                },
+            ),
+        ));
+        let allowed_parachains = vec![1000];
+        let minimal_xcm_amount = 10;
+
+        assert_ok!(ParachainApp::bind_sidechain_asset(
+            origin.into(),
+            network_id,
+            asset_id,
+            sidechain_asset,
+            6,
             allowed_parachains,
             minimal_xcm_amount
         ));
