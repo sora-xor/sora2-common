@@ -30,20 +30,20 @@ log = { version = "0.4.20" }
 anyhow = { version = "1.0", optional = true }
 
 # Substrate
-frame-benchmarking = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false, optional = true }
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", optional= true }
-sp-consensus-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-binary-merkle-tree = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+pallet-beefy-mmr = { workspace = true, optional= true }
+sp-consensus-beefy = { workspace = true, default-features = false }
+binary-merkle-tree = { workspace = true, default-features = false }
 
 [dev-dependencies]
 # Substrate
-pallet-beefy-mmr = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0" }
+pallet-beefy-mmr = { workspace = true, default-features = false }
 
 serde_json = "1.0.73"
 hex-literal = "0.4.1"
@@ -65,6 +65,6 @@ runtime-benchmarks = [
 std = ["codec/std", "serde/std", "bridge-common/std", "bridge-types/std", 
 "binary-merkle-tree/std", 
 "sp-consensus-beefy/std", 
-"log/std", 
+"log/std", 'pallet-beefy-mmr/std',
 "sp-core/std", "sp-io/std", "sp-std/std", "scale-info/std", "frame-benchmarking/std", "frame-support/std", "frame-system/std"]
 try-runtime = ["frame-support/try-runtime"]

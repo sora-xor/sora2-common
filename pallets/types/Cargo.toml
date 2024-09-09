@@ -30,20 +30,20 @@ rlp = { version = "0.5", default-features = false }
 serde = { version = "1.0.101", features = ["alloc", "derive"], default-features = false }
 getrandom = { version = "0.2.1", features = ["js"] }
 
-frame-support = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
-sp-consensus-beefy = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-consensus-beefy = { workspace = true, default-features = false }
 
-ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
-ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
+ethabi = { workspace = true, default-features = false }
+ethash = { workspace = true, default-features = false }
 serde_json = { version = "1.0", features = ["alloc"], default-features = false, optional = true }
-staging-xcm = { git = "https://github.com/sora-xor/polkadot-sdk.git", branch = "polkadot-v1.1.0", default-features = false }
+staging-xcm = { workspace = true, default-features = false }
 derivative = { version = "2.2.0", features = ["use_core"] }
-traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", default-features = false }
+traits = { workspace = true, default-features = false }
 
 
 [dev-dependencies]
