@@ -86,7 +86,7 @@ pub enum AssetId {
     Xor,
     Eth,
     Dai,
-    USDT,
+    Usdt,
     Custom(u8),
 }
 
