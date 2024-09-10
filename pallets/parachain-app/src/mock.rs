@@ -281,7 +281,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
                 symbol: "XOR".to_owned().into(),
                 precision: 18,
             },
-            AssetId::USDT => bridge_types::types::RawAssetInfo {
+            AssetId::Usdt => bridge_types::types::RawAssetInfo {
                 name: "USDT".to_owned().into(),
                 symbol: "USDT".to_owned().into(),
                 precision: 6,

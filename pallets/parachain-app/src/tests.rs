@@ -592,7 +592,7 @@ fn it_works_bind_sidechain_asset() {
     new_tester_no_registered_assets().execute_with(|| {
         let origin = Origin::<Test>::Root;
         let network_id = SubNetworkId::Mainnet;
-        let asset_id = AssetId::USDT;
+        let asset_id = AssetId::Usdt;
         let sidechain_asset = ParachainAssetId::Concrete(MultiLocation::new(
             1,
             X2(
