@@ -522,6 +522,45 @@ pub mod pallet {
             )?;
             Ok(())
         }
+
+        #[pallet::call_index(9)]
+        #[pallet::weight(<T as Config>::WeightInfo::bind_sidechain_asset(allowed_parachains.len() as u32))]
+        pub fn bind_sidechain_asset(
+            origin: OriginFor<T>,
+            network_id: SubNetworkId,
+            asset_id: AssetIdOf<T>,
+            sidechain_asset: ParachainAssetId,
+            sidechain_precision: u8,
+            allowed_parachains: Vec<u32>,
+            minimal_xcm_amount: BalanceOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            ensure!(
+                !AssetKinds::<T>::contains_key(network_id, &asset_id),
+                Error::<T>::TokenAlreadyRegistered
+            );
+
+            let (_, minimal_xcm_amount) = T::BalancePrecisionConverter::to_sidechain(
+                &asset_id,
+                sidechain_precision,
+                minimal_xcm_amount,
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(minimal_xcm_amount > 0, Error::<T>::WrongAmount);
+
+            Self::register_asset_inner(
+                network_id,
+                asset_id,
+                sidechain_asset,
+                AssetKind::Sidechain,
+                sidechain_precision,
+                allowed_parachains,
+                minimal_xcm_amount,
+            )?;
+
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {

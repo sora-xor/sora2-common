@@ -62,7 +62,7 @@ use xcm::v3::Junction::Parachain;
 use xcm::v3::Junctions::X2;
 use xcm::v3::MultiLocation;
 
-use crate as substrate_app;
+use crate as parachain_app;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -86,6 +86,7 @@ pub enum AssetId {
     Xor,
     Eth,
     Dai,
+    Usdt,
     Custom(u8),
 }
 
@@ -105,7 +106,7 @@ frame_support::construct_runtime!(
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
         BridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
-        ParachainApp: substrate_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        ParachainApp: parachain_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -280,6 +281,11 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
                 symbol: "XOR".to_owned().into(),
                 precision: 18,
             },
+            AssetId::Usdt => bridge_types::types::RawAssetInfo {
+                name: "USDT".to_owned().into(),
+                symbol: "USDT".to_owned().into(),
+                precision: 6,
+            },
             AssetId::Custom(1) => bridge_types::types::RawAssetInfo {
                 name: "KSM".to_owned().into(),
                 symbol: "KSM".to_owned().into(),
@@ -326,7 +332,7 @@ impl BalancePrecisionConverter<AssetId, Balance, Balance> for BalancePrecisionCo
     }
 }
 
-impl substrate_app::Config for Test {
+impl parachain_app::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type MessageStatusNotifier = ();
     type CallOrigin =
@@ -413,7 +419,7 @@ pub fn new_tester() -> sp_io::TestExternalities {
             AssetKind::Thischain,
         )
         .expect("XOR registration finalization failed");
-        let kusama_asset = substrate_app::RelaychainAsset::<Test>::get(SubNetworkId::Kusama);
+        let kusama_asset = parachain_app::RelaychainAsset::<Test>::get(SubNetworkId::Kusama);
         ParachainApp::finalize_asset_registration(
             origin_kusama,
             kusama_asset.unwrap(),
