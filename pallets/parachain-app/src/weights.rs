@@ -47,7 +47,7 @@
 // --extrinsic=*
 // --header=./misc/file_header.txt
 // --template=./misc/pallet-weight-template.hbs
-// --output=../sora2-common/pallets/substrate-app/src/weights.rs
+// --output=../sora2-common/pallets/parachaib-app/src/weights.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
@@ -105,7 +105,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
-	
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
