@@ -409,7 +409,7 @@ impl WeightInfo for () {
 		//  Measured:  `2186`
 		//  Estimated: `42077 + a * (2475 ±0)`
 		// Minimum execution time: 72_194_000 picoseconds.
-		Weight::from_parts(72_012_419, 42077)
+		Weight::from_parts(72_012_420, 42077)
 			// Standard Error: 1_500
 			.saturating_add(Weight::from_parts(1_112_515, 0).saturating_mul(a.into()))
 			.saturating_add(RocksDbWeight::get().reads(9_u64))
