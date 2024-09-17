@@ -43,11 +43,11 @@
 // --chain=local
 // --steps=50
 // --repeat=20
-// --pallet=substrate_bridge_app
+// --pallet=parachain_bridge_app
 // --extrinsic=*
 // --header=./misc/file_header.txt
 // --template=./misc/pallet-weight-template.hbs
-// --output=../sora2-common/pallets/parachaib-app/src/weights.rs
+// --output=../sora2-common/pallets/parachain-app/src/weights.rs
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(unused_parens)]
