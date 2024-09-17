@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #![allow(clippy::large_enum_variant)]
 
+use crate::multisig::MultiSigner;
 use crate::ton::{TonAddressWithPrefix, TonBalance};
 use crate::{H160, H256};
 use codec::{Decode, Encode};
@@ -217,6 +218,21 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
     }
 }
 
+/// Message to BridgeSigner
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum BridgeSignerCall {
+    AddPeer { peer: MultiSigner },
+    RemovePeer { peer: MultiSigner },
+    FinishRemovePeer,
+    FinishAddPeer,
+}
+
+impl SubstrateBridgeMessageEncode for BridgeSignerCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::BridgeSigner(self).encode()
+    }
+}
+
 /// Substrate bridge message payload
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
@@ -227,6 +243,7 @@ pub enum BridgeCall {
     SubstrateApp(SubstrateAppCall),
     FAApp(FAAppCall),
     JettonApp(JettonAppCall),
+    BridgeSigner(BridgeSignerCall),
 }
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
