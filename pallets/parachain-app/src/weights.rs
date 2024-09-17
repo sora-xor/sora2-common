@@ -74,22 +74,22 @@ pub trait WeightInfo {
 /// Weights for substrate_bridge_app using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:1 w:0)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:100 w:100)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 100]`.
 	fn register_thischain_asset(a: u32, ) -> Weight {
 		// Proof Size summary in bytes:
@@ -105,22 +105,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:1 w:0)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:100 w:100)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 100]`.
 	fn bind_sidechain_asset(a: u32, ) -> Weight {
 		// Proof Size summary in bytes:
@@ -146,14 +146,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:2 w:1)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:100 w:100)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 100]`.
@@ -171,8 +171,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
-	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_transfer_limit() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
@@ -181,10 +181,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(1_931_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	fn add_assetid_paraid() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `240`
@@ -194,10 +194,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	fn remove_assetid_paraid() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `332`
@@ -217,10 +217,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(6_040_000, 2479)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
@@ -244,14 +244,14 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
-	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp RelaychainAsset (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp RelaychainAsset (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp RelaychainAsset (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp RelaychainAsset (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
@@ -281,10 +281,10 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(13_u64))
 			.saturating_add(T::DbWeight::get().writes(7_u64))
 	}
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AssetKinds (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	fn finalize_asset_registration() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `207`
@@ -294,8 +294,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
 	/// Proof Skipped: BridgeProxy LockedAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
@@ -317,22 +317,22 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests
 impl WeightInfo for () {
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:1 w:0)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:100 w:100)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 100]`.
 	fn register_thischain_asset(a: u32, ) -> Weight {
 		// Proof Size summary in bytes:
@@ -358,14 +358,14 @@ impl WeightInfo for () {
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:2 w:1)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:100 w:100)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 100]`.
@@ -393,14 +393,14 @@ impl WeightInfo for () {
 	/// Proof Skipped: Permissions Owners (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Permissions Permissions (r:2 w:1)
 	/// Proof Skipped: Permissions Permissions (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:100 w:100)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:100 w:100)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel MessageQueues (r:1 w:1)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel MessageQueues (max_values: None, max_size: None, mode: Measured)
 	/// Storage: SubstrateBridgeOutboundChannel ChannelNonces (r:1 w:0)
 	/// Proof Skipped: SubstrateBridgeOutboundChannel ChannelNonces (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:0 w:1)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// The range of component `a` is `[1, 100]`.
@@ -418,8 +418,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
-	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_transfer_limit() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
@@ -428,10 +428,10 @@ impl WeightInfo for () {
 		Weight::from_parts(1_931_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	fn add_assetid_paraid() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `240`
@@ -441,10 +441,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AllowedParachainAssets (r:1 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
+	/// Proof Skipped: ParachainBridgeApp AllowedParachainAssets (max_values: None, max_size: None, mode: Measured)
 	fn remove_assetid_paraid() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `332`
@@ -464,10 +464,10 @@ impl WeightInfo for () {
 		Weight::from_parts(6_040_000, 2479)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
@@ -491,14 +491,14 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
-	/// Storage: SubstrateBridgeApp BridgeTransferLimit (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp RelaychainAsset (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp RelaychainAsset (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp RelaychainAsset (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp RelaychainAsset (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
 	/// Proof Skipped: Assets AssetInfos (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
@@ -528,10 +528,10 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(13_u64))
 			.saturating_add(RocksDbWeight::get().writes(7_u64))
 	}
-	/// Storage: SubstrateBridgeApp SidechainPrecision (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
-	/// Storage: SubstrateBridgeApp AssetKinds (r:0 w:1)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:0 w:1)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	fn finalize_asset_registration() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `207`
@@ -541,8 +541,8 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: SubstrateBridgeApp AssetKinds (r:1 w:0)
-	/// Proof Skipped: SubstrateBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
+	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
+	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
 	/// Proof Skipped: BridgeProxy LockedAssets (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Technical TechAccounts (r:1 w:0)
