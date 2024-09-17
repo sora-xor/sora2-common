@@ -105,6 +105,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
+	
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: Assets AssetInfos (r:1 w:0)
@@ -136,6 +137,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
+
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:1 w:1)
@@ -171,6 +173,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
+
 	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:0 w:1)
 	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_transfer_limit() -> Weight {
@@ -181,6 +184,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(1_931_000, 0)
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
@@ -194,6 +198,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
@@ -207,6 +212,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: BridgeProxy Senders (r:1 w:0)
 	/// Proof Skipped: BridgeProxy Senders (max_values: None, max_size: None, mode: Measured)
 	fn update_transaction_status() -> Weight {
@@ -217,6 +223,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(6_040_000, 2479)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
@@ -244,6 +251,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(8_u64))
 			.saturating_add(T::DbWeight::get().writes(5_u64))
 	}
+
 	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp RelaychainAsset (r:1 w:0)
@@ -281,6 +289,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(13_u64))
 			.saturating_add(T::DbWeight::get().writes(7_u64))
 	}
+
 	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp AssetKinds (r:0 w:1)
@@ -294,6 +303,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
@@ -348,6 +358,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
+
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:1 w:1)
@@ -383,6 +394,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
+
 	/// Storage: Technical TechAccounts (r:1 w:1)
 	/// Proof Skipped: Technical TechAccounts (max_values: None, max_size: None, mode: Measured)
 	/// Storage: System Account (r:1 w:1)
@@ -418,6 +430,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(a.into())))
 			.saturating_add(Weight::from_parts(0, 2475).saturating_mul(a.into()))
 	}
+
 	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:0 w:1)
 	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
 	fn set_transfer_limit() -> Weight {
@@ -428,6 +441,7 @@ impl WeightInfo for () {
 		Weight::from_parts(1_931_000, 0)
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
@@ -441,6 +455,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp AllowedParachainAssets (r:1 w:1)
@@ -454,6 +469,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: BridgeProxy Senders (r:1 w:0)
 	/// Proof Skipped: BridgeProxy Senders (max_values: None, max_size: None, mode: Measured)
 	fn update_transaction_status() -> Weight {
@@ -464,6 +480,7 @@ impl WeightInfo for () {
 		Weight::from_parts(6_040_000, 2479)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
@@ -491,6 +508,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(8_u64))
 			.saturating_add(RocksDbWeight::get().writes(5_u64))
 	}
+
 	/// Storage: ParachainBridgeApp BridgeTransferLimit (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp BridgeTransferLimit (max_values: Some(1), max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp RelaychainAsset (r:1 w:0)
@@ -528,6 +546,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(13_u64))
 			.saturating_add(RocksDbWeight::get().writes(7_u64))
 	}
+
 	/// Storage: ParachainBridgeApp SidechainPrecision (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp SidechainPrecision (max_values: None, max_size: None, mode: Measured)
 	/// Storage: ParachainBridgeApp AssetKinds (r:0 w:1)
@@ -541,6 +560,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
+
 	/// Storage: ParachainBridgeApp AssetKinds (r:1 w:0)
 	/// Proof Skipped: ParachainBridgeApp AssetKinds (max_values: None, max_size: None, mode: Measured)
 	/// Storage: BridgeProxy LockedAssets (r:1 w:1)
