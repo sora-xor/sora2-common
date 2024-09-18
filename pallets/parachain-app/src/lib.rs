@@ -234,7 +234,7 @@ pub mod pallet {
         StorageMap<_, Identity, SubNetworkId, AssetIdOf<T>, OptionQuery>;
 
     #[pallet::error]
-    pub enum Error<T> {
+    pub enum Error<T> {        
         TokenIsNotRegistered,
         AppIsNotRegistered,
         NotEnoughFunds,
@@ -257,9 +257,39 @@ pub mod pallet {
 
     #[pallet::call]
     impl<T: Config> Pallet<T> {
-        // Internal calls to be used from Parachain side.
-
-        // TODO: make benchmarks
+        /// Mints tokens on this chain as part of a cross-chain transfer.
+        ///
+        /// This function is called internally by the bridge to complete a transfer from another chain
+        /// to this chain. It mints (unlocks) tokens on this chain for the specified recipient.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be a valid bridge origin.
+        /// * `asset_id` - The identifier of the asset to be minted.
+        /// * `sender` - The sender's account on the source chain, if available.
+        /// * `recipient` - The recipient's account on this chain.
+        /// * `amount` - The amount of tokens to mint, in the source chain's precision.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The origin is not a valid bridge origin.
+        /// * The asset is not registered for cross-chain transfers.
+        /// * The asset's precision on this chain is unknown.
+        /// * The amount conversion fails or results in zero tokens.
+        /// * The BridgeAssetLocker fails to unlock the asset.
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Mint (unlock) the specified amount of tokens for the recipient.
+        /// * Update the inbound transfer status to 'Done'.
+        /// * Emit a `Minted` event with transfer details.
+        ///
+        /// # Note
+        ///
+        /// This function handles the necessary precision conversions between chains and
+        /// ensures that the minted amount accurately reflects the transferred amount.
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -313,7 +343,35 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
+        /// Finalizes the registration of an asset for cross-chain transfers.
+        ///
+        /// This function is called internally by relayer, to complete the asset registration process.
+        /// It sets the asset kind for a previously initialized asset, enabling it for cross-chain transfers.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be a valid bridge origin.
+        /// * `asset_id` - The identifier of the asset being registered.
+        /// * `asset_kind` - The kind of asset (e.g., Thischain, Sidechain) being registered.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The origin is not a valid bridge origin.
+        /// * The asset has not been previously initialized (i.e., its precision is not set).
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Set the asset kind for the specified asset, completing its registration.
+        /// * Enable the asset for cross-chain transfers.
+        ///
+        /// # Note
+        ///
+        /// This function is part of a two-step asset registration process. The first step initializes
+        /// the asset (typically setting its precision), and this function completes the process by
+        /// setting the asset kind. This two-step process helps ensure proper synchronization between
+        /// chains in the network.
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
         pub fn finalize_asset_registration(
@@ -330,9 +388,43 @@ pub mod pallet {
             Ok(())
         }
 
-        // Common exstrinsics
-
-        // TODO: make benchmarks
+        /// Burns tokens on this chain to initiate a cross-chain transfer.
+        ///
+        /// This function locks (burns) tokens on the current chain and initiates a transfer
+        /// to a specified recipient on another parachain or the relay chain.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be signed by the account burning tokens.
+        /// * `network_id` - The identifier of the destination network.
+        /// * `asset_id` - The identifier of the asset to be transferred.
+        /// * `recipient` - The recipient's account on the destination chain, specified as a ParachainAccountId.
+        /// * `amount` - The amount of tokens to burn and transfer.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The origin is not signed.
+        /// * The amount is zero or negative.
+        /// * The asset is not registered for cross-chain transfers.
+        /// * The destination parachain or parameters are invalid.
+        /// * The asset's precision on the sidechain is unknown.
+        /// * The user doesn't have sufficient balance.
+        /// * The asset cannot be locked by the BridgeAssetLocker.
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Lock (burn) the specified amount of tokens from the sender's account.
+        /// * Create and submit an outbound message to initiate the transfer on the destination chain.
+        /// * Emit a `Burned` event with transfer details.
+        /// * Return the message ID of the outbound transfer request.
+        ///
+        /// # Note
+        ///
+        /// This function is part of a cross-chain transfer mechanism. The actual receipt of
+        /// funds on the destination chain is subject to the processing of the outbound message
+        /// by the bridge and the destination chain's systems.
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
@@ -349,6 +441,40 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Registers an asset from this chain for cross-chain transfers.
+        ///
+        /// This function allows registering an existing asset on this chain for use in cross-chain transfers.
+        /// It sets up the necessary mappings and permissions for the asset to be transferred to other parachains.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be root.
+        /// * `network_id` - The identifier of the network where the asset will be registered.
+        /// * `asset_id` - The identifier of the asset on this chain.
+        /// * `sidechain_asset` - The identifier to be used for this asset on the sidechain.
+        /// * `allowed_parachains` - A list of parachain IDs that are allowed to receive this asset.
+        /// * `minimal_xcm_amount` - The minimum amount required for XCM transfers of this asset.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The caller is not root.
+        /// * The asset is already registered for the given network.
+        /// * The provided minimal XCM amount is invalid (zero or too large for conversion).
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Register the asset for cross-chain transfers.
+        /// * Set up the necessary mappings for the asset.
+        /// * Add the asset to the list of allowed assets for the specified parachains.
+        /// * Send a message to the sidechain to register the asset there as well.
+        ///
+        /// # Note
+        ///
+        /// This function is typically used for assets that originate on this chain and need to be
+        /// made available for transfer to other chains in the network.
+        /// IMPORTANT! minimal_xcm_amount always has 18 precision!
         #[pallet::call_index(3)]
         #[pallet::weight(<T as Config>::WeightInfo::register_thischain_asset(allowed_parachains.len() as u32))]
         pub fn register_thischain_asset(
@@ -389,6 +515,44 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Registers a sidechain asset for cross-chain transfers.
+        ///
+        /// This function allows registering a new asset that exists on a sidechain (e.g., another parachain)
+        /// for use in cross-chain transfers. It creates a new asset on this chain that corresponds to the
+        /// sidechain asset and sets up the necessary mappings and permissions for cross-chain operations.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be root.
+        /// * `network_id` - The identifier of the network where the asset will be registered.
+        /// * `sidechain_asset` - The identifier of the asset on the sidechain.
+        /// * `symbol` - The symbol of the asset (e.g., "DOT" for Polkadot).
+        /// * `name` - The full name of the asset (e.g., "Polkadot").
+        /// * `decimals` - The number of decimal places for the asset's precision.
+        /// * `allowed_parachains` - A list of parachain IDs that are allowed to transfer this asset.
+        /// * `minimal_xcm_amount` - The minimum amount required for XCM transfers of this asset.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The caller is not root.
+        /// * The asset is already registered for the given network.
+        /// * Asset registration fails in the AssetRegistry.
+        /// * The provided minimal XCM amount is invalid (zero or too large for conversion).
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Register a new asset in the AssetRegistry.
+        /// * Set up the necessary mappings for cross-chain transfers.
+        /// * Add the asset to the list of allowed assets for the specified parachains.
+        /// * Send a message to the sidechain to register the asset there as well.
+        ///
+        /// # Note
+        ///
+        /// This function is typically used when introducing a new asset from another chain into this ecosystem.
+        /// It should be used carefully as it affects the cross-chain asset landscape.
+        /// IMPORTANT! minimal_xcm_amount always has 18 precision!
         #[pallet::call_index(4)]
         #[pallet::weight(<T as Config>::WeightInfo::register_sidechain_asset(allowed_parachains.len() as u32))]
         pub fn register_sidechain_asset(
@@ -422,6 +586,35 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Adds an asset to the list of allowed assets for a specific parachain.
+        ///
+        /// This function allows adding a previously registered asset to the list of assets
+        /// that are allowed to be transferred to a specific parachain. This can be used to
+        /// expand or modify the set of assets that can be sent to particular parachains.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be root.
+        /// * `network_id` - The identifier of the network for which this change applies.
+        /// * `para_id` - The identifier of the parachain to which the asset will be allowed.
+        /// * `asset_id` - The identifier of the asset to be added to the allowed list.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The caller is not root.
+        /// * The specified asset is not registered for the given network.
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Add the specified asset to the list of allowed assets for the given parachain.
+        /// * If the asset was already in the list for the parachain, no change will occur.
+        ///
+        /// # Note
+        ///
+        /// Adding an asset to the allowed list for a parachain enables future transfers
+        /// of that asset to the specified parachain. This does not affect existing balances.
         #[pallet::call_index(5)]
         #[pallet::weight(<T as Config>::WeightInfo::add_assetid_paraid())]
         pub fn add_assetid_paraid(
@@ -441,6 +634,35 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Removes an asset from the list of allowed assets for a specific parachain.
+        ///
+        /// This function allows removing a previously registered asset from the list of assets
+        /// that are allowed to be transferred to a specific parachain. This can be used to
+        /// restrict or modify the set of assets that can be sent to particular parachains.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be root.
+        /// * `network_id` - The identifier of the network for which this change applies.
+        /// * `para_id` - The identifier of the parachain from which to remove the asset.
+        /// * `asset_id` - The identifier of the asset to be removed from the allowed list.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The caller is not root.
+        /// * The specified asset is not registered for the given network.
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Remove the specified asset from the list of allowed assets for the given parachain.
+        /// * If the asset was not in the list for the parachain, no change will occur.
+        ///
+        /// # Note
+        ///
+        /// Removing an asset from the allowed list for a parachain will prevent future transfers
+        /// of that asset to the specified parachain. Existing balances on the parachain are not affected.
         #[pallet::call_index(6)]
         #[pallet::weight(<T as Config>::WeightInfo::remove_assetid_paraid())]
         pub fn remove_assetid_paraid(
@@ -460,6 +682,34 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Updates the status of a cross-chain transaction.
+        ///
+        /// This function allows updating the status of a cross-chain transaction based on the result
+        /// of an XCM (Cross-Chain Message) transfer. It is typically called by the bridge to report
+        /// the outcome of a transfer initiated from this chain to another chain in the network.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be a valid bridge origin.
+        /// * `message_id` - The unique identifier of the message/transaction.
+        /// * `transfer_status` - The status of the XCM transfer, either Success or XCMTransferError.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The origin is not a valid bridge origin.
+        /// * The message ID does not correspond to a known transaction.
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Update the status of the corresponding transaction in the MessageStatusNotifier.
+        /// * Set the status to 'Done' if the transfer was successful, or 'Failed' if there was an error.
+        ///
+        /// # Note
+        ///
+        /// This function is crucial for maintaining accurate records of cross-chain transactions
+        /// and ensuring that users and the system are informed about the final status of transfers.
         #[pallet::call_index(7)]
         #[pallet::weight(<T as Config>::WeightInfo::update_transaction_status())]
         pub fn update_transaction_status(
@@ -486,7 +736,37 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
+        /// Sets the minimum amount of an asset required for incoming XCM transfers.
+        ///
+        /// This function allows setting or updating the minimum amount of a specific asset
+        /// that is required for incoming XCM (Cross-Chain Message) transfers. This helps
+        /// prevent dust attacks and ensures that only meaningful amounts are transferred.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be root.
+        /// * `network_id` - The identifier of the network for which this setting applies.
+        /// * `asset_id` - The identifier of the asset for which to set the minimum amount.
+        /// * `minimal_xcm_amount` - The minimum amount required for XCM transfers of this asset.
+        ///   IMPORTANT: The precision for this parameter is 18 decimal places.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The caller is not root.
+        /// * The asset is not registered for the given network.
+        /// * The provided minimal XCM amount is invalid (zero or too large for conversion).
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Update the minimum XCM transfer amount for the specified asset on this chain.
+        /// * Send a message to the parachain to update the minimum XCM transfer amount there as well.
+        ///
+        /// # Note
+        ///
+        /// Changing this value can affect the ability of users to make small transfers,
+        /// so it should be set carefully considering the asset's value and typical transfer amounts.
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn set_minimum_xcm_incoming_asset_count(
@@ -523,6 +803,36 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Registers a sidechain asset that already exists on this chain.
+        ///
+        /// This function allows binding an existing asset on this chain to a corresponding asset on the sidechain.
+        /// It is used when the asset already exists on this chain but needs to be registered for cross-chain transfers.
+        ///
+        /// # Arguments
+        ///
+        /// * `origin` - The origin of the call. Must be root.
+        /// * `network_id` - The identifier of the network where the asset will be registered.
+        /// * `asset_id` - The identifier of the existing asset on this chain.
+        /// * `sidechain_asset` - The identifier of the corresponding asset on the sidechain.
+        /// * `sidechain_precision` - The precision (number of decimal places) of the asset on the sidechain.
+        /// * `allowed_parachains` - A list of parachain IDs that are allowed to transfer this asset.
+        /// * `minimal_xcm_amount` - The minimum amount required for XCM transfers of this asset.
+        ///
+        /// # Errors
+        ///
+        /// This function will return an error if:
+        /// * The caller is not root.
+        /// * The asset is already registered for the given network.
+        /// * The provided minimal XCM amount is invalid
+        ///
+        /// # Effects
+        ///
+        /// If successful, this function will:
+        /// * Register the asset for cross-chain transfers.
+        /// * Set the sidechain precision for the asset.
+        /// * Add the asset to the list of allowed assets for the specified parachains.
+        /// * Send a message to the parachain to register the asset there as well.
+        /// /// IMPORTANT! minimal_xcm_amount always has 18 precision!
         #[pallet::call_index(9)]
         #[pallet::weight(<T as Config>::WeightInfo::bind_sidechain_asset(allowed_parachains.len() as u32))]
         pub fn bind_sidechain_asset(
