@@ -3,6 +3,7 @@ use derivative::Derivative;
 use scale_info::TypeInfo;
 use sp_core::{ecdsa, ed25519, Get, RuntimeDebug, H256};
 use sp_runtime::{BoundedBTreeMap, BoundedBTreeSet};
+use sp_std::prelude::*;
 
 #[derive(Encode, Decode, TypeInfo, MaxEncodedLen, Derivative)]
 #[derivative(

@@ -163,6 +163,41 @@ pub struct Message<MaxPayload: Get<u32>> {
     Debug(bound = ""),
     Clone(bound = ""),
     PartialEq(bound = ""),
+    Eq(bound = ""),
+    Default(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload, MaxMessages))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct MessageQueue<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    /// Queue total gas amount
+    pub total_gas: U256,
+    /// Messages queue
+    pub queue: BoundedVec<Message<MaxPayload>, MaxMessages>,
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> MessageQueue<MaxMessages, MaxPayload> {
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Message<MaxPayload>> {
+        self.queue.iter()
+    }
+
+    pub fn try_push(&mut self, message: Message<MaxPayload>) -> Result<(), Message<MaxPayload>> {
+        let message_gas = message.max_gas;
+        self.queue.try_push(message)?;
+        self.total_gas = self.total_gas.saturating_add(message_gas);
+        Ok(())
+    }
+}
+
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
     Eq(bound = "")
 )]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]

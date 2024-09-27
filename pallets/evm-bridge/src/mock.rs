@@ -34,14 +34,15 @@ use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
 use bridge_types::evm::AdditionalEVMOutboundData;
-use bridge_types::types::{AssetKind, GenericAdditionalInboundData};
+use bridge_types::types::GenericAdditionalInboundData;
 use bridge_types::H160;
 use bridge_types::H256;
 use bridge_types::{EVMChainId, GenericNetworkId, U256};
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_system as system;
+use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
@@ -71,7 +72,7 @@ frame_support::construct_runtime!(
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        FungibleApp: fungible_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        FungibleApp: fungible_app::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -175,6 +176,7 @@ parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 2048;
     pub const MaxMessagesPerCommit: u32 = 3;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
+    pub const MaxGasPerMessage: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
 }
 
@@ -290,6 +292,9 @@ impl fungible_app::Config for Test {
     type AssetRegistry = BridgeAssetRegistryImpl;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
+    type BaseFeeLifetime = ConstU64<100>;
+    type MaxGasPerCommit = MaxTotalGasLimit;
+    type MaxGasPerMessage = MaxGasPerMessage;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
@@ -302,33 +307,6 @@ pub fn new_tester() -> sp_io::TestExternalities {
         balances: vec![(bob, 1_000_000_000_000_000_000u128)],
     }
     .assimilate_storage(&mut storage)
-    .unwrap();
-
-    GenesisBuild::<Test>::assimilate_storage(
-        &fungible_app::GenesisConfig {
-            apps: vec![
-                (BASE_NETWORK_ID, H160::repeat_byte(1)),
-                (BASE_NETWORK_ID, H160::repeat_byte(2)),
-            ],
-            assets: vec![
-                (
-                    BASE_NETWORK_ID,
-                    XOR,
-                    H160::repeat_byte(3),
-                    AssetKind::Thischain,
-                    18,
-                ),
-                (
-                    BASE_NETWORK_ID,
-                    DAI,
-                    H160::repeat_byte(4),
-                    AssetKind::Sidechain,
-                    18,
-                ),
-            ],
-        },
-        &mut storage,
-    )
     .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();

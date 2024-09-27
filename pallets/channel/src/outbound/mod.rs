@@ -32,13 +32,14 @@
 
 use bridge_types::evm::AdditionalEVMOutboundData;
 use bridge_types::substrate::BridgeMessage;
-use bridge_types::traits::EVMOutboundChannel;
+use bridge_types::ton::AdditionalTONOutboundData;
+use bridge_types::ton::TonNetworkId;
 use bridge_types::traits::OutboundChannel;
+use bridge_types::traits::OutboundQueueVerifier;
 use bridge_types::traits::TimepointProvider;
 use bridge_types::EVMChainId;
 use bridge_types::GenericNetworkId;
 use bridge_types::SubNetworkId;
-use frame_support::ensure;
 use frame_support::log::error;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Get;
@@ -64,20 +65,18 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-    use bridge_types::traits::AuxiliaryDigestHandler;
     use bridge_types::traits::MessageStatusNotifier;
+    use bridge_types::traits::OutboundQueueVerifier;
     use bridge_types::traits::TimepointProvider;
-    use bridge_types::types::AuxiliaryDigestItem;
     use bridge_types::types::GenericCommitmentWithBlock;
     use bridge_types::types::MessageId;
     use bridge_types::types::MessageStatus;
-    use bridge_types::GenericBridgeMessage;
     use bridge_types::GenericCommitment;
+    use bridge_types::GenericMessageQueue;
     use bridge_types::GenericNetworkId;
     use bridge_types::GenericTimepoint;
     use frame_support::log::debug;
     use frame_support::traits::StorageVersion;
-    use sp_core::U256;
     use sp_runtime::traits::Zero;
 
     #[pallet::config]
@@ -94,19 +93,31 @@ pub mod pallet {
 
         type Balance;
 
-        type MaxGasPerCommit: Get<U256>;
-
-        type MaxGasPerMessage: Get<U256>;
-
         type MessageStatusNotifier: MessageStatusNotifier<
             Self::AssetId,
             Self::AccountId,
             Self::Balance,
         >;
 
-        type AuxiliaryDigestHandler: AuxiliaryDigestHandler;
-
         type TimepointProvider: TimepointProvider;
+
+        type EVMOutboundQueueVerifier: OutboundQueueVerifier<
+            EVMChainId,
+            bridge_types::evm::MessageQueue<
+                Self::MaxMessagesPerCommit,
+                Self::MaxMessagePayloadSize,
+            >,
+            bridge_types::evm::Message<Self::MaxMessagePayloadSize>,
+        >;
+
+        type TONOutboundQueueVerifier: OutboundQueueVerifier<
+            TonNetworkId,
+            bridge_types::ton::MessageQueue<
+                Self::MaxMessagesPerCommit,
+                Self::MaxMessagePayloadSize,
+            >,
+            bridge_types::ton::Message<Self::MaxMessagePayloadSize>,
+        >;
 
         #[pallet::constant]
         type ThisNetworkId: Get<GenericNetworkId>;
@@ -123,7 +134,6 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(crate) fn DefaultInterval<T: Config>() -> T::BlockNumber {
-        // TODO: Select interval
         10u32.into()
     }
 
@@ -134,12 +144,9 @@ pub mod pallet {
         _,
         Identity,
         GenericNetworkId,
-        BoundedVec<GenericBridgeMessage<T::MaxMessagePayloadSize>, T::MaxMessagesPerCommit>,
-        ValueQuery,
+        GenericMessageQueue<T::MaxMessagesPerCommit, T::MaxMessagePayloadSize>,
+        OptionQuery,
     >;
-
-    #[pallet::storage]
-    pub type QueueTotalGas<T: Config> = StorageMap<_, Identity, GenericNetworkId, U256, ValueQuery>;
 
     #[pallet::storage]
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, GenericNetworkId, u64, ValueQuery>;
@@ -156,15 +163,6 @@ pub mod pallet {
         >,
         OptionQuery,
     >;
-
-    #[pallet::storage]
-    pub type EVMSubmitGas<T: Config> =
-        StorageMap<_, Identity, EVMChainId, U256, ValueQuery, DefaultEVMSubmitGas>;
-
-    #[pallet::type_value]
-    pub fn DefaultEVMSubmitGas() -> U256 {
-        200_000u32.into()
-    }
 
     /// The current storage version.
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -228,10 +226,9 @@ pub mod pallet {
     impl<T: Config> Pallet<T> {
         pub(crate) fn commit(network_id: GenericNetworkId) -> Weight {
             debug!("Commit substrate messages");
-            let messages = MessageQueues::<T>::take(network_id);
-            if messages.is_empty() {
+            let Some(messages) = MessageQueues::<T>::take(network_id) else {
                 return <T as Config>::WeightInfo::on_initialize_no_messages();
-            }
+            };
 
             let batch_nonce = ChannelNonces::<T>::mutate(network_id, |nonce| {
                 *nonce += 1;
@@ -248,69 +245,43 @@ pub mod pallet {
                 );
             }
 
-            let average_payload_size = Self::average_payload_size(&messages);
+            let average_payload_size = messages.average_payload_size();
             let messages_count = messages.len();
 
-            let commitment = match network_id {
-                GenericNetworkId::EVM(_) => {
-                    let (messages, total_gas) = messages.iter().fold(
-                        (BoundedVec::default(), U256::zero()),
-                        |(mut messages, total_gas), message| match message {
-                            GenericBridgeMessage::EVM(message) => {
-                                let total_gas = total_gas.saturating_add(message.max_gas);
-                                if messages.try_push(message.clone()).is_err() {
-                                    error!("Messages limit exceeded, ignoring (if you noticed this message, please report it)");
-                                }
-                                (messages, total_gas)
-                            }
-                            _ => {
-                                error!("Message is not an EVM message, ignoring (if you noticed this message, please report it)");
-                                (messages, total_gas)
-                            },
-                        },
-                    );
+            let commitment = match (network_id, messages) {
+                (GenericNetworkId::EVM(_), GenericMessageQueue::EVM(messages)) => {
                     GenericCommitment::EVM(bridge_types::evm::Commitment::Outbound(
                         bridge_types::evm::OutboundCommitment {
-                            messages,
-                            total_max_gas: total_gas,
+                            messages: messages.queue,
+                            total_max_gas: messages.total_gas,
                             nonce: batch_nonce,
                         },
                     ))
                 }
-                GenericNetworkId::Sub(_) => {
-                    let messages = messages.iter().fold(
-                        BoundedVec::default(),
-                        |mut messages, message| match message {
-                            GenericBridgeMessage::Sub(message) => {
-                                if messages.try_push(message.clone()).is_err() {
-                                    error!("Messages limit exceeded, ignoring (if you noticed this message, please report it)");
-                                }
-                                messages
-                            }
-                            _ => {
-                                error!("Message is not an Substrate bridge message, ignoring (if you noticed this message, please report it)");
-                                messages
-                            },
-                        },
-                    );
+                (GenericNetworkId::Sub(_), GenericMessageQueue::Sub(messages)) => {
                     bridge_types::GenericCommitment::Sub(bridge_types::substrate::Commitment {
-                        messages,
+                        messages: messages.queue,
                         nonce: batch_nonce,
                     })
                 }
-                GenericNetworkId::EVMLegacy(_) => {
+                (GenericNetworkId::TON(_), GenericMessageQueue::TON(messages)) => {
+                    GenericCommitment::TON(bridge_types::ton::Commitment::Outbound(
+                        bridge_types::ton::OutboundCommitment {
+                            messages: messages.queue,
+                            total_max_fee: messages.total_fee,
+                            nonce: batch_nonce,
+                        },
+                    ))
+                }
+                (GenericNetworkId::EVMLegacy(_), _) => {
                     error!("EVMLegacy messages are not supported by this channel (if you noticed this message, please report it)");
                     return <T as Config>::WeightInfo::on_initialize_no_messages();
                 }
-                GenericNetworkId::TON(_) => {
-                    error!("TON messages are not supported yet by this channel (if you noticed this message, please report it)");
+                _ => {
+                    error!("Network and message types mismatch (if you noticed this message, please report it)");
                     return <T as Config>::WeightInfo::on_initialize_no_messages();
                 }
             };
-
-            let commitment_hash = commitment.hash();
-            let digest_item = AuxiliaryDigestItem::Commitment(network_id, commitment_hash);
-            T::AuxiliaryDigestHandler::add_item(digest_item);
 
             let commitment = bridge_types::types::GenericCommitmentWithBlock {
                 commitment,
@@ -322,15 +293,6 @@ pub mod pallet {
                 messages_count as u32,
                 average_payload_size as u32,
             )
-        }
-
-        fn average_payload_size(
-            messages: &[GenericBridgeMessage<T::MaxMessagePayloadSize>],
-        ) -> usize {
-            let sum: usize = messages.iter().fold(0, |acc, x| acc + x.payload().len());
-            // We overestimate message payload size rather than underestimate.
-            // So add 1 here to account for integer division truncation.
-            (sum / messages.len()).saturating_add(1)
         }
     }
 
@@ -356,35 +318,25 @@ pub mod pallet {
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn submit_message(
+        pub fn on_submit_message(
             network_id: GenericNetworkId,
             who: &RawOrigin<T::AccountId>,
-            message: GenericBridgeMessage<T::MaxMessagePayloadSize>,
+            message_id: u64,
         ) -> Result<H256, DispatchError> {
             debug!("Send message from {:?} to network {:?}", who, network_id);
-            let messages_count = MessageQueues::<T>::decode_len(network_id).unwrap_or(0) as u64;
-            ensure!(
-                messages_count < T::MaxMessagesPerCommit::get() as u64,
-                Error::<T>::QueueSizeLimitReached,
-            );
             let batch_nonce = ChannelNonces::<T>::get(network_id)
                 .checked_add(1)
                 .ok_or(Error::<T>::Overflow)?;
 
-            MessageQueues::<T>::try_append(network_id, message)
-                .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
             Self::deposit_event(Event::MessageAccepted {
                 network_id,
                 batch_nonce,
-                message_nonce: messages_count,
+                message_nonce: message_id,
             });
-            Ok(MessageId::batched(
-                T::ThisNetworkId::get(),
-                network_id,
-                batch_nonce,
-                messages_count,
+            Ok(
+                MessageId::batched(T::ThisNetworkId::get(), network_id, batch_nonce, message_id)
+                    .hash(),
             )
-            .hash())
         }
     }
 }
@@ -404,11 +356,21 @@ impl<T: Config> OutboundChannel<SubNetworkId, T::AccountId, ()> for Pallet<T> {
                 .map_err(|_| Error::<T>::PayloadTooLarge)?,
             timepoint: T::TimepointProvider::get_timepoint(),
         };
-        Self::submit_message(
-            network_id.into(),
-            who,
-            bridge_types::GenericBridgeMessage::Sub(message),
-        )
+        let message_id = MessageQueues::<T>::try_mutate(
+            GenericNetworkId::Sub(network_id),
+            |opt_queue| -> Result<usize, DispatchError> {
+                let queue = opt_queue
+                    .get_or_insert(bridge_types::GenericMessageQueue::Sub(Default::default()))
+                    .as_sub_mut()
+                    .ok_or(Error::<T>::MessageTypeIsNotSupported)?;
+                let message_id = queue.len();
+                queue
+                    .try_push(message)
+                    .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+                Ok(message_id)
+            },
+        )?;
+        Self::on_submit_message(network_id.into(), who, message_id as u64)
     }
 
     fn submit_weight() -> Weight {
@@ -424,18 +386,6 @@ impl<T: Config> OutboundChannel<EVMChainId, T::AccountId, AdditionalEVMOutboundD
         payload: &[u8],
         additional_data: AdditionalEVMOutboundData,
     ) -> Result<H256, DispatchError> {
-        ensure!(
-            additional_data.max_gas < T::MaxGasPerMessage::get(),
-            Error::<T>::MessageGasLimitExceeded
-        );
-        QueueTotalGas::<T>::try_mutate(GenericNetworkId::EVM(network_id), |total_gas| {
-            *total_gas = total_gas.saturating_add(additional_data.max_gas);
-            ensure!(
-                *total_gas < T::MaxGasPerCommit::get(),
-                Error::<T>::CommitmentGasLimitExceeded
-            );
-            Ok::<(), DispatchError>(())
-        })?;
         let message = bridge_types::evm::Message {
             payload: payload
                 .to_vec()
@@ -444,11 +394,22 @@ impl<T: Config> OutboundChannel<EVMChainId, T::AccountId, AdditionalEVMOutboundD
             target: additional_data.target,
             max_gas: additional_data.max_gas,
         };
-        Self::submit_message(
-            network_id.into(),
-            who,
-            bridge_types::GenericBridgeMessage::EVM(message),
-        )
+        let message_id = MessageQueues::<T>::try_mutate(
+            GenericNetworkId::EVM(network_id),
+            |opt_queue| -> Result<usize, DispatchError> {
+                let queue = opt_queue
+                    .get_or_insert(bridge_types::GenericMessageQueue::EVM(Default::default()))
+                    .as_evm_mut()
+                    .ok_or(Error::<T>::MessageTypeIsNotSupported)?;
+                T::EVMOutboundQueueVerifier::verify_queue(&network_id, queue, &message)?;
+                let message_id = queue.len();
+                queue
+                    .try_push(message)
+                    .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+                Ok(message_id)
+            },
+        )?;
+        Self::on_submit_message(network_id.into(), who, message_id as u64)
     }
 
     fn submit_weight() -> Weight {
@@ -456,8 +417,43 @@ impl<T: Config> OutboundChannel<EVMChainId, T::AccountId, AdditionalEVMOutboundD
     }
 }
 
-impl<T: Config> EVMOutboundChannel for Pallet<T> {
-    fn submit_gas(network_id: EVMChainId) -> Result<sp_core::U256, DispatchError> {
-        Ok(EVMSubmitGas::<T>::get(network_id))
+impl<T: Config> OutboundChannel<TonNetworkId, T::AccountId, AdditionalTONOutboundData>
+    for Pallet<T>
+{
+    /// Submit message on the outbound channel
+    fn submit(
+        network_id: TonNetworkId,
+        who: &RawOrigin<T::AccountId>,
+        payload: &[u8],
+        additional_data: AdditionalTONOutboundData,
+    ) -> Result<H256, DispatchError> {
+        let message = bridge_types::ton::Message {
+            payload: payload
+                .to_vec()
+                .try_into()
+                .map_err(|_| Error::<T>::PayloadTooLarge)?,
+            target: additional_data.target,
+            max_fee: additional_data.max_fee,
+        };
+        let message_id = MessageQueues::<T>::try_mutate(
+            GenericNetworkId::TON(network_id),
+            |opt_queue| -> Result<usize, DispatchError> {
+                let queue = opt_queue
+                    .get_or_insert(bridge_types::GenericMessageQueue::TON(Default::default()))
+                    .as_ton_mut()
+                    .ok_or(Error::<T>::MessageTypeIsNotSupported)?;
+                T::TONOutboundQueueVerifier::verify_queue(&network_id, queue, &message)?;
+                let message_id = queue.len();
+                queue
+                    .try_push(message)
+                    .map_err(|_| Error::<T>::QueueSizeLimitReached)?;
+                Ok(message_id)
+            },
+        )?;
+        Self::on_submit_message(network_id.into(), who, message_id as u64)
+    }
+
+    fn submit_weight() -> Weight {
+        <T as Config>::WeightInfo::submit()
     }
 }

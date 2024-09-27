@@ -62,10 +62,9 @@ mod mock;
 mod tests;
 
 use bridge_types::substrate::FAAppCall;
-use bridge_types::traits::EVMFeeHandler;
-use bridge_types::traits::EVMOutboundChannel;
-use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetLocker};
-use bridge_types::{EVMChainId, MainnetAccountId, MainnetAssetId};
+use bridge_types::traits::BridgeApp;
+use bridge_types::traits::GetBridgeDispatchInfo;
+use bridge_types::{MainnetAccountId, MainnetAssetId};
 use bridge_types::{H160, U256};
 use codec::{Decode, Encode};
 use frame_support::dispatch::{DispatchError, DispatchResult};
@@ -73,7 +72,6 @@ use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
 use sp_core::Get;
-use sp_runtime::traits::Zero;
 use sp_std::prelude::*;
 
 pub use pallet::*;
@@ -136,8 +134,8 @@ pub mod pallet {
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
+    use sp_runtime::traits::Convert;
     use sp_runtime::traits::Zero;
-    use sp_runtime::traits::{Convert, Hash};
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> =
@@ -190,12 +188,6 @@ pub mod pallet {
         >;
 
         type BridgeAssetLocker: BridgeAssetLocker<Self::AccountId>;
-
-        #[pallet::constant]
-        type BaseFeeLifetime: Get<BlockNumberFor<Self>>;
-
-        #[pallet::constant]
-        type PriorityFee: Get<u128>;
 
         type WeightInfo: WeightInfo;
     }
@@ -641,81 +633,9 @@ pub mod pallet {
             )?;
             Ok(())
         }
-
-        #[pallet::call_index(8)]
-        #[pallet::weight(<T as Config>::WeightInfo::register_native_app())]
-        pub fn claim_relayer_fees(
-            origin: OriginFor<T>,
-            network_id: EVMChainId,
-            relayer: H160,
-            signature: sp_core::ecdsa::Signature,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            Self::ensure_can_claim_relayer_fees(&who, network_id, relayer, signature)?;
-            let spent_fees = SpentFees::<T>::get(network_id, relayer);
-            ensure!(spent_fees > U256::zero(), Error::<T>::NothingToClaim);
-
-            let collected_fees = CollectedFees::<T>::get(network_id);
-            ensure!(
-                collected_fees > U256::zero(),
-                Error::<T>::NotEnoughFeesCollected
-            );
-            let fees_to_claim = collected_fees.min(spent_fees);
-
-            let fee_asset = Self::get_network_fee_asset(network_id)?;
-            let sidechain_precision = SidechainPrecision::<T>::get(network_id, &fee_asset)
-                .ok_or(Error::<T>::TokenIsNotRegistered)?;
-
-            let (amount, _) = T::BalancePrecisionConverter::from_sidechain(
-                &fee_asset,
-                sidechain_precision,
-                fees_to_claim,
-            )
-            .ok_or(Error::<T>::WrongAmount)?;
-            ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
-            T::BridgeAssetLocker::refund_fee(network_id.into(), &who, &fee_asset, &amount)?;
-            Self::deposit_event(Event::FeesClaimed {
-                asset_id: fee_asset,
-                recipient: who,
-                amount,
-            });
-
-            SpentFees::<T>::insert(
-                network_id,
-                relayer,
-                spent_fees.saturating_sub(fees_to_claim),
-            );
-            CollectedFees::<T>::set(network_id, collected_fees.saturating_sub(fees_to_claim));
-
-            Ok(())
-        }
     }
 
     impl<T: Config> Pallet<T> {
-        pub fn get_claim_prehashed_message(network_id: EVMChainId, who: &T::AccountId) -> H256 {
-            sp_runtime::traits::Keccak256::hash_of(&(
-                "claim-relayer-fees",
-                &who,
-                frame_system::Pallet::<T>::account_nonce(who),
-                network_id,
-            ))
-        }
-
-        pub fn ensure_can_claim_relayer_fees(
-            who: &T::AccountId,
-            network_id: EVMChainId,
-            relayer: H160,
-            signature: sp_core::ecdsa::Signature,
-        ) -> DispatchResult {
-            let message = Self::get_claim_prehashed_message(network_id, who);
-            let pk = sp_io::crypto::secp256k1_ecdsa_recover(&signature.0, &message.0)
-                .map_err(|_| Error::<T>::InvalidSignature)?;
-            let recovered_address =
-                H160::from_slice(&sp_runtime::traits::Keccak256::hash(&pk)[12..]);
-            ensure!(recovered_address == relayer, Error::<T>::InvalidSignature);
-            Ok(())
-        }
-
         pub fn register_asset_inner(
             network_id: EVMChainId,
             asset_id: AssetIdOf<T>,
@@ -918,82 +838,26 @@ pub mod pallet {
         fn transfer_weight() -> Weight {
             <T as Config>::WeightInfo::burn()
         }
+
+        fn transfer_info(network_id: GenericNetworkId) -> bridge_types::types::BridgeDispatchInfo {
+            match network_id {
+                GenericNetworkId::EVM(chain_id) => {
+                    bridge_types::types::BridgeDispatchInfo::from_gas(
+                        chain_id,
+                        TRANSFER_MAX_GAS.into(),
+                    )
+                }
+                _ => Default::default(),
+            }
+        }
     }
 }
 
-impl<T: Config> bridge_types::traits::EVMBridgeWithdrawFee<T::AccountId, AssetIdOf<T>>
-    for Pallet<T>
-{
-    fn withdraw_transfer_fee(
-        who: &T::AccountId,
-        chain_id: bridge_types::EVMChainId,
-        _asset_id: AssetIdOf<T>,
-    ) -> DispatchResult {
-        let gas = T::OutboundChannel::submit_gas(chain_id)?.saturating_add(TRANSFER_MAX_GAS.into());
-        let fee_asset = Self::get_network_fee_asset(chain_id)?;
-        let base_fee =
-            Self::get_latest_base_fee(chain_id)?.saturating_add(T::PriorityFee::get().into());
-        let fee = gas.saturating_mul(base_fee);
-        let sidechain_precision = SidechainPrecision::<T>::get(chain_id, &fee_asset)
-            .ok_or(Error::<T>::TokenIsNotRegistered)?;
-
-        let (amount, _) =
-            T::BalancePrecisionConverter::from_sidechain(&fee_asset, sidechain_precision, fee)
-                .ok_or(Error::<T>::WrongAmount)?;
-        ensure!(amount > Zero::zero(), Error::<T>::WrongAmount);
-        T::BridgeAssetLocker::withdraw_fee(chain_id.into(), who, &fee_asset, &amount)?;
-        CollectedFees::<T>::mutate(chain_id, |fees| {
-            *fees = fees.saturating_add(fee);
-        });
-        Ok(())
-    }
-}
-
-impl<T: Config> EVMFeeHandler<AssetIdOf<T>> for Pallet<T> {
-    fn get_latest_base_fee(network_id: EVMChainId) -> Result<U256, DispatchError> {
-        let base_fee = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable)?;
-        ensure!(
-            frame_system::Pallet::<T>::block_number()
-                <= base_fee.updated + T::BaseFeeLifetime::get(),
-            Error::<T>::BaseFeeLifetimeExceeded
-        );
-        Ok(base_fee.base_fee)
-    }
-    fn get_network_fee_asset(network_id: EVMChainId) -> Result<AssetIdOf<T>, DispatchError> {
-        let asset_id = AssetsByAddresses::<T>::get(network_id, H160::zero())
-            .ok_or(Error::<T>::AppIsNotRegistered)?;
-        Ok(asset_id)
-    }
-
-    fn on_fee_paid(network_id: EVMChainId, relayer: H160, amount: U256) {
-        SpentFees::<T>::mutate(network_id, relayer, |fees| {
-            *fees = fees.saturating_add(amount);
-        })
-    }
-
-    fn can_update_base_fee(
-        network_id: EVMChainId,
-        _new_base_fee: U256,
-        evm_block_number: u64,
-    ) -> bool {
-        let Ok(base_fee) = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable) else {
-            // Probably it's first base fee update
-            return true;
-        };
-        base_fee.evm_block_number < evm_block_number
-    }
-
-    fn update_base_fee(network_id: EVMChainId, new_base_fee: U256, evm_block_number: u64) {
-        if Self::can_update_base_fee(network_id, new_base_fee, evm_block_number) {
-            let block_number = frame_system::Pallet::<T>::block_number();
-            BaseFees::<T>::insert(
-                network_id,
-                BaseFeeInfo {
-                    base_fee: new_base_fee,
-                    updated: block_number,
-                    evm_block_number,
-                },
-            );
+impl<T: Config> GetBridgeDispatchInfo for Call<T> {
+    fn get_bridge_dispatch_info(&self) -> bridge_types::types::BridgeDispatchInfo {
+        match self {
+            Call::burn { network_id, .. } => Pallet::<T>::transfer_info(network_id.clone().into()),
+            _ => Default::default(),
         }
     }
 }

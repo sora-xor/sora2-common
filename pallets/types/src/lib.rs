@@ -232,7 +232,7 @@ pub enum GenericCommitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     #[cfg_attr(feature = "std", serde(rename = "evm"))]
     EVM(evm::Commitment<MaxMessages, MaxPayload>),
     #[cfg_attr(feature = "std", serde(rename = "ton"))]
-    TON(ton::Commitment<MaxPayload>),
+    TON(ton::Commitment<MaxMessages, MaxPayload>),
 }
 
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericCommitment<MaxMessages, MaxPayload> {
@@ -345,16 +345,86 @@ impl From<u32> for LiberlandAssetId {
 )]
 #[scale_info(skip_type_params(MaxPayload))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
-pub enum GenericBridgeMessage<MaxPayload: Get<u32>> {
+pub enum GenericMessage<MaxPayload: Get<u32>> {
     Sub(substrate::BridgeMessage<MaxPayload>),
     EVM(evm::Message<MaxPayload>),
 }
 
-impl<N: Get<u32>> GenericBridgeMessage<N> {
-    pub fn payload(&self) -> &[u8] {
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload, MaxMessages))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub enum GenericMessageQueue<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    Sub(substrate::MessageQueue<MaxMessages, MaxPayload>),
+    EVM(evm::MessageQueue<MaxMessages, MaxPayload>),
+    TON(ton::MessageQueue<MaxMessages, MaxPayload>),
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericMessageQueue<MaxMessages, MaxPayload> {
+    pub fn len(&self) -> usize {
         match self {
-            GenericBridgeMessage::Sub(message) => &message.payload,
-            GenericBridgeMessage::EVM(message) => &message.payload,
+            Self::EVM(queue) => queue.len(),
+            Self::TON(queue) => queue.len(),
+            Self::Sub(queue) => queue.len(),
+        }
+    }
+
+    pub fn average_payload_size(&self) -> usize {
+        let sum: usize = match self {
+            Self::TON(queue) => queue.iter().map(|m| m.payload.len()).sum(),
+            Self::EVM(queue) => queue.iter().map(|m| m.payload.len()).sum(),
+            Self::Sub(queue) => queue.iter().map(|m| m.payload.len()).sum(),
+        };
+        // We overestimate message payload size rather than underestimate.
+        // So add 1 here to account for integer division truncation.
+        (sum / self.len()).saturating_add(1)
+    }
+
+    pub fn as_evm(&self) -> Option<&evm::MessageQueue<MaxMessages, MaxPayload>> {
+        match self {
+            Self::EVM(queue) => Some(queue),
+            _ => None,
+        }
+    }
+
+    pub fn as_evm_mut(&mut self) -> Option<&mut evm::MessageQueue<MaxMessages, MaxPayload>> {
+        match self {
+            Self::EVM(queue) => Some(queue),
+            _ => None,
+        }
+    }
+
+    pub fn as_sub(&self) -> Option<&substrate::MessageQueue<MaxMessages, MaxPayload>> {
+        match self {
+            Self::Sub(queue) => Some(queue),
+            _ => None,
+        }
+    }
+
+    pub fn as_sub_mut(&mut self) -> Option<&mut substrate::MessageQueue<MaxMessages, MaxPayload>> {
+        match self {
+            Self::Sub(queue) => Some(queue),
+            _ => None,
+        }
+    }
+
+    pub fn as_ton(&self) -> Option<&ton::MessageQueue<MaxMessages, MaxPayload>> {
+        match self {
+            Self::TON(queue) => Some(queue),
+            _ => None,
+        }
+    }
+
+    pub fn as_ton_mut(&mut self) -> Option<&mut ton::MessageQueue<MaxMessages, MaxPayload>> {
+        match self {
+            Self::TON(queue) => Some(queue),
+            _ => None,
         }
     }
 }

@@ -233,6 +233,36 @@ impl SubstrateBridgeMessageEncode for BridgeSignerCall {
     }
 }
 
+/// Message to BridgeSigner
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum EvmBridgeCall {
+    RegisterRelayer {
+        relayer: H160,
+        account: MainnetAccountId,
+    },
+}
+
+impl SubstrateBridgeMessageEncode for EvmBridgeCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::EvmBridge(self).encode()
+    }
+}
+
+/// Message to BridgeSigner
+#[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
+pub enum TonBridgeCall {
+    RegisterRelayer {
+        relayer: TonAddressWithPrefix,
+        account: MainnetAccountId,
+    },
+}
+
+impl SubstrateBridgeMessageEncode for TonBridgeCall {
+    fn prepare_message(self) -> Vec<u8> {
+        BridgeCall::TonBridge(self).encode()
+    }
+}
+
 /// Substrate bridge message payload
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
@@ -244,6 +274,8 @@ pub enum BridgeCall {
     FAApp(FAAppCall),
     JettonApp(JettonAppCall),
     BridgeSigner(BridgeSignerCall),
+    EvmBridge(EvmBridgeCall),
+    TonBridge(TonBridgeCall),
 }
 
 impl SubstrateBridgeMessageEncode for BridgeCall {
@@ -266,6 +298,39 @@ impl SubstrateBridgeMessageEncode for BridgeCall {
 pub struct BridgeMessage<MaxPayload: Get<u32>> {
     pub payload: BoundedVec<u8, MaxPayload>,
     pub timepoint: GenericTimepoint,
+}
+
+/// Substrate bridge message queue.
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Default(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload, MaxMessages))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct MessageQueue<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    pub queue: BoundedVec<BridgeMessage<MaxPayload>, MaxMessages>,
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> MessageQueue<MaxMessages, MaxPayload> {
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &BridgeMessage<MaxPayload>> {
+        self.queue.iter()
+    }
+
+    pub fn try_push(
+        &mut self,
+        message: BridgeMessage<MaxPayload>,
+    ) -> Result<(), BridgeMessage<MaxPayload>> {
+        self.queue.try_push(message)
+    }
 }
 
 #[derive(

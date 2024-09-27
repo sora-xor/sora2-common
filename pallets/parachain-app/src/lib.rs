@@ -789,4 +789,8 @@ impl<T: Config> BridgeApp<T::AccountId, ParachainAccountId, AssetIdOf<T>, Balanc
     fn transfer_weight() -> Weight {
         <T as Config>::WeightInfo::burn()
     }
+
+    fn transfer_info(_network_id: GenericNetworkId) -> bridge_types::types::BridgeDispatchInfo {
+        Default::default()
+    }
 }

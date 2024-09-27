@@ -433,6 +433,7 @@ dependencies = [
 name = "bridge-types"
 version = "0.1.0"
 dependencies = [
+ "bitvec",
  "derivative",
  "ethabi",
  "ethash",
@@ -440,7 +441,6 @@ dependencies = [
  "ethereum-types",
  "frame-support",
  "frame-system",
- "getrandom 0.2.10",
  "hex-literal",
  "libsecp256k1",
  "orml-traits",
@@ -1331,10 +1331,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be4136b2a15dd319360be1c07d9933517ccf0be8f16bf62a3bee4f0d618df427"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
- "wasm-bindgen",
 ]
 
 [[package]]

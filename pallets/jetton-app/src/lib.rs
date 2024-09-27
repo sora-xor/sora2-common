@@ -60,13 +60,21 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
+mod payload;
+
 use bridge_types::substrate::JettonAppCall;
+use bridge_types::traits::GetBridgeDispatchInfo;
+use bridge_types::traits::OutboundChannel;
+use bridge_types::types::BridgeDispatchInfo;
 use bridge_types::{MainnetAccountId, MainnetAssetId};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use sp_core::Get;
 use sp_std::prelude::*;
+
+/// 0.1 TON
+pub const TRANSFER_MAX_FEE: u128 = 100_000_000;
 
 pub use pallet::*;
 pub use weights::WeightInfo;
@@ -97,7 +105,9 @@ where
 pub mod pallet {
     use super::*;
 
-    use bridge_types::ton::{TonAddress, TonAddressWithPrefix, TonBalance, TonNetworkId};
+    use bridge_types::ton::{
+        AdditionalTONOutboundData, TonAddress, TonAddressWithPrefix, TonBalance, TonNetworkId,
+    };
     use bridge_types::ton::{TonAppInfo, TonAssetInfo};
     use bridge_types::traits::BridgeAssetLocker;
     use bridge_types::traits::{
@@ -110,8 +120,9 @@ pub mod pallet {
     use bridge_types::MainnetAssetId;
     use bridge_types::{GenericAccount, GenericNetworkId, H256};
     use frame_support::{fail, pallet_prelude::*};
-    use frame_system::ensure_root;
     use frame_system::pallet_prelude::*;
+    use frame_system::{ensure_root, RawOrigin};
+    use payload::MintPayload;
     use sp_runtime::traits::Convert;
     use sp_runtime::traits::Zero;
 
@@ -138,6 +149,12 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+        type OutboundChannel: OutboundChannel<
+            TonNetworkId,
+            Self::AccountId,
+            AdditionalTONOutboundData,
+        >;
 
         type CallOrigin: EnsureOrigin<
             Self::RuntimeOrigin,
@@ -437,6 +454,21 @@ pub mod pallet {
             )?;
             Ok(())
         }
+
+        #[pallet::call_index(3)]
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        pub fn burn(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+            recipient: TonAddress,
+            amount: BalanceOf<T>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+
+            Self::burn_inner(who, asset_id, recipient, amount)?;
+
+            Ok(())
+        }
     }
 
     impl<T: Config> Pallet<T> {
@@ -458,6 +490,72 @@ pub mod pallet {
             T::AssetRegistry::manage_asset(GenericNetworkId::TON(network_id), asset_id.clone())?;
             Self::deposit_event(Event::AssetRegistered { asset_id });
             Ok(())
+        }
+
+        pub fn burn_inner(
+            who: T::AccountId,
+            asset_id: AssetIdOf<T>,
+            recipient: TonAddress,
+            amount: BalanceOf<T>,
+        ) -> Result<H256, DispatchError> {
+            let asset_kind =
+                AssetKinds::<T>::get(&asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
+            let (network_id, target) = AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
+            let sidechain_precision =
+                SidechainPrecision::<T>::get(&asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
+
+            let (_, sidechain_amount) = T::BalancePrecisionConverter::to_sidechain(
+                &asset_id,
+                sidechain_precision,
+                amount.clone(),
+            )
+            .ok_or(Error::<T>::WrongAmount)?;
+
+            ensure!(sidechain_amount.balance() > 0, Error::<T>::WrongAmount);
+
+            T::BridgeAssetLocker::lock_asset(
+                network_id.into(),
+                asset_kind,
+                &who,
+                &asset_id,
+                &amount,
+            )?;
+
+            let token_address =
+                TokenAddresses::<T>::get(&asset_id).ok_or(Error::<T>::TokenIsNotRegistered)?;
+
+            let message = MintPayload {
+                token: token_address,
+                recipient,
+                amount: sidechain_amount,
+            };
+
+            let message_id = T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Signed(who.clone()),
+                &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
+                AdditionalTONOutboundData {
+                    target,
+                    max_fee: TRANSFER_MAX_FEE.into(),
+                },
+            )?;
+            T::MessageStatusNotifier::outbound_request(
+                GenericNetworkId::TON(network_id),
+                message_id,
+                who.clone(),
+                GenericAccount::TON(recipient),
+                asset_id.clone(),
+                amount.clone(),
+                MessageStatus::InQueue,
+            );
+            Self::deposit_event(Event::Burned {
+                asset_id,
+                sender: who,
+                recipient,
+                amount,
+            });
+
+            Ok(message_id)
         }
     }
 
@@ -534,6 +632,24 @@ pub mod pallet {
 
         fn transfer_weight() -> Weight {
             Default::default()
+        }
+
+        fn transfer_info(network_id: GenericNetworkId) -> bridge_types::types::BridgeDispatchInfo {
+            match network_id {
+                GenericNetworkId::TON(_) => {
+                    bridge_types::types::BridgeDispatchInfo::from_ton_fee(TRANSFER_MAX_FEE)
+                }
+                _ => Default::default(),
+            }
+        }
+    }
+}
+
+impl<T: crate::Config> GetBridgeDispatchInfo for Call<T> {
+    fn get_bridge_dispatch_info(&self) -> bridge_types::types::BridgeDispatchInfo {
+        match self {
+            Call::burn { .. } => BridgeDispatchInfo::from_ton_fee(TRANSFER_MAX_FEE),
+            _ => Default::default(),
         }
     }
 }

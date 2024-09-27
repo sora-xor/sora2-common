@@ -103,6 +103,9 @@ impl bridge_signer::Config for Test {
     type MaxPeers = BridgeMaxPeers;
     type ThisNetworkId = ThisNetworkId;
     type ApprovalCleanUpPeriod = ApprovalCleanUpPeriod;
+    type EvmPeerManager = ();
+    type TonPeerManager = ();
+    type SubPeerManager = ();
     type WeightInfo = ();
 }
 

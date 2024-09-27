@@ -71,10 +71,15 @@ pub mod pallet {
 
     use super::WeightInfo;
     use bridge_types::multisig::*;
+    use bridge_types::ton::TonNetworkId;
+    use bridge_types::traits::PeerManager;
     use bridge_types::types::CallOriginOutput;
     use bridge_types::types::GenericAdditionalInboundData;
+    use bridge_types::EVMChainId;
+    use bridge_types::SubNetworkId;
     use bridge_types::{GenericNetworkId, H256};
     use frame_support::dispatch::Pays;
+    use frame_support::fail;
     use frame_support::pallet_prelude::*;
     use frame_support::weights::Weight;
     use frame_system::ensure_root;
@@ -98,6 +103,12 @@ pub mod pallet {
             Self::RuntimeOrigin,
             Success = CallOriginOutput<GenericNetworkId, H256, GenericAdditionalInboundData>,
         >;
+
+        type EvmPeerManager: PeerManager<EVMChainId, sp_core::ecdsa::Public>;
+
+        type TonPeerManager: PeerManager<TonNetworkId, sp_core::ed25519::Public>;
+
+        type SubPeerManager: PeerManager<SubNetworkId, sp_core::ecdsa::Public>;
 
         #[pallet::constant]
         type MaxPeers: Get<u32>;
@@ -169,6 +180,7 @@ pub mod pallet {
         CallerIsNotWhitelisted,
         CallerAlreadyWhitelisted,
         InvalidProof,
+        InvalidPeerKind,
     }
 
     /// Peers
@@ -260,7 +272,7 @@ pub mod pallet {
                 Self::deposit_event(Event::<T>::Approved {
                     network_id,
                     data,
-                    signatures: approvals,
+                    signatures: approvals.clone(),
                 });
             } else {
                 Self::deposit_event(Event::<T>::ApprovalAccepted {
@@ -269,9 +281,12 @@ pub mod pallet {
                     signature,
                 });
             }
-            let clean_up_block = frame_system::Pallet::<T>::block_number()
-                .saturating_add(T::ApprovalCleanUpPeriod::get());
-            CleanSchedule::<T>::insert(clean_up_block, (network_id, data), true);
+            // First approval
+            if approvals.len() == 1 {
+                let clean_up_block = frame_system::Pallet::<T>::block_number()
+                    .saturating_add(T::ApprovalCleanUpPeriod::get());
+                CleanSchedule::<T>::insert(clean_up_block, (network_id, data), true);
+            }
             Ok(Pays::No.into())
         }
 
@@ -299,8 +314,28 @@ pub mod pallet {
                 }
                 Ok(())
             })?;
-            PendingPeerUpdate::<T>::insert(network_id, peer);
-            // TODO: Send peer update
+            PendingPeerUpdate::<T>::insert(network_id, peer.clone());
+            match network_id {
+                GenericNetworkId::EVM(chain_id) => {
+                    let MultiSigner::Ecdsa(signer) = peer else {
+                        fail!(Error::<T>::InvalidPeerKind);
+                    };
+                    T::EvmPeerManager::add_peer(chain_id, signer)?;
+                }
+                GenericNetworkId::Sub(network_id) => {
+                    let MultiSigner::Ecdsa(signer) = peer else {
+                        fail!(Error::<T>::InvalidPeerKind);
+                    };
+                    T::SubPeerManager::add_peer(network_id, signer)?;
+                }
+                GenericNetworkId::TON(network_id) => {
+                    let MultiSigner::Ed25519(signer) = peer else {
+                        fail!(Error::<T>::InvalidPeerKind);
+                    };
+                    T::TonPeerManager::add_peer(network_id, signer)?;
+                }
+                _ => fail!(Error::<T>::NetworkNotSupported),
+            }
             Ok(().into())
         }
 
@@ -318,8 +353,28 @@ pub mod pallet {
             );
             // Do nothing to ensure we have enough approvals for remove peer request
             // Will be actually removed after request from sidechain
-            PendingPeerUpdate::<T>::insert(network_id, peer);
-            // TODO: Send peer update
+            PendingPeerUpdate::<T>::insert(network_id, peer.clone());
+            match network_id {
+                GenericNetworkId::EVM(chain_id) => {
+                    let MultiSigner::Ecdsa(signer) = peer else {
+                        fail!(Error::<T>::InvalidPeerKind);
+                    };
+                    T::EvmPeerManager::remove_peer(chain_id, signer)?;
+                }
+                GenericNetworkId::Sub(network_id) => {
+                    let MultiSigner::Ecdsa(signer) = peer else {
+                        fail!(Error::<T>::InvalidPeerKind);
+                    };
+                    T::SubPeerManager::remove_peer(network_id, signer)?;
+                }
+                GenericNetworkId::TON(network_id) => {
+                    let MultiSigner::Ed25519(signer) = peer else {
+                        fail!(Error::<T>::InvalidPeerKind);
+                    };
+                    T::TonPeerManager::remove_peer(network_id, signer)?;
+                }
+                _ => fail!(Error::<T>::NetworkNotSupported),
+            }
             Ok(().into())
         }
 
@@ -366,7 +421,16 @@ pub mod pallet {
                 }
                 Ok(())
             })?;
-            // TODO: Send peer update
+            match network_id {
+                GenericNetworkId::Sub(network_id) => {
+                    ensure!(
+                        matches!(peer, MultiSigner::Ecdsa(_)),
+                        Error::<T>::InvalidPeerKind
+                    );
+                    T::SubPeerManager::finish_remove_peer(network_id)?;
+                }
+                _ => fail!(Error::<T>::NetworkNotSupported),
+            }
             Ok(().into())
         }
 
@@ -382,14 +446,23 @@ pub mod pallet {
                     if peers.contains(&peer) {
                         return Err(Error::<T>::PeerExists);
                     } else {
-                        ensure!(peers.add_peer(peer), Error::<T>::TooMuchPeers);
+                        ensure!(peers.add_peer(peer.clone()), Error::<T>::TooMuchPeers);
                     }
                 } else {
                     return Err(Error::<T>::NetworkNotSupported);
                 }
                 Ok(())
             })?;
-            // TODO: Send peer update
+            match network_id {
+                GenericNetworkId::Sub(network_id) => {
+                    ensure!(
+                        matches!(peer, MultiSigner::Ecdsa(_)),
+                        Error::<T>::InvalidPeerKind
+                    );
+                    T::SubPeerManager::finish_add_peer(network_id)?;
+                }
+                _ => fail!(Error::<T>::NetworkNotSupported),
+            }
             Ok(().into())
         }
 
