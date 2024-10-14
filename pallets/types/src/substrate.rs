@@ -43,12 +43,12 @@ use crate::types::MessageStatus;
 use crate::{types::AssetKind, GenericTimepoint, MainnetAccountId, MainnetAssetId, MainnetBalance};
 use crate::{GenericAccount, GenericAssetId, GenericBalance};
 
-pub use xcm::v3::{Junction, Junctions};
-pub use xcm::VersionedMultiLocation;
+pub use staging_xcm::v3::{Junction, Junctions};
+pub use staging_xcm::VersionedMultiLocation;
 
 pub type ParachainAccountId = VersionedMultiLocation;
 
-pub type ParachainAssetId = xcm::v3::AssetId;
+pub type ParachainAssetId = staging_xcm::v3::AssetId;
 
 pub type EVMAssetId = H160;
 
@@ -58,7 +58,7 @@ pub type EVMAccountId = H160;
 pub type EVMBalance = H256;
 
 pub const PARENT_PARACHAIN_ASSET: ParachainAssetId =
-    ParachainAssetId::Concrete(xcm::v3::MultiLocation::parent());
+    ParachainAssetId::Concrete(staging_xcm::v3::MultiLocation::parent());
 
 pub trait SubstrateBridgeMessageEncode {
     fn prepare_message(self) -> Vec<u8>;

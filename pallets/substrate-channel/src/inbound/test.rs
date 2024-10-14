@@ -33,18 +33,15 @@ use bridge_types::substrate::BridgeMessage;
 use codec::{Decode, Encode, MaxEncodedLen};
 
 use frame_support::traits::{Everything, UnfilteredDispatchable};
-use frame_support::{
-    assert_err, assert_noop, assert_ok, parameter_types, Deserialize, RuntimeDebug, Serialize,
-};
+use frame_support::{assert_err, assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use scale_info::TypeInfo;
-use sp_core::{ConstU64, H256};
+use sp_core::{ConstU64, RuntimeDebug, H256};
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, ValidateUnsigned, Verify};
 use sp_runtime::transaction_validity::{
     InvalidTransaction, TransactionSource, TransactionValidityError,
 };
-use sp_runtime::MultiSignature;
+use sp_runtime::{BuildStorage, MultiSignature};
 use sp_std::convert::From;
 
 use bridge_types::traits::MessageDispatch;
@@ -54,21 +51,17 @@ use crate::inbound::Error;
 
 use crate::inbound as bridge_inbound_channel;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+    pub enum Test
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        BridgeInboundChannel: bridge_inbound_channel::{Pallet, Call, Storage, Event<T>},
+        System: frame_system,
+        Timestamp: pallet_timestamp,
+        Balances: pallet_balances,
+        BridgeInboundChannel: bridge_inbound_channel,
     }
 );
 
@@ -108,13 +101,10 @@ impl frame_system::Config for Test {
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
     type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
@@ -127,6 +117,8 @@ impl frame_system::Config for Test {
     type SS58Prefix = ();
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
+    type Nonce = u64;
+    type Block = Block;
 }
 
 parameter_types! {
@@ -147,6 +139,10 @@ impl pallet_balances::Config for Test {
     type WeightInfo = ();
     type MaxReserves = MaxReserves;
     type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 // Mock verifier
@@ -225,8 +221,8 @@ impl bridge_inbound_channel::Config for Test {
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = frame_system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     let bob: AccountId = Keyring::Bob.into();

@@ -41,13 +41,12 @@ pub mod types;
 pub mod utils;
 
 use codec::{Decode, Encode};
-pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
-use frame_support::RuntimeDebug;
-use sp_core::Get;
-
 use derivative::Derivative;
-#[cfg(feature = "std")]
+pub use ethereum_types::{Address, H128, H160, H256, H512, H64, U256};
+pub use log::Log;
 use serde::{Deserialize, Serialize};
+use sp_core::{Get, RuntimeDebug};
+use staging_xcm as xcm;
 use ton::{TonAddress, TonBalance, TonNetworkId, TonTransactionId};
 
 #[derive(Debug)]
@@ -85,8 +84,9 @@ pub type EVMChainId = H256;
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
     Default,
+    Serialize,
+    Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum SubNetworkId {
     #[default]

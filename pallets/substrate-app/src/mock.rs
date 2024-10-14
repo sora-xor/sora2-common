@@ -44,24 +44,23 @@ use currencies::BasicCurrencyAdapter;
 use bridge_types::types::AssetKind;
 use bridge_types::SubNetworkId;
 use frame_support::parameter_types;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::Deserialize;
-use frame_support::RuntimeDebug;
 use frame_support::Serialize;
 use frame_system as system;
 use frame_system::Origin;
 use scale_info::TypeInfo;
+use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::Convert;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, MultiSignature};
 use traits::parameter_type_with_key;
 
 use crate as substrate_app;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 #[derive(
@@ -90,19 +89,16 @@ pub type Balance = u128;
 pub type Amount = i128;
 
 frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+    pub enum Test
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        BridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
-        SubstrateApp: substrate_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        System: frame_system,
+        Timestamp: pallet_timestamp,
+        Tokens: tokens,
+        Currencies: currencies,
+        Balances: pallet_balances,
+        Dispatch: dispatch,
+        BridgeOutboundChannel: substrate_bridge_channel::outbound,
+        SubstrateApp: substrate_app,
     }
 );
 
@@ -120,13 +116,10 @@ impl system::Config for Test {
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
     type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
@@ -139,10 +132,12 @@ impl system::Config for Test {
     type SS58Prefix = ();
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
+    type Nonce = u64;
+    type Block = Block;
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
 }
 
 impl pallet_balances::Config for Test {
@@ -155,6 +150,10 @@ impl pallet_balances::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 parameter_type_with_key! {
@@ -183,6 +182,7 @@ impl currencies::Config for Test {
     type GetNativeCurrencyId = GetBaseAssetId;
     type WeightInfo = ();
 }
+
 parameter_types! {
     pub const GetBaseAssetId: AssetId = AssetId::Xor;
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
@@ -297,21 +297,6 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
 
 pub struct BalancePrecisionConverterImpl;
 
-// impl bridge_types::traits::BalancePrecisionConverter<AssetId, Balance, bridge_types::GenericBalance>
-//     for BalancePrecisionConverterImpl
-// {
-//     fn from_sidechain(_: &AssetId, _: u8, amount: bridge_types::GenericBalance) -> Option<Balance> {
-//         match amount {
-//             bridge_types::GenericBalance::Substrate(balance) => Some(balance),
-//             _ => None,
-//         }
-//     }
-
-//     fn to_sidechain(_: &AssetId, _: u8, amount: Balance) -> Option<bridge_types::GenericBalance> {
-//         Some(bridge_types::GenericBalance::Substrate(amount))
-//     }
-// }
-
 impl bridge_types::traits::BalancePrecisionConverter<AssetId, Balance, GenericBalance>
     for BalancePrecisionConverterImpl
 {
@@ -378,8 +363,8 @@ impl substrate_app::Config for Test {
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     pallet_balances::GenesisConfig::<Test> {
@@ -391,11 +376,9 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    GenesisBuild::<Test>::assimilate_storage(
-        &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
-        &mut storage,
-    )
-    .unwrap();
+    substrate_bridge_channel::outbound::GenesisConfig::<Test> { interval: 10 }
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| System::set_block_number(1));
@@ -429,8 +412,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
 }
 
 pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     pallet_balances::GenesisConfig::<Test> {
@@ -442,11 +425,9 @@ pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    GenesisBuild::<Test>::assimilate_storage(
-        &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
-        &mut storage,
-    )
-    .unwrap();
+    substrate_bridge_channel::outbound::GenesisConfig::<Test> { interval: 10 }
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| System::set_block_number(1));

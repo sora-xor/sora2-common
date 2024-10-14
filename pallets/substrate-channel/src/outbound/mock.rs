@@ -4,36 +4,32 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::TimepointProvider;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::{parameter_types, Deserialize, Serialize};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_keyring::AccountKeyring as Keyring;
-use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify};
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, MultiSignature};
 use sp_std::convert::From;
 use traits::parameter_type_with_key;
 
 use crate::outbound as bridge_outbound_channel;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 pub const BASE_NETWORK_ID: SubNetworkId = SubNetworkId::Mainnet;
 
 frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+    pub enum Test
     {
-        System: frame_system::{Pallet, Call, Storage, Event<T>},
-        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
-        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
-        Currencies: currencies::{Pallet, Call, Storage},
-        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-        BridgeOutboundChannel: bridge_outbound_channel::{Pallet, Config<T>, Storage, Event<T>},
+        System: frame_system,
+        Timestamp: pallet_timestamp,
+        Tokens: tokens,
+        Currencies: currencies,
+        Balances: pallet_balances,
+        BridgeOutboundChannel: bridge_outbound_channel,
     }
 );
 
@@ -74,13 +70,10 @@ impl frame_system::Config for Test {
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
     type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
@@ -93,10 +86,12 @@ impl frame_system::Config for Test {
     type SS58Prefix = ();
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
+    type Nonce = u64;
+    type Block = Block;
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
 }
 
 parameter_type_with_key! {
@@ -115,6 +110,10 @@ impl pallet_balances::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 impl tokens::Config for Test {
@@ -179,8 +178,8 @@ impl pallet_timestamp::Config for Test {
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = frame_system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     let config: bridge_outbound_channel::GenesisConfig<Test> =

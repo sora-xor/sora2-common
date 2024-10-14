@@ -139,7 +139,7 @@ benchmarks! {
             who.clone()),
             BASE_NETWORK_ID,
             asset_id.clone(),
-            ParachainAccountId::V3(xcm::v3::MultiLocation::parent().pushed_with_interior([0u8; 32]).unwrap()),
+            ParachainAccountId::V3(staging_xcm::v3::MultiLocation::parent().pushed_with_interior([0u8; 32]).unwrap()),
             1000u32.into()
         )
     verify {

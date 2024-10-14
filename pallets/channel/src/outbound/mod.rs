@@ -39,12 +39,12 @@ use bridge_types::EVMChainId;
 use bridge_types::GenericNetworkId;
 use bridge_types::SubNetworkId;
 use frame_support::ensure;
-use frame_support::log::error;
 use frame_support::pallet_prelude::*;
 use frame_support::traits::Get;
 use frame_support::weights::Weight;
 use frame_system::pallet_prelude::*;
 use frame_system::RawOrigin;
+use log::error;
 use sp_core::H256;
 use sp_runtime::DispatchError;
 
@@ -75,8 +75,8 @@ pub mod pallet {
     use bridge_types::GenericCommitment;
     use bridge_types::GenericNetworkId;
     use bridge_types::GenericTimepoint;
-    use frame_support::log::debug;
     use frame_support::traits::StorageVersion;
+    use log::debug;
     use sp_core::U256;
     use sp_runtime::traits::Zero;
 
@@ -119,10 +119,10 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn interval)]
     pub(crate) type Interval<T: Config> =
-        StorageValue<_, T::BlockNumber, ValueQuery, DefaultInterval<T>>;
+        StorageValue<_, BlockNumberFor<T>, ValueQuery, DefaultInterval<T>>;
 
     #[pallet::type_value]
-    pub(crate) fn DefaultInterval<T: Config>() -> T::BlockNumber {
+    pub(crate) fn DefaultInterval<T: Config>() -> BlockNumberFor<T> {
         // TODO: Select interval
         10u32.into()
     }
@@ -170,7 +170,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -181,7 +180,7 @@ pub mod pallet {
         //
         // The commitment hash is included in an [`AuxiliaryDigestItem`] in the block header,
         // with the corresponding commitment is persisted offchain.
-        fn on_initialize(now: T::BlockNumber) -> Weight {
+        fn on_initialize(now: BlockNumberFor<T>) -> Weight {
             let interval = Self::interval();
             let mut weight = Default::default();
             if now % interval == Zero::zero() {
@@ -336,10 +335,9 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub interval: T::BlockNumber,
+        pub interval: BlockNumberFor<T>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -349,7 +347,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             Interval::<T>::set(self.interval);
         }

@@ -36,11 +36,9 @@ use crate::ton::{AdditionalTONInboundData, TonAppInfo, TonAssetInfo};
 use crate::{GenericTimepoint, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
-use frame_support::RuntimeDebug;
-#[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
-use sp_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
-use sp_core::Get;
+use sp_consensus_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
+use sp_core::{Get, RuntimeDebug};
 use sp_runtime::traits::Hash;
 use sp_runtime::{Digest, DigestItem};
 use sp_std::vec::Vec;
@@ -174,8 +172,9 @@ pub struct MmrLeaf<BlockNumber, Hash, MerkleRoot, DigestHash> {
     RuntimeDebug,
     scale_info::TypeInfo,
     codec::MaxEncodedLen,
+    serde::Serialize,
+    serde::Deserialize,
 )]
-#[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "std", serde(rename_all = "camelCase"))]
 pub enum AssetKind {
     Thischain,

@@ -51,11 +51,11 @@ pub use pallet::*;
 pub mod pallet {
     use super::*;
     use bridge_types::GenericNetworkId;
-    use frame_support::log::warn;
     use frame_support::pallet_prelude::*;
     use frame_support::traits::StorageVersion;
     use frame_support::weights::Weight;
     use frame_system::pallet_prelude::*;
+    use log::warn;
     use sp_std::prelude::*;
 
     #[pallet::config]
@@ -96,7 +96,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);

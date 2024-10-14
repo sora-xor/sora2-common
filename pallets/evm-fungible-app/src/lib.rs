@@ -68,12 +68,13 @@ use bridge_types::traits::{BalancePrecisionConverter, BridgeAssetLocker};
 use bridge_types::{EVMChainId, MainnetAccountId, MainnetAssetId};
 use bridge_types::{H160, U256};
 use codec::{Decode, Encode};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_system::ensure_signed;
 use sp_core::Get;
 use sp_runtime::traits::Zero;
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 pub use pallet::*;
@@ -155,7 +156,6 @@ pub mod pallet {
     >>::AssetSymbol;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -317,7 +317,6 @@ pub mod pallet {
         pub assets: Vec<(EVMChainId, AssetIdOf<T>, H160, AssetKind, u8)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -328,7 +327,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             for (network_id, contract) in self.apps.iter() {
                 AppAddresses::<T>::insert(network_id, contract);
@@ -365,7 +364,8 @@ pub mod pallet {
                 additional: GenericAdditionalInboundData::EVM(additional),
                 message_id,
                 timepoint,
-            } = T::CallOrigin::ensure_origin(origin)? else {
+            } = T::CallOrigin::ensure_origin(origin)?
+            else {
                 frame_support::fail!(DispatchError::BadOrigin);
             };
             let asset_id = AssetsByAddresses::<T>::get(network_id, token)
@@ -428,7 +428,8 @@ pub mod pallet {
                 network_id: GenericNetworkId::EVM(network_id),
                 additional: GenericAdditionalInboundData::EVM(additional),
                 ..
-            } = T::CallOrigin::ensure_origin(origin)? else {
+            } = T::CallOrigin::ensure_origin(origin)?
+            else {
                 frame_support::fail!(DispatchError::BadOrigin);
             };
 
@@ -976,7 +977,8 @@ impl<T: Config> EVMFeeHandler<AssetIdOf<T>> for Pallet<T> {
         _new_base_fee: U256,
         evm_block_number: u64,
     ) -> bool {
-        let Ok(base_fee) = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable) else {
+        let Ok(base_fee) = BaseFees::<T>::get(network_id).ok_or(Error::<T>::BaseFeeIsNotAvailable)
+        else {
             // Probably it's first base fee update
             return true;
         };

@@ -51,7 +51,7 @@ pub(crate) const LOG_TARGET: &str = "runtime::data-signer";
 #[macro_export]
 macro_rules! log {
 	($level:tt, $patter:expr $(, $values:expr)* $(,)?) => {
-		frame_support::log::$level!(
+		log::$level!(
 			target: $crate::LOG_TARGET,
 			concat!("[{:?}] 💸 ", $patter), <frame_system::Pallet<T>>::block_number() $(, $values)*
 		)
@@ -89,9 +89,8 @@ pub mod pallet {
     use sp_core::TryCollect;
     use sp_std::collections::btree_set::BTreeSet;
 
-    /// BEEFY-MMR pallet.
+    /// Data Signer Pallet
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     pub struct Pallet<T>(_);
 
     /// The module's configuration trait.

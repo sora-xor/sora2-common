@@ -40,18 +40,17 @@ use bridge_types::H256;
 use bridge_types::{EVMChainId, GenericNetworkId, U256};
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_system as system;
 use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::testing::Header;
+
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
-use sp_runtime::{DispatchError, MultiSignature};
+use sp_runtime::{BuildStorage, DispatchError, MultiSignature};
 use traits::parameter_type_with_key;
 
 use crate as fungible_app;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type AssetId = H256;
 type Balance = u128;
@@ -62,11 +61,7 @@ pub const DAI: AssetId = H256::repeat_byte(2);
 pub const ETH: AssetId = H256::repeat_byte(3);
 
 frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
+    pub enum Test {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
         Currencies: currencies::{Pallet, Call, Storage},
@@ -92,13 +87,10 @@ impl system::Config for Test {
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
     type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
@@ -111,10 +103,12 @@ impl system::Config for Test {
     type SS58Prefix = ();
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
+    type Nonce = u64;
+    type Block = Block;
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
 }
 
 impl pallet_balances::Config for Test {
@@ -127,6 +121,10 @@ impl pallet_balances::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 parameter_type_with_key! {
@@ -296,8 +294,8 @@ impl fungible_app::Config for Test {
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     let bob: AccountId = Keyring::Bob.into();
@@ -307,37 +305,35 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    GenesisBuild::<Test>::assimilate_storage(
-        &fungible_app::GenesisConfig {
-            apps: vec![
-                (BASE_NETWORK_ID, H160::repeat_byte(1)),
-                (BASE_NETWORK_ID, H160::repeat_byte(2)),
-            ],
-            assets: vec![
-                (
-                    BASE_NETWORK_ID,
-                    XOR,
-                    H160::repeat_byte(3),
-                    AssetKind::Thischain,
-                    18,
-                ),
-                (
-                    BASE_NETWORK_ID,
-                    DAI,
-                    H160::repeat_byte(4),
-                    AssetKind::Sidechain,
-                    18,
-                ),
-            ],
-        },
-        &mut storage,
-    )
+    fungible_app::GenesisConfig::<Test> {
+        apps: vec![
+            (BASE_NETWORK_ID, H160::repeat_byte(1)),
+            (BASE_NETWORK_ID, H160::repeat_byte(2)),
+        ],
+        assets: vec![
+            (
+                BASE_NETWORK_ID,
+                XOR,
+                H160::repeat_byte(3),
+                AssetKind::Thischain,
+                18,
+            ),
+            (
+                BASE_NETWORK_ID,
+                DAI,
+                H160::repeat_byte(4),
+                AssetKind::Sidechain,
+                18,
+            ),
+        ],
+    }
+    .assimilate_storage(&mut storage)
     .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| System::set_block_number(1));
     ext.register_extension(sp_keystore::KeystoreExt(std::sync::Arc::new(
-        sp_keystore::testing::KeyStore::new(),
+        sp_keystore::testing::MemoryKeystore::new(),
     )));
     ext
 }

@@ -62,12 +62,13 @@ use bridge_types::types::{BridgeAppInfo, BridgeAssetInfo};
 use bridge_types::GenericAccount;
 use bridge_types::GenericNetworkId;
 use bridge_types::{GenericAssetId, GenericBalance};
-use frame_support::dispatch::{DispatchError, DispatchResult};
+use frame_support::dispatch::DispatchResult;
 use frame_support::ensure;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_system::ensure_signed;
 use sp_runtime::traits::{Convert, Get, Zero};
+use sp_runtime::DispatchError;
 use sp_std::prelude::*;
 
 pub use weights::WeightInfo;
@@ -172,7 +173,6 @@ pub mod pallet {
     >>::AssetSymbol;
 
     #[pallet::pallet]
-    #[pallet::generate_store(pub(super) trait Store)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(_);
 
@@ -601,7 +601,6 @@ pub mod pallet {
         pub assets: Vec<(SubNetworkId, AssetIdOf<T>, AssetKind)>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -611,7 +610,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             for (network_id, asset_id, asset_kind) in &self.assets {
                 AssetKinds::<T>::insert(network_id, asset_id, asset_kind);

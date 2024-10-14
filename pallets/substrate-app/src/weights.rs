@@ -138,7 +138,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `0`
 		//  Estimated: `0`
 		// Minimum execution time: 8_000 nanoseconds.
-		Weight::from_ref_time(8_000_000)
+		Weight::from_parts(8_000_000, 0)
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
 	/// Storage: LiberlandBridgeApp AssetKinds (r:1 w:0)

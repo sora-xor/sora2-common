@@ -66,12 +66,13 @@ pub mod pallet {
     use bridge_types::types::MessageStatus;
     use bridge_types::GenericNetworkId;
     use bridge_types::GenericTimepoint;
-    use frame_support::log::debug;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::BuildGenesisConfig;
     use frame_support::traits::StorageVersion;
     use frame_support::Parameter;
     use frame_system::pallet_prelude::*;
     use frame_system::RawOrigin;
+    use log::debug;
     use sp_runtime::traits::Zero;
     use sp_runtime::DispatchError;
 
@@ -110,10 +111,10 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn interval)]
     pub(crate) type Interval<T: Config> =
-        StorageValue<_, T::BlockNumber, ValueQuery, DefaultInterval<T>>;
+        StorageValue<_, BlockNumberFor<T>, ValueQuery, DefaultInterval<T>>;
 
     #[pallet::type_value]
-    pub(crate) fn DefaultInterval<T: Config>() -> T::BlockNumber {
+    pub(crate) fn DefaultInterval<T: Config>() -> BlockNumberFor<T> {
         // TODO: Select interval
         10u32.into()
     }
@@ -149,7 +150,6 @@ pub mod pallet {
     const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
     #[pallet::pallet]
-    #[pallet::generate_store(trait Store)]
     #[pallet::storage_version(STORAGE_VERSION)]
     #[pallet::without_storage_info]
     pub struct Pallet<T>(PhantomData<T>);
@@ -163,7 +163,7 @@ pub mod pallet {
         //
         // Use `on_finalize` instead of `on_idle` to ensure that the commitment is always sent,
         // because `on_idle` not guaranteed to be called.
-        fn on_finalize(now: T::BlockNumber) {
+        fn on_finalize(now: BlockNumberFor<T>) {
             let interval = Self::interval();
             if now % interval == Zero::zero() {
                 for chain_id in MessageQueues::<T>::iter_keys() {
@@ -182,7 +182,7 @@ pub mod pallet {
             message_nonce: MessageNonce,
         },
         IntervalUpdated {
-            interval: T::BlockNumber,
+            interval: BlockNumberFor<T>,
         },
     }
 
@@ -210,7 +210,7 @@ pub mod pallet {
         #[pallet::weight(<T as Config>::WeightInfo::update_interval())]
         pub fn update_interval(
             origin: OriginFor<T>,
-            new_interval: T::BlockNumber,
+            new_interval: BlockNumberFor<T>,
         ) -> DispatchResultWithPostInfo {
             ensure_root(origin)?;
             ensure!(new_interval > Zero::zero(), Error::<T>::ZeroInterval);
@@ -268,10 +268,9 @@ pub mod pallet {
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
-        pub interval: T::BlockNumber,
+        pub interval: BlockNumberFor<T>,
     }
 
-    #[cfg(feature = "std")]
     impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
@@ -281,7 +280,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             Interval::<T>::set(self.interval);
         }

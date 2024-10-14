@@ -28,6 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use core::marker;
+
 use bridge_types::substrate::ParachainAssetId;
 use bridge_types::substrate::PARENT_PARACHAIN_ASSET;
 use bridge_types::traits::BalancePrecisionConverter;
@@ -43,28 +45,31 @@ use currencies::BasicCurrencyAdapter;
 // Mock runtime
 use bridge_types::types::AssetKind;
 use bridge_types::SubNetworkId;
+use frame_support::construct_runtime;
 use frame_support::parameter_types;
-use frame_support::traits::{Everything, GenesisBuild};
+use frame_support::traits::Everything;
 use frame_support::Deserialize;
-use frame_support::RuntimeDebug;
+// use frame_support::RuntimeDebug;
 use frame_support::Serialize;
 use frame_system as system;
 use frame_system::Origin;
 use scale_info::TypeInfo;
+use sp_core::RuntimeDebug;
 use sp_core::H256;
 use sp_keyring::sr25519::Keyring;
-use sp_runtime::testing::Header;
+use sp_runtime::traits::AccountIdConversion;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
+use sp_runtime::BuildStorage;
 use sp_runtime::{AccountId32, MultiSignature};
+use staging_xcm::v3::Junction::GeneralKey;
+use staging_xcm::v3::Junction::Parachain;
+use staging_xcm::v3::Junctions::X2;
+use staging_xcm::v3::MultiLocation;
+use traits::currency::MutationHooks;
 use traits::parameter_type_with_key;
-use xcm::v3::Junction::GeneralKey;
-use xcm::v3::Junction::Parachain;
-use xcm::v3::Junctions::X2;
-use xcm::v3::MultiLocation;
 
 use crate as parachain_app;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 #[derive(
@@ -93,11 +98,8 @@ pub enum AssetId {
 pub type Balance = u128;
 pub type Amount = i128;
 
-frame_support::construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+construct_runtime!(
+    pub enum Test
     {
         System: frame_system::{Pallet, Call, Storage, Event<T>},
         Timestamp: pallet_timestamp::{Pallet, Call, Storage},
@@ -124,13 +126,10 @@ impl system::Config for Test {
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
     type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = BlockHashCount;
     type DbWeight = ();
@@ -143,10 +142,12 @@ impl system::Config for Test {
     type SS58Prefix = ();
     type OnSetCode = ();
     type MaxConsumers = frame_support::traits::ConstU32<65536>;
+    type Nonce = u64;
+    type Block = Block;
 }
 
 parameter_types! {
-    pub const ExistentialDeposit: u128 = 0;
+    pub const ExistentialDeposit: u128 = 1;
 }
 
 impl pallet_balances::Config for Test {
@@ -159,6 +160,10 @@ impl pallet_balances::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
+    type RuntimeHoldReason = ();
+    type FreezeIdentifier = ();
+    type MaxHolds = ();
+    type MaxFreezes = ();
 }
 
 parameter_type_with_key! {
@@ -178,7 +183,26 @@ impl tokens::Config for Test {
     type MaxLocks = ();
     type MaxReserves = ();
     type ReserveIdentifier = ();
-    type DustRemovalWhitelist = Everything;
+    type DustRemovalWhitelist = ();
+}
+
+parameter_types! {
+    pub DustAccount: AccountId = frame_support::PalletId(*b"orml/dst").into_account_truncating();
+}
+
+pub struct CurrencyHooks<T>(marker::PhantomData<T>);
+impl<T: tokens::Config> MutationHooks<T::AccountId, T::CurrencyId, T::Balance> for CurrencyHooks<T>
+where
+    T::AccountId: From<AccountId32>,
+{
+    type OnDust = tokens::TransferDust<T, DustAccount>;
+    type OnSlash = ();
+    type PreDeposit = ();
+    type PostDeposit = ();
+    type PreTransfer = ();
+    type PostTransfer = ();
+    type OnNewTokenAccount = ();
+    type OnKilledTokenAccount = ();
 }
 
 impl currencies::Config for Test {
@@ -187,6 +211,7 @@ impl currencies::Config for Test {
     type GetNativeCurrencyId = GetBaseAssetId;
     type WeightInfo = ();
 }
+
 parameter_types! {
     pub const GetBaseAssetId: AssetId = AssetId::Xor;
     pub GetTeamReservesAccountId: AccountId = AccountId32::from([0; 32]);
@@ -351,8 +376,8 @@ pub const PARA_B: u32 = 2001;
 pub const PARA_C: u32 = 2002;
 
 pub fn new_tester() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     pallet_balances::GenesisConfig::<Test> {
@@ -364,11 +389,9 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    GenesisBuild::<Test>::assimilate_storage(
-        &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
-        &mut storage,
-    )
-    .unwrap();
+    substrate_bridge_channel::outbound::GenesisConfig::<Test> { interval: 10 }
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| System::set_block_number(1));
@@ -431,8 +454,8 @@ pub fn new_tester() -> sp_io::TestExternalities {
 }
 
 pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
-    let mut storage = system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     pallet_balances::GenesisConfig::<Test> {
@@ -444,11 +467,9 @@ pub fn new_tester_no_registered_assets() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
-    GenesisBuild::<Test>::assimilate_storage(
-        &substrate_bridge_channel::outbound::GenesisConfig { interval: 10 },
-        &mut storage,
-    )
-    .unwrap();
+    substrate_bridge_channel::outbound::GenesisConfig::<Test> { interval: 10 }
+        .assimilate_storage(&mut storage)
+        .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| System::set_block_number(1));
