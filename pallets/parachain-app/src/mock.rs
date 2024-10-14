@@ -91,6 +91,7 @@ pub enum AssetId {
     Xor,
     Eth,
     Dai,
+    Usdt,
     Custom(u8),
 }
 
@@ -100,14 +101,14 @@ pub type Amount = i128;
 construct_runtime!(
     pub enum Test
     {
-        System: frame_system,
-        Timestamp: pallet_timestamp,
-        Tokens: tokens,
-        Currencies: currencies,
-        Balances: pallet_balances,
-        Dispatch: dispatch,
-        BridgeOutboundChannel: substrate_bridge_channel::outbound,
-        ParachainApp: parachain_app,
+        System: frame_system::{Pallet, Call, Storage, Event<T>},
+        Timestamp: pallet_timestamp::{Pallet, Call, Storage},
+        Tokens: tokens::{Pallet, Call, Config<T>, Storage, Event<T>},
+        Currencies: currencies::{Pallet, Call, Storage},
+        Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+        Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
+        BridgeOutboundChannel: substrate_bridge_channel::outbound::{Pallet, Config<T>, Storage, Event<T>},
+        ParachainApp: parachain_app::{Pallet, Call, Config<T>, Storage, Event<T>},
     }
 );
 
@@ -304,6 +305,11 @@ impl BridgeAssetRegistry<AccountId, AssetId> for AssetRegistryImpl {
                 name: "XOR".to_owned().into(),
                 symbol: "XOR".to_owned().into(),
                 precision: 18,
+            },
+            AssetId::Usdt => bridge_types::types::RawAssetInfo {
+                name: "USDT".to_owned().into(),
+                symbol: "USDT".to_owned().into(),
+                precision: 6,
             },
             AssetId::Custom(1) => bridge_types::types::RawAssetInfo {
                 name: "KSM".to_owned().into(),
