@@ -120,11 +120,11 @@ pub mod pallet {
     use super::*;
 
     use bridge_types::evm::*;
+    use bridge_types::traits::BridgeAssetLocker;
     use bridge_types::traits::{
         AppRegistry, BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry,
         MessageStatusNotifier, OutboundChannel,
     };
-    use bridge_types::traits::{BridgeAssetLocker, EVMOutboundChannel};
     use bridge_types::types::{
         AssetKind, BridgeAppInfo, BridgeAssetInfo, CallOriginOutput, GenericAdditionalInboundData,
         MessageStatus,
@@ -161,8 +161,11 @@ pub mod pallet {
     pub trait Config: frame_system::Config {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-        type OutboundChannel: OutboundChannel<EVMChainId, Self::AccountId, AdditionalEVMOutboundData>
-            + EVMOutboundChannel;
+        type OutboundChannel: OutboundChannel<
+            EVMChainId,
+            Self::AccountId,
+            AdditionalEVMOutboundData,
+        >;
 
         type CallOrigin: EnsureOrigin<
             Self::RuntimeOrigin,
