@@ -199,14 +199,12 @@ impl bridge_outbound_channel::Config for Test {
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type MessageStatusNotifier = ();
-    type AuxiliaryDigestHandler = ();
     type AssetId = ();
     type Balance = u128;
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
     type ThisNetworkId = ThisNetworkId;
-    type MaxGasPerCommit = BridgeMaxTotalGasLimit;
-    type MaxGasPerMessage = BridgeMaxGasPerMessage;
+    type EVMOutboundQueueVerifier = ();
 }
 
 impl pallet_timestamp::Config for Test {

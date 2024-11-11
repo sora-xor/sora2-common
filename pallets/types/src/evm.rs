@@ -1,6 +1,5 @@
 use crate::MainnetAssetId;
 use crate::{H160, H256, U256};
-use alloy_core::sol_types::SolValue;
 use codec::{Decode, Encode};
 use derivative::Derivative;
 #[cfg(feature = "std")]
@@ -145,6 +144,41 @@ pub struct EVMLegacyAssetInfo {
     Debug(bound = ""),
     Clone(bound = ""),
     PartialEq(bound = ""),
+    Eq(bound = ""),
+    Default(bound = "")
+)]
+#[scale_info(skip_type_params(MaxPayload, MaxMessages))]
+#[cfg_attr(feature = "std", serde(bound = ""))]
+pub struct MessageQueue<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
+    /// Queue total gas amount
+    pub total_gas: U256,
+    /// Messages queue
+    pub queue: BoundedVec<Message<MaxPayload>, MaxMessages>,
+}
+
+impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> MessageQueue<MaxMessages, MaxPayload> {
+    pub fn len(&self) -> usize {
+        self.queue.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Message<MaxPayload>> {
+        self.queue.iter()
+    }
+
+    pub fn try_push(&mut self, message: Message<MaxPayload>) -> Result<(), Message<MaxPayload>> {
+        let message_gas = message.max_gas;
+        self.queue.try_push(message)?;
+        self.total_gas = self.total_gas.saturating_add(message_gas);
+        Ok(())
+    }
+}
+
+#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
     Eq(bound = "")
 )]
 #[scale_info(skip_type_params(MaxMessages, MaxPayload))]
@@ -255,21 +289,7 @@ impl Convert<AccountId32, EvmB256> for EvmConverter {
 
 impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> OutboundCommitment<MaxMessages, MaxPayload> {
     pub fn hash(&self) -> H256 {
-        let batch = crate::channel_abi::Batch {
-            nonce: EvmU256::from(self.nonce),
-            total_max_gas: EvmConverter::convert(self.total_max_gas),
-            messages: self
-                .messages
-                .iter()
-                .map(|m| crate::channel_abi::Message {
-                    target: m.target.0.into(),
-                    max_gas: EvmConverter::convert(m.max_gas),
-                    payload: m.payload.to_vec().into(),
-                })
-                .collect(),
-        };
-        let input = batch.abi_encode();
-        sp_runtime::traits::Keccak256::hash(&input)
+        ("evm-outbound", self).using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
     }
 }
 

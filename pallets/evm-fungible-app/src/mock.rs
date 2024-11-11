@@ -42,7 +42,6 @@ use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::{Everything, GenesisBuild};
 use frame_system as system;
-use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
@@ -292,8 +291,6 @@ impl fungible_app::Config for Test {
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
     type AccountIdConverter = sp_runtime::traits::Identity;
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
-    type BaseFeeLifetime = ConstU64<100>;
-    type PriorityFee = ConstU128<5_000_000_000>;
 }
 
 pub fn new_tester() -> sp_io::TestExternalities {

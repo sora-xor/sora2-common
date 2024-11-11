@@ -29,6 +29,8 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use codec::Encode;
+use sp_core::{ecdsa, H160};
+use sp_runtime::traits::Hash;
 
 use crate::GenericNetworkId;
 use sp_std::prelude::*;
@@ -43,4 +45,14 @@ pub fn threshold(peers: u32) -> u32 {
 
 pub fn make_offchain_key(network_id: GenericNetworkId, batch_nonce: u64) -> Vec<u8> {
     (CHANNEL_INDEXING_PREFIX, network_id, batch_nonce).encode()
+}
+
+pub fn public_key_to_address(public: ecdsa::Public) -> Option<H160> {
+    let public = libsecp256k1::PublicKey::parse_compressed(&public.0).ok()?;
+
+    Some(H160(
+        sp_runtime::traits::Keccak256::hash(&public.serialize())[12..]
+            .try_into()
+            .ok()?,
+    ))
 }

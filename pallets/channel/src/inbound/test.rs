@@ -38,7 +38,7 @@ use frame_support::{
     assert_err, assert_noop, assert_ok, parameter_types, Deserialize, RuntimeDebug, Serialize,
 };
 use scale_info::TypeInfo;
-use sp_core::{ConstU128, ConstU64, H256};
+use sp_core::{ConstU64, H256};
 use sp_keyring::AccountKeyring as Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, ValidateUnsigned, Verify};
@@ -49,7 +49,7 @@ use sp_runtime::{DispatchError, MultiSignature};
 use sp_std::convert::From;
 
 use bridge_types::traits::MessageDispatch;
-use bridge_types::{GenericNetworkId, GenericTimepoint};
+use bridge_types::{EVMChainId, GenericNetworkId, GenericTimepoint};
 
 use crate::inbound::Error;
 
@@ -247,7 +247,6 @@ impl bridge_inbound_channel::Config for Test {
     type MessageStatusNotifier = ();
     type AssetId = H256;
     type Balance = Balance;
-    type EVMFeeHandler = ();
     type OutboundChannel = OutboundChannelImpl;
     type RuntimeEvent = RuntimeEvent;
     type Verifier = MockVerifier;
@@ -257,7 +256,8 @@ impl bridge_inbound_channel::Config for Test {
     type MaxMessagePayloadSize = MaxMessagePayloadSize;
     type MaxMessagesPerCommit = MaxMessagesPerCommit;
     type ThisNetworkId = ThisNetworkId;
-    type EVMPriorityFee = ConstU128<5_000_000_000>;
+    type EVMCommitmentVerifier = ();
+    type TONCommitmentVerifier = ();
     type WeightInfo = ();
 }
 

@@ -10,14 +10,17 @@ edition = "2021"
 [dependencies]
 codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
   "derive",
+  "bit-vec",
 ] }
-scale-info = { version = "2", default-features = false, features = ["derive"] }
+scale-info = { version = "=2.11.3", default-features = false, features = [
+  "derive",
+] }
 hex = { package = "rustc-hex", version = "2.1.0", default-features = false }
 hex-literal = { version = "0.4.1", default-features = false }
 libsecp256k1 = { version = "0.7", default-features = false }
 parity-bytes = { version = "0.1.2", default-features = false }
 serde = { version = "1.0.101", optional = true }
-getrandom = { version = "0.2.1", features = ["js"] }
+bitvec = { version = "1", features = ["alloc"], default-features = false }
 
 frame-support = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
 frame-system = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38", default-features = false }
@@ -36,6 +39,14 @@ alloy-core = { version = "0.7.7", default-features = false, features = [
   "sol-types",
 ] }
 
+schnellru = { version = "=0.2.1", default-features = false }
+substrate-bip39 = { version = "=0.4.5", default-features = false }
+ahash = { version = "=0.7.8", default-features = false }
+bumpalo = { version = "=3.14.0", default-features = false }
+ruint = { version = "1.12.3", default-features = false, features = [
+  "parity-scale-codec",
+] }
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3.19"
 rand = "0.8.5"
@@ -49,6 +60,7 @@ test = ["serde_json"]
 std = [
   "serde",
   "codec/std",
+  "bitvec/std",
   "scale-info/std",
   "hex/std",
   "libsecp256k1/std",
@@ -62,6 +74,7 @@ std = [
   "frame-system/std",
   "xcm/std",
   "alloy-core/std",
+  "ruint/std",
 ]
 
 runtime-benchmarks = [

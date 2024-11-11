@@ -32,10 +32,11 @@
 //!
 //! Common traits and types
 
-use core::fmt::Debug;
-
+use crate::multisig::MultiSigner;
+use crate::substrate::SubstrateBridgeMessageEncode;
 use crate::types::AssetKind;
 use crate::types::AuxiliaryDigestItem;
+use crate::types::BridgeDispatchInfo;
 use crate::EVMChainId;
 use crate::GenericTimepoint;
 use crate::H256;
@@ -45,6 +46,8 @@ use crate::{
     GenericAccount, GenericNetworkId,
 };
 use codec::FullCodec;
+use core::fmt::Debug;
+use core::marker::PhantomData;
 use frame_support::weights::Weight;
 use frame_support::{
     dispatch::{DispatchError, DispatchResult},
@@ -52,9 +55,9 @@ use frame_support::{
 };
 use frame_system::{Config, RawOrigin};
 use scale_info::TypeInfo;
-use sp_core::H160;
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::traits::MaybeSerializeDeserialize;
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 
 /// A trait for verifying messages.
@@ -150,6 +153,33 @@ pub trait BridgeApp<AccountId, Recipient, AssetId, Balance> {
     fn refund_weight() -> Weight;
 
     fn is_asset_supported_weight() -> Weight;
+
+    fn transfer_info(network_id: GenericNetworkId) -> BridgeDispatchInfo;
+}
+
+pub trait CommitmentHandler<NetworkId, Commitment> {
+    fn verify_commitment(network_id: &NetworkId, commitment: &Commitment) -> DispatchResult;
+    fn handle_commitment(network_id: &NetworkId, commitment: &Commitment) -> DispatchResult;
+}
+
+impl<NetworkId, Commitment> CommitmentHandler<NetworkId, Commitment> for () {
+    fn handle_commitment(_network_id: &NetworkId, _commitment: &Commitment) -> DispatchResult {
+        Ok(())
+    }
+
+    fn verify_commitment(_network_id: &NetworkId, _commitment: &Commitment) -> DispatchResult {
+        Ok(())
+    }
+}
+
+pub trait OutboundQueueVerifier<NetworkId, Queue, Message> {
+    fn verify_queue(network_id: &NetworkId, queue: &Queue, message: &Message) -> DispatchResult;
+}
+
+impl<NetworkId, Queue, Message> OutboundQueueVerifier<NetworkId, Queue, Message> for () {
+    fn verify_queue(_network_id: &NetworkId, _queue: &Queue, _message: &Message) -> DispatchResult {
+        Ok(())
+    }
 }
 
 pub trait EVMBridgeWithdrawFee<AccountId, AssetId> {
@@ -216,6 +246,10 @@ impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, Ass
     fn refund_weight() -> Weight {
         Default::default()
     }
+
+    fn transfer_info(_network_id: GenericNetworkId) -> BridgeDispatchInfo {
+        Default::default()
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -279,42 +313,6 @@ impl<AssetId, AccountId, Balance> MessageStatusNotifier<AssetId, AccountId, Bala
         _amount: Balance,
         _status: MessageStatus,
     ) {
-    }
-}
-
-/// Trait for gas price oracle on Ethereum-based networks.
-pub trait EVMFeeHandler<AssetId> {
-    /// Returns base fee for the best block.
-    fn get_latest_base_fee(network_id: EVMChainId) -> Result<U256, DispatchError>;
-    /// Get asset id of the sidechain native asset
-    fn get_network_fee_asset(network_id: EVMChainId) -> Result<AssetId, DispatchError>;
-    /// Fee was paid for transaction in sidechain
-    fn on_fee_paid(network_id: EVMChainId, relayer: H160, amount: U256);
-    /// Update base fee
-    fn update_base_fee(network_id: EVMChainId, new_base_fee: U256, evm_block_number: u64);
-    /// Verify base fee update parameters
-    fn can_update_base_fee(
-        network_id: EVMChainId,
-        new_base_fee: U256,
-        evm_block_number: u64,
-    ) -> bool;
-}
-
-impl<AssetId> EVMFeeHandler<AssetId> for () {
-    fn get_latest_base_fee(_network_id: EVMChainId) -> Result<U256, DispatchError> {
-        Err(DispatchError::Unavailable)
-    }
-    fn get_network_fee_asset(_network_id: EVMChainId) -> Result<AssetId, DispatchError> {
-        Err(DispatchError::Unavailable)
-    }
-    fn on_fee_paid(_network_id: EVMChainId, _relayer: H160, _amount: U256) {}
-    fn update_base_fee(_network_id: EVMChainId, _new_base_fee: U256, _evm_block_number: u64) {}
-    fn can_update_base_fee(
-        _network_id: EVMChainId,
-        _new_base_fee: U256,
-        _evm_block_number: u64,
-    ) -> bool {
-        false
     }
 }
 
@@ -488,5 +486,105 @@ impl<AssetId, Balance> BridgeAssetLockChecker<AssetId, Balance> for () {
         _amount: &Balance,
     ) -> DispatchResult {
         Ok(())
+    }
+}
+
+pub trait GetBridgeDispatchInfo {
+    fn get_bridge_dispatch_info(&self) -> BridgeDispatchInfo;
+}
+
+pub trait NetworkManager<AssetId, Balance> {
+    fn calculate_fees(info: &BridgeDispatchInfo) -> BTreeMap<AssetId, Balance>;
+}
+
+impl<AssetId, Balance> NetworkManager<AssetId, Balance> for () {
+    fn calculate_fees(_info: &BridgeDispatchInfo) -> BTreeMap<AssetId, Balance> {
+        Default::default()
+    }
+}
+
+pub trait PeerManager<NetworkId, Signer> {
+    fn add_peer(network_id: NetworkId, peer: Signer) -> DispatchResult;
+
+    fn remove_peer(network_id: NetworkId, peer: Signer) -> DispatchResult;
+
+    fn finish_add_peer(_network_id: NetworkId) -> DispatchResult {
+        Err(DispatchError::Unavailable)
+    }
+
+    fn finish_remove_peer(_network_id: NetworkId) -> DispatchResult {
+        Err(DispatchError::Unavailable)
+    }
+
+    fn submit_weight() -> Weight;
+}
+
+impl<NetworkId, Signer> PeerManager<NetworkId, Signer> for () {
+    fn add_peer(_network_id: NetworkId, _peer: Signer) -> DispatchResult {
+        Err(DispatchError::Unavailable)
+    }
+
+    fn remove_peer(_network_id: NetworkId, _peer: Signer) -> DispatchResult {
+        Err(DispatchError::Unavailable)
+    }
+
+    fn submit_weight() -> Weight {
+        Default::default()
+    }
+}
+
+pub struct DefaultPeerManager<Channel, NetworkId, AccountId, Additional, Signer>(
+    PhantomData<(Channel, NetworkId, AccountId, Additional, Signer)>,
+);
+
+impl<Channel, NetworkId, AccountId, Additional, Signer> PeerManager<NetworkId, Signer>
+    for DefaultPeerManager<Channel, NetworkId, AccountId, Additional, Signer>
+where
+    Channel: OutboundChannel<NetworkId, AccountId, Additional>,
+    Additional: Default,
+    Signer: Into<MultiSigner>,
+{
+    fn add_peer(network_id: NetworkId, peer: Signer) -> DispatchResult {
+        Channel::submit(
+            network_id,
+            &RawOrigin::Root,
+            &crate::substrate::BridgeSignerCall::AddPeer { peer: peer.into() }.prepare_message(),
+            Default::default(),
+        )?;
+        Ok(())
+    }
+
+    fn remove_peer(network_id: NetworkId, peer: Signer) -> DispatchResult {
+        Channel::submit(
+            network_id,
+            &RawOrigin::Root,
+            &crate::substrate::BridgeSignerCall::RemovePeer { peer: peer.into() }.prepare_message(),
+            Default::default(),
+        )?;
+        Ok(())
+    }
+
+    fn finish_add_peer(network_id: NetworkId) -> DispatchResult {
+        Channel::submit(
+            network_id,
+            &RawOrigin::Root,
+            &crate::substrate::BridgeSignerCall::FinishAddPeer.prepare_message(),
+            Default::default(),
+        )?;
+        Ok(())
+    }
+
+    fn finish_remove_peer(network_id: NetworkId) -> DispatchResult {
+        Channel::submit(
+            network_id,
+            &RawOrigin::Root,
+            &crate::substrate::BridgeSignerCall::FinishRemovePeer.prepare_message(),
+            Default::default(),
+        )?;
+        Ok(())
+    }
+
+    fn submit_weight() -> Weight {
+        Channel::submit_weight()
     }
 }

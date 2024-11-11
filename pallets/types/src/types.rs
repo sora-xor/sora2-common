@@ -30,19 +30,22 @@
 
 //! Types for representing messages
 
+use core::ops::{Add, AddAssign};
+
 use crate::evm::{AdditionalEVMInboundData, EVMAppInfo, EVMAssetInfo, EVMLegacyAssetInfo};
 use crate::substrate::SubAssetInfo;
 use crate::ton::{AdditionalTONInboundData, TonAppInfo, TonAssetInfo};
-use crate::{GenericTimepoint, H256};
+use crate::{EVMChainId, GenericTimepoint, H256};
 use codec::{Decode, Encode};
 use derivative::Derivative;
 use frame_support::RuntimeDebug;
 #[cfg(feature = "std")]
 use serde::{Deserialize, Serialize};
 use sp_beefy::mmr::{BeefyNextAuthoritySet, MmrLeafVersion};
-use sp_core::Get;
+use sp_core::{Get, U256};
 use sp_runtime::traits::Hash;
 use sp_runtime::{Digest, DigestItem};
+use sp_std::collections::btree_map::BTreeMap;
 use sp_std::vec::Vec;
 
 use crate::GenericNetworkId;
@@ -379,6 +382,52 @@ impl From<AdditionalEVMInboundData> for GenericAdditionalInboundData {
 impl From<AdditionalTONInboundData> for GenericAdditionalInboundData {
     fn from(value: AdditionalTONInboundData) -> Self {
         Self::TON(value)
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BridgeDispatchInfo {
+    pub ton_fee: u128,
+    pub evm_gas: BTreeMap<EVMChainId, U256>,
+}
+
+impl BridgeDispatchInfo {
+    pub fn from_gas(chain_id: EVMChainId, gas: U256) -> Self {
+        Self {
+            evm_gas: [(chain_id, gas)].into_iter().collect(),
+            ..Default::default()
+        }
+    }
+
+    pub fn from_ton_fee(fee: u128) -> Self {
+        Self {
+            ton_fee: fee,
+            ..Default::default()
+        }
+    }
+}
+
+impl Add<BridgeDispatchInfo> for BridgeDispatchInfo {
+    type Output = Self;
+    fn add(mut self, rhs: BridgeDispatchInfo) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
+impl AddAssign<BridgeDispatchInfo> for BridgeDispatchInfo {
+    fn add_assign(&mut self, rhs: BridgeDispatchInfo) {
+        self.ton_fee = self.ton_fee.saturating_add(rhs.ton_fee);
+        for (chain_id, gas) in rhs.evm_gas {
+            let current_gas = self.evm_gas.entry(chain_id).or_default();
+            *current_gas = current_gas.saturating_add(gas);
+        }
+    }
+}
+
+impl core::iter::Sum for BridgeDispatchInfo {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Default::default(), Add::add)
     }
 }
 
