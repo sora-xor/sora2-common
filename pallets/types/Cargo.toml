@@ -29,20 +29,29 @@ rlp = { version = "0.5", default-features = false }
 serde = { version = "1.0.188", default-features = false }
 getrandom = { version = "0.2.1", features = ["js"] }
 
-frame-support = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
-frame-system = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
-sp-io = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
-sp-std = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
-sp-core = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
-sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false, features = ["serde"] }
-sp-consensus-beefy = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-v1.1.0", default-features = false }
+frame-support = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+frame-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-io = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-std = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
+sp-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false, features = [
+  "serde",
+] }
+sp-consensus-beefy = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.1.0", default-features = false }
 
 ethabi = { git = "https://github.com/sora-xor/ethabi.git", branch = "sora-v1.6.0", default-features = false }
 ethash = { git = "https://github.com/sora-xor/ethash.git", branch = "sora-v1.6.0", default-features = false }
 serde_json = { version = "1.0", optional = true }
 derivative = { version = "2.2.0", features = ["use_core"] }
 
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-tokens", default-features = false, optional = true }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits", default-features = false, optional = true }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies", default-features = false, optional = true }
+
 [dev-dependencies]
+tokens = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-tokens" }
+traits = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-traits" }
+currencies = { git = "https://github.com/open-web3-stack/open-runtime-module-library.git", branch = "polkadot-v1.1.0", package = "orml-currencies" }
 wasm-bindgen-test = "0.3.19"
 rand = "0.8.5"
 serde_json = "1.0"
@@ -50,7 +59,7 @@ serde_json = "1.0"
 [features]
 default = ["std"]
 expensive_tests = []
-test = ["serde_json"]
+test = ["serde_json", "tokens", "traits", "currencies"]
 std = [
   "serde/std",
   "codec/std",
@@ -68,6 +77,9 @@ std = [
   "sp-std/std",
   "sp-consensus-beefy/std",
   "frame-support/std",
+  "tokens/std",
+  "traits/std",
+  "currencies/std",
 ]
 
 runtime-benchmarks = [

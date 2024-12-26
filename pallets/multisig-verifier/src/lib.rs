@@ -40,7 +40,6 @@ use frame_support::ensure;
 use frame_support::pallet_prelude::*;
 use frame_support::{BoundedBTreeSet, BoundedVec};
 use frame_system::pallet_prelude::*;
-pub use pallet::*;
 use scale_info::prelude::vec::Vec;
 use sp_core::ecdsa;
 use sp_core::RuntimeDebug;
@@ -177,8 +176,8 @@ pub mod pallet {
                 GenericNetworkId::from(output.network_id),
                 |x| -> DispatchResult {
                     let Some(peers) = x else {
-                    fail!(Error::<T>::NetworkNotInitialized)
-                };
+                        fail!(Error::<T>::NetworkNotInitialized)
+                    };
                     if peers.contains(&peer) {
                         fail!(Error::<T>::PeerExists);
                     } else {
@@ -211,8 +210,8 @@ pub mod pallet {
                 GenericNetworkId::from(output.network_id),
                 |x| -> DispatchResult {
                     let Some(keys) = x else {
-                    fail!(Error::<T>::NetworkNotInitialized)
-                };
+                        fail!(Error::<T>::NetworkNotInitialized)
+                    };
                     ensure!(keys.remove(&peer), {
                         log::error!("Call add_peer: No such peer {:?}", peer);
                         Error::<T>::NoSuchPeer
@@ -240,7 +239,10 @@ pub mod pallet {
             signatures: &[ecdsa::Signature],
         ) -> DispatchResult {
             let Some(peers) = PeerKeys::<T>::get(network_id) else {
-                log::error!("verify_signatures: Network {:?} not initialized", network_id);
+                log::error!(
+                    "verify_signatures: Network {:?} not initialized",
+                    network_id
+                );
                 fail!(Error::<T>::NetworkNotInitialized)
             };
 
@@ -248,7 +250,9 @@ pub mod pallet {
 
             // Insure that every sighnature exists in the storage
             for sign in signatures {
-                let Ok(rec_sign) = sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign.0, &hash.0) else {
+                let Ok(rec_sign) =
+                    sp_io::crypto::secp256k1_ecdsa_recover_compressed(&sign.0, &hash.0)
+                else {
                     log::error!("verify_signatures: cannot recover: {:?}", sign);
                     fail!(Error::<T>::InvalidSignature)
                 };

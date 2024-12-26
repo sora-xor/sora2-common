@@ -498,6 +498,7 @@ mod tests {
     use wasm_bindgen_test::*;
 
     #[wasm_bindgen_test]
+    #[allow(unused)]
     fn hashimoto_breakdown_11550000_wasm() {
         let header_hash: H256 =
             hex!("7bc3c6073de95a429663dcc4c25f9559cfe1947142d111d91d1e09120c68847e").into();

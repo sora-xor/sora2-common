@@ -99,6 +99,7 @@ impl Node for FullNode {
 /// Proof verification should return `value`. `key` is an implementation
 /// detail of the trie.
 pub struct ShortNode {
+    #[allow(unused)]
     pub key: Vec<u8>,
     pub value: Vec<u8>,
 }
