@@ -27,3 +27,28 @@
 // OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#[allow(unused_imports)]
+use crate::Pallet as SubstrateApp;
+use currencies::Pallet as Currencies;
+
+use super::*;
+use frame_benchmarking::benchmarks;
+use frame_benchmarking::whitelisted_caller;
+use frame_system::RawOrigin;
+use sp_std::prelude::*;
+use traits::MultiCurrency;
+
+benchmarks! {
+    where_clause {
+        where
+            T: currencies::Config,
+            Currencies<T>: MultiCurrency<T::AccountId, CurrencyId = AssetIdOf<T>>
+    }
+
+    claim_relayer_fees {
+        let signer = whitelisted_caller();
+    }: _(RawOrigin::Signed(signer), TonAddress::new(0, [0x11; 32].into()))
+
+    impl_benchmark_test_suite!(SubstrateApp, crate::mock::new_test_ext(), crate::mock::Test,);
+}

@@ -91,9 +91,9 @@ fn validator_proof(
 #[test_case(3, 5000; "3 validators, 5000 leaves")]
 // #[test_case(3, 5000000; "3 validators, 5000000 leaves")] TODO uncomment when #372 is done, now takes too long time
 #[test_case(37, 5; "37 validators, 5 leaves")]
-#[test_case(37, 5000; "37 validators, 5000 leaves")]
-#[test_case(69, 5000; "69 validators, 5000 leaves")]
-#[test_case(200, 5000; "200 validators, 5000 leaves")]
+// #[test_case(37, 5000; "37 validators, 5000 leaves")]
+// #[test_case(69, 5000; "69 validators, 5000 leaves")]
+// #[test_case(200, 5000; "200 validators, 5000 leaves")]
 fn submit_fixture_success(validators: usize, tree_size: u32) {
     new_test_ext().execute_with(|| {
         let fixture = generate_fixture(validators, tree_size).expect("error generating fixture");

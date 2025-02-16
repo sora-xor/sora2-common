@@ -33,7 +33,6 @@
 use crate::*;
 use bridge_types::evm::AdditionalEVMInboundData;
 use bridge_types::traits::BridgeAssetRegistry;
-use bridge_types::traits::EVMBridgeWithdrawFee;
 use bridge_types::types::AssetKind;
 use bridge_types::types::CallOriginOutput;
 use bridge_types::types::GenericAdditionalInboundData;
@@ -111,30 +110,6 @@ benchmarks! {
     }: _(RawOrigin::Root, network_id, address, asset_id, 18)
     verify {
         assert!(AppAddresses::<T>::contains_key(network_id));
-    }
-
-    claim_relayer_fees {
-        let asset_id = <T as Config>::AssetRegistry::register_asset(BASE_NETWORK_ID.into(), b"ETH".to_vec().into(), b"ETH".to_vec().into())?;
-        crate::Pallet::<T>::register_network_with_existing_asset(RawOrigin::Root.into(), BASE_NETWORK_ID, H160::repeat_byte(1), asset_id.clone(), 18).unwrap();
-        let caller: T::AccountId = whitelisted_caller();
-        let claimer: T::AccountId = account("claimer", 0, 0);
-        let address = H160::repeat_byte(98);
-        let message = crate::Pallet::<T>::get_claim_prehashed_message(BASE_NETWORK_ID, &claimer);
-        let pk = sp_io::crypto::ecdsa_generate(11u32.into(), None);
-        let signature = sp_io::crypto::ecdsa_sign_prehashed(11u32.into(), &pk, &message.0).unwrap();
-
-        // We need to have full public key to get Ethereum address, but sp_core public key don't have such conversion method.
-        let pk = sp_io::crypto::secp256k1_ecdsa_recover(&signature.0, &message.0).map_err(|_| "Failed to recover signature").unwrap();
-        let relayer = H160::from_slice(&sp_io::hashing::keccak_256(&pk)[12..]);
-
-        let network_id = BASE_NETWORK_ID;
-        crate::Pallet::<T>::update_base_fee(BASE_NETWORK_ID, 10u64.into(), 1u64);
-        Currencies::<T>::deposit(asset_id.clone(), &caller, 1_000_000_000_000_000_000u128.into())?;
-        crate::Pallet::<T>::withdraw_transfer_fee(&caller, BASE_NETWORK_ID, asset_id.clone())?;
-        crate::Pallet::<T>::on_fee_paid(BASE_NETWORK_ID, relayer, 100u64.into());
-    }: _(RawOrigin::Signed(claimer.clone()), network_id, relayer, signature)
-    verify {
-        assert_eq!(Currencies::<T>::free_balance(asset_id, &claimer), 100u128.into());
     }
 
     register_existing_sidechain_asset {

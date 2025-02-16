@@ -188,9 +188,7 @@ pub enum Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     Outbound(OutboundCommitment<MaxMessages, MaxPayload>),
     #[cfg_attr(feature = "std", serde(rename = "inbound"))]
     Inbound(InboundCommitment<MaxPayload>),
-    #[cfg_attr(feature = "std", serde(rename = "statusReport"))]
-    StatusReport(StatusReport<MaxPayload>),
-    #[cfg_attr(feature = "std", serde(rename = "statusReport"))]
+    #[cfg_attr(feature = "std", serde(rename = "baseFeeUpdate"))]
     BaseFeeUpdate(BaseFeeUpdate),
 }
 
@@ -199,7 +197,6 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
         match self {
             Commitment::Inbound(commitment) => commitment.hash(),
             Commitment::Outbound(commitment) => commitment.hash(),
-            Commitment::StatusReport(commitment) => commitment.hash(),
             Commitment::BaseFeeUpdate(commitment) => commitment.hash(),
         }
     }
@@ -208,7 +205,6 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> Commitment<MaxMessages, MaxPay
         match self {
             Commitment::Inbound(commitment) => commitment.nonce,
             Commitment::Outbound(commitment) => commitment.nonce,
-            Commitment::StatusReport(commitment) => commitment.nonce,
             Commitment::BaseFeeUpdate(_) => 0,
         }
     }
@@ -332,40 +328,6 @@ impl<MaxPayload: Get<u32>> InboundCommitment<MaxPayload> {
 )]
 #[scale_info(skip_type_params(MaxMessages))]
 #[cfg_attr(feature = "std", serde(bound = ""))]
-pub struct StatusReport<MaxMessages: Get<u32>> {
-    /// Channel contract address.
-    pub channel: H160,
-    /// Block number at which the event was emitted.
-    pub block_number: u64,
-    /// Relayer which submitted the messages.
-    pub relayer: H160,
-    /// Batch nonce for replay protection and ordering.
-    pub nonce: u64,
-    /// Message payload.
-    pub results: BoundedVec<bool, MaxMessages>,
-    /// Gas spent by the relayer.
-    pub gas_spent: U256,
-    /// Base fee paid by the relayer.
-    pub base_fee: U256,
-}
-
-impl<MaxMessages: Get<u32>> StatusReport<MaxMessages> {
-    pub fn hash(&self) -> H256 {
-        ("evm-status-report", self)
-            .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
-    }
-}
-
-#[derive(Encode, Decode, scale_info::TypeInfo, codec::MaxEncodedLen, Derivative)]
-#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[scale_info(skip_type_params(MaxMessages))]
-#[cfg_attr(feature = "std", serde(bound = ""))]
 pub struct BaseFeeUpdate {
     /// Updated base fee
     pub new_base_fee: U256,
@@ -378,23 +340,4 @@ impl BaseFeeUpdate {
         ("base-fee-update", self)
             .using_encoded(|encoded| sp_runtime::traits::Keccak256::hash(encoded))
     }
-}
-
-#[test]
-fn test_commitment_hash() {
-    use hex_literal::hex;
-
-    pub type MaxU32 = sp_runtime::traits::ConstU32<{ u32::MAX }>;
-
-    let commitment: OutboundCommitment<MaxU32, MaxU32> = OutboundCommitment {
-        nonce: 1,
-        total_max_gas: 123.into(),
-        messages: BoundedVec::default(),
-    };
-
-    // Value calculated on Ethereum contract with Remix IDE
-    let expected = H256::from(hex!(
-        "fe5da6b743707a6d3f8974111079fe7fb466bfed7a703d659e593c9120353bb1"
-    ));
-    assert_eq!(commitment.hash(), expected);
 }

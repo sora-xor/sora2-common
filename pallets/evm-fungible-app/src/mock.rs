@@ -28,8 +28,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::traits::OutboundChannel;
 use bridge_types::traits::{AppRegistry, BalancePrecisionConverter, BridgeAssetRegistry};
-use bridge_types::traits::{EVMOutboundChannel, OutboundChannel};
 use currencies::BasicCurrencyAdapter;
 
 // Mock runtime
@@ -268,12 +268,6 @@ impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData> for Outbo
 
     fn submit_weight() -> frame_support::weights::Weight {
         frame_support::weights::Weight::from_all(1)
-    }
-}
-
-impl EVMOutboundChannel for OutboundChannelImpl {
-    fn submit_gas(_chain_id: EVMChainId) -> Result<U256, DispatchError> {
-        Ok(U256::one())
     }
 }
 

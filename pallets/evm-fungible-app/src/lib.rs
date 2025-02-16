@@ -63,8 +63,6 @@ mod tests;
 
 use alloy_core::sol_types::SolCall;
 use bridge_types::substrate::FAAppCall;
-use bridge_types::traits::BridgeApp;
-use bridge_types::traits::GetBridgeDispatchInfo;
 use bridge_types::{MainnetAccountId, MainnetAssetId};
 use bridge_types::{H160, U256};
 use codec::{Decode, Encode};
@@ -847,25 +845,10 @@ pub mod pallet {
             <T as Config>::WeightInfo::burn()
         }
 
-        fn transfer_info(network_id: GenericNetworkId) -> bridge_types::types::BridgeDispatchInfo {
-            match network_id {
-                GenericNetworkId::EVM(chain_id) => {
-                    bridge_types::types::BridgeDispatchInfo::from_gas(
-                        chain_id,
-                        TRANSFER_MAX_GAS.into(),
-                    )
-                }
-                _ => Default::default(),
-            }
-        }
-    }
-}
-
-impl<T: Config> GetBridgeDispatchInfo for Call<T> {
-    fn get_bridge_dispatch_info(&self) -> bridge_types::types::BridgeDispatchInfo {
-        match self {
-            Call::burn { network_id, .. } => Pallet::<T>::transfer_info(network_id.clone().into()),
-            _ => Default::default(),
+        fn transfer_fee(
+            _network_id: GenericNetworkId,
+        ) -> Result<(AssetIdOf<T>, BalanceOf<T>), DispatchError> {
+            Err(DispatchError::Unavailable)
         }
     }
 }

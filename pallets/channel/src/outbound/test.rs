@@ -35,7 +35,7 @@ use currencies::BasicCurrencyAdapter;
 
 use bridge_types::traits::{OutboundChannel, TimepointProvider};
 use frame_support::traits::{Everything, GenesisBuild};
-use frame_support::{assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
+use frame_support::{assert_err, assert_noop, assert_ok, parameter_types, Deserialize, Serialize};
 use frame_system::RawOrigin;
 use scale_info::TypeInfo;
 use sp_core::H256;
@@ -205,6 +205,7 @@ impl bridge_outbound_channel::Config for Test {
     type TimepointProvider = GenericTimepointProvider;
     type ThisNetworkId = ThisNetworkId;
     type EVMOutboundQueueVerifier = ();
+    type TONOutboundQueueVerifier = ();
 }
 
 impl pallet_timestamp::Config for Test {
@@ -318,7 +319,7 @@ fn test_submit_fails_on_nonce_overflow() {
         let who: AccountId = Keyring::Bob.into();
 
         <ChannelNonces<Test>>::insert(BASE_NETWORK_ID, u64::MAX);
-        assert_noop!(
+        assert_err!(
             BridgeOutboundChannel::submit(
                 BASE_NETWORK_ID.sub().unwrap(),
                 &RawOrigin::Signed(who),

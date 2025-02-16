@@ -146,7 +146,7 @@ impl<MaxPeers: Get<u32>> MultiSigners<MaxPeers> {
     pub fn empty_signatures(&self) -> MultiSignatures<MaxPeers> {
         match self {
             Self::Ecdsa(_) => MultiSignatures::Ecdsa(BoundedBTreeMap::new()),
-            Self::Ed25519(_) => MultiSignatures::Ecdsa(BoundedBTreeMap::new()),
+            Self::Ed25519(_) => MultiSignatures::Ed25519(BoundedBTreeMap::new()),
         }
     }
 

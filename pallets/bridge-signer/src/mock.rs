@@ -29,6 +29,7 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use crate as bridge_signer;
+use bridge_types::traits::DefaultPeerManager;
 use bridge_types::types::GenericAdditionalInboundData;
 use bridge_types::GenericNetworkId;
 use bridge_types::{traits::OutboundChannel, SubNetworkId};
@@ -105,7 +106,13 @@ impl bridge_signer::Config for Test {
     type ApprovalCleanUpPeriod = ApprovalCleanUpPeriod;
     type EvmPeerManager = ();
     type TonPeerManager = ();
-    type SubPeerManager = ();
+    type SubPeerManager = DefaultPeerManager<
+        TestOutboundChannel,
+        SubNetworkId,
+        AccountId,
+        (),
+        sp_core::ecdsa::Public,
+    >;
     type WeightInfo = ();
 }
 

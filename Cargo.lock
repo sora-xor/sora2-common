@@ -1319,33 +1319,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "evm-bridge"
-version = "0.1.1"
-dependencies = [
- "alloy-core",
- "bridge-types",
- "dispatch",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "orml-currencies",
- "orml-tokens",
- "orml-traits",
- "pallet-balances",
- "parity-scale-codec",
- "rustc-hex",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-keyring",
- "sp-keystore",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "evm-fungible-app"
 version = "0.1.1"
 dependencies = [
@@ -4728,6 +4701,32 @@ dependencies = [
  "indexmap 2.6.0",
  "toml_datetime",
  "winnow 0.6.20",
+]
+
+[[package]]
+name = "ton-bridge"
+version = "0.1.1"
+dependencies = [
+ "bridge-types",
+ "dispatch",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "orml-currencies",
+ "orml-tokens",
+ "orml-traits",
+ "pallet-balances",
+ "parity-scale-codec",
+ "rustc-hex",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
+ "sp-keyring",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]

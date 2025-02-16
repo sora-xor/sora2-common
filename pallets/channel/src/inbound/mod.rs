@@ -56,7 +56,7 @@ pub mod pallet {
     use bridge_types::evm::AdditionalEVMInboundData;
     use bridge_types::ton::{AdditionalTONInboundData, TonAddress, TonNetworkId};
     use bridge_types::traits::CommitmentHandler;
-    use bridge_types::types::{GenericAdditionalInboundData, MessageStatus};
+    use bridge_types::types::GenericAdditionalInboundData;
     use bridge_types::{EVMChainId, GenericNetworkId, GenericTimepoint};
     use frame_support::log::warn;
     use frame_support::pallet_prelude::{InvalidTransaction, *};
@@ -146,10 +146,6 @@ pub mod pallet {
     pub type ChannelNonces<T: Config> = StorageMap<_, Identity, GenericNetworkId, u64, ValueQuery>;
 
     #[pallet::storage]
-    pub type ReportedChannelNonces<T: Config> =
-        StorageMap<_, Identity, GenericNetworkId, u64, ValueQuery>;
-
-    #[pallet::storage]
     pub type TONChannelAddresses<T: Config> =
         StorageMap<_, Identity, TonNetworkId, TonAddress, OptionQuery>;
 
@@ -203,7 +199,6 @@ pub mod pallet {
                     bridge_types::evm::Commitment::Inbound(commitment) => {
                         T::MessageDispatch::dispatch_weight(&commitment.payload)
                     }
-                    bridge_types::evm::Commitment::StatusReport(_) => Default::default(),
                     bridge_types::evm::Commitment::BaseFeeUpdate(_) => Default::default(),
                 },
                 bridge_types::GenericCommitment::TON(bridge_types::ton::Commitment::Inbound(
@@ -232,26 +227,8 @@ pub mod pallet {
             Ok(())
         }
 
-        fn ensure_reported_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
-            let nonce = ReportedChannelNonces::<T>::get(network_id);
-            ensure!(nonce + 1 == new_nonce, Error::<T>::InvalidNonce);
-            Ok(())
-        }
-
         fn update_channel_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
             <ChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
-                if new_nonce != *nonce + 1 {
-                    Err(Error::<T>::InvalidNonce.into())
-                } else {
-                    *nonce += 1;
-                    Ok(())
-                }
-            })?;
-            Ok(())
-        }
-
-        fn update_reported_nonce(network_id: GenericNetworkId, new_nonce: u64) -> DispatchResult {
-            <ReportedChannelNonces<T>>::try_mutate(network_id, |nonce| -> DispatchResult {
                 if new_nonce != *nonce + 1 {
                     Err(Error::<T>::InvalidNonce.into())
                 } else {
@@ -334,28 +311,6 @@ pub mod pallet {
                         .into(),
                     );
                 }
-                bridge_types::evm::Commitment::StatusReport(status_report) => {
-                    Self::update_reported_nonce(network_id, status_report.nonce)?;
-                    for (i, result) in status_report.results.iter().enumerate() {
-                        let status = if *result {
-                            MessageStatus::Done
-                        } else {
-                            MessageStatus::Failed
-                        };
-                        T::MessageStatusNotifier::update_status(
-                            network_id,
-                            MessageId::batched(
-                                T::ThisNetworkId::get(),
-                                network_id,
-                                status_report.nonce,
-                                i as u64,
-                            )
-                            .hash(),
-                            status,
-                            GenericTimepoint::EVM(status_report.block_number),
-                        )
-                    }
-                }
                 bridge_types::evm::Commitment::BaseFeeUpdate(_) => {}
                 bridge_types::evm::Commitment::Outbound(_) => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
@@ -373,9 +328,6 @@ pub mod pallet {
             match commitment {
                 bridge_types::evm::Commitment::Inbound(inbound_commitment) => {
                     Self::ensure_channel_nonce(network_id, inbound_commitment.nonce)?;
-                }
-                bridge_types::evm::Commitment::StatusReport(status_report) => {
-                    Self::ensure_reported_nonce(network_id, status_report.nonce)?;
                 }
                 bridge_types::evm::Commitment::BaseFeeUpdate(_) => {}
                 bridge_types::evm::Commitment::Outbound(_) => {

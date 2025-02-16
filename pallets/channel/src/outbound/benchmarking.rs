@@ -31,9 +31,7 @@
 //! BridgeOutboundChannel pallet benchmarking
 use super::*;
 
-use bridge_types::substrate::BridgeMessage;
 use bridge_types::traits::OutboundChannel;
-use bridge_types::GenericBridgeMessage;
 use bridge_types::GenericNetworkId;
 use frame_benchmarking::benchmarks;
 use frame_system::EventRecord;
@@ -65,18 +63,14 @@ benchmarks! {
 
         for _ in 0 .. m {
             let payload: Vec<u8> = (0..).take(p as usize).collect();
-            MessageQueues::<T>::try_append(
-                BASE_NETWORK_ID, GenericBridgeMessage::Sub(BridgeMessage {
-                payload: payload.try_into().unwrap(),
-                timepoint: Default::default(),
-            })).unwrap();
+            BridgeOutboundChannel::<T>::submit(SubNetworkId::Mainnet, &RawOrigin::Root, &payload, ()).unwrap();
         }
 
         let block_number = 0u32.into();
 
     }: { BridgeOutboundChannel::<T>::on_initialize(block_number) }
     verify {
-        assert_eq!(<MessageQueues<T>>::get(BASE_NETWORK_ID).len(), 0);
+        assert!(<MessageQueues<T>>::get(BASE_NETWORK_ID).is_none());
     }
 
     // Benchmark 'on_initialize` for the best case, i.e. nothing is done
@@ -84,11 +78,7 @@ benchmarks! {
     on_initialize_non_interval {
         MessageQueues::<T>::take(BASE_NETWORK_ID);
         let payload: Vec<u8> = (0..).take(10).collect();
-        MessageQueues::<T>::try_append(
-            BASE_NETWORK_ID, GenericBridgeMessage::Sub(BridgeMessage {
-            payload: payload.try_into().unwrap(),
-            timepoint: Default::default(),
-        })).unwrap();
+        BridgeOutboundChannel::<T>::submit(SubNetworkId::Mainnet, &RawOrigin::Root, &payload, ()).unwrap();
 
         let interval: T::BlockNumber = 10u32.into();
         Interval::<T>::put(interval);
@@ -96,7 +86,7 @@ benchmarks! {
 
     }: { BridgeOutboundChannel::<T>::on_initialize(block_number) }
     verify {
-        assert_eq!(<MessageQueues<T>>::get(BASE_NETWORK_ID).len(), 1);
+        assert_eq!(<MessageQueues<T>>::get(BASE_NETWORK_ID).unwrap().len(), 1);
     }
 
     // Benchmark 'on_initialize` for the case where it is a commitment interval

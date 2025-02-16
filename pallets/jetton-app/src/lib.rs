@@ -60,12 +60,10 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-mod payload;
+pub mod abi;
 
 use bridge_types::substrate::JettonAppCall;
-use bridge_types::traits::GetBridgeDispatchInfo;
 use bridge_types::traits::OutboundChannel;
-use bridge_types::types::BridgeDispatchInfo;
 use bridge_types::{MainnetAccountId, MainnetAssetId};
 use frame_support::dispatch::{DispatchError, DispatchResult};
 use frame_support::ensure;
@@ -73,8 +71,14 @@ use frame_support::traits::EnsureOrigin;
 use sp_core::Get;
 use sp_std::prelude::*;
 
-/// 0.1 TON
-pub const TRANSFER_MAX_FEE: u128 = 100_000_000;
+/// 0.2 TON
+pub const TRANSFER_MAX_FEE: u128 = 200_000_000;
+/// 0.2 TON
+pub const REGISTER_TON_MAX_FEE: u128 = 200_000_000;
+/// 0.2 TON
+pub const REGISTER_JETTON_MAX_FEE: u128 = 200_000_000;
+/// 0.3 TON
+pub const REGISTER_SORA_JETTON_MAX_FEE: u128 = 300_000_000;
 
 pub use pallet::*;
 pub use weights::WeightInfo;
@@ -97,6 +101,12 @@ where
                 token,
                 amount,
             },
+            JettonAppCall::SoraJettonRegistered { token, asset_id } => {
+                Call::finish_asset_registration {
+                    master: token,
+                    asset_id,
+                }
+            }
         }
     }
 }
@@ -105,11 +115,13 @@ where
 pub mod pallet {
     use super::*;
 
+    use abi::*;
     use bridge_types::ton::{
         AdditionalTONOutboundData, TonAddress, TonAddressWithPrefix, TonBalance, TonNetworkId,
     };
     use bridge_types::ton::{TonAppInfo, TonAssetInfo};
     use bridge_types::traits::BridgeAssetLocker;
+    use bridge_types::traits::{AppRegistry, NetworkManager};
     use bridge_types::traits::{
         BalancePrecisionConverter, BridgeApp, BridgeAssetRegistry, MessageStatusNotifier,
     };
@@ -122,9 +134,8 @@ pub mod pallet {
     use frame_support::{fail, pallet_prelude::*};
     use frame_system::pallet_prelude::*;
     use frame_system::{ensure_root, RawOrigin};
-    use payload::MintPayload;
-    use sp_runtime::traits::Convert;
     use sp_runtime::traits::Zero;
+    use sp_runtime::traits::{Convert, ConvertBack};
 
     type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
     pub type AssetIdOf<T> =
@@ -167,11 +178,20 @@ pub mod pallet {
             BalanceOf<Self>,
         >;
 
+        type AppRegistry: AppRegistry<TonNetworkId, TonAddress>;
+
         type AssetRegistry: BridgeAssetRegistry<Self::AccountId, AssetIdOf<Self>>;
 
-        type AssetIdConverter: Convert<AssetIdOf<Self>, MainnetAssetId>;
+        type AssetIdConverter: ConvertBack<AssetIdOf<Self>, MainnetAssetId>;
 
         type BalancePrecisionConverter: BalancePrecisionConverter<
+            AssetIdOf<Self>,
+            BalanceOf<Self>,
+            TonBalance,
+        >;
+
+        type NetworkManager: NetworkManager<
+            Self::AccountId,
             AssetIdOf<Self>,
             BalanceOf<Self>,
             TonBalance,
@@ -256,42 +276,7 @@ pub mod pallet {
         WrongRequestStatus,
         OperationNotSupported,
         WrongAccountPrefix,
-    }
-
-    #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config> {
-        /// [address]
-        pub app: Option<(TonNetworkId, TonAddress)>,
-        /// Vec<[asset_id, address, kind, precision]>
-        pub assets: Vec<(AssetIdOf<T>, TonAddress, AssetKind, u8)>,
-    }
-
-    #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            Self {
-                app: Default::default(),
-                assets: Default::default(),
-            }
-        }
-    }
-
-    #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
-        fn build(&self) {
-            if let Some(app) = &self.app {
-                AppInfo::<T>::set(Some(*app));
-                for (asset_id, address, asset_kind, precision) in self.assets.iter() {
-                    Pallet::<T>::register_asset_inner(
-                        asset_id.clone(),
-                        *address,
-                        *asset_kind,
-                        *precision,
-                    )
-                    .unwrap();
-                }
-            }
-        }
+        ShouldProvideWallet,
     }
 
     #[pallet::call]
@@ -419,6 +404,20 @@ pub mod pallet {
                 AssetKind::Sidechain,
                 decimals,
             )?;
+
+            T::AppRegistry::register_app(network_id, contract)?;
+
+            let message = RegisterTonPayload;
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
+                AdditionalTONOutboundData {
+                    target: contract,
+                    max_fee: REGISTER_TON_MAX_FEE.into(),
+                },
+            )?;
             Ok(())
         }
 
@@ -452,6 +451,21 @@ pub mod pallet {
                 AssetKind::Sidechain,
                 decimals,
             )?;
+
+            T::AppRegistry::register_app(network_id, contract)?;
+
+            let message = RegisterTonPayload;
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
+                AdditionalTONOutboundData {
+                    target: contract,
+                    max_fee: REGISTER_TON_MAX_FEE.into(),
+                },
+            )?;
+
             Ok(())
         }
 
@@ -466,6 +480,132 @@ pub mod pallet {
             let who = ensure_signed(origin)?;
 
             Self::burn_inner(who, asset_id, recipient, amount)?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(4)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_network_with_existing_asset())]
+        pub fn register_existing_sidechain_asset(
+            origin: OriginFor<T>,
+            master: TonAddress,
+            wallet: TonAddress,
+            asset_id: AssetIdOf<T>,
+            decimals: u8,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            let (network_id, target) = AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
+            Self::register_asset_inner(asset_id, master, AssetKind::Sidechain, decimals)?;
+
+            let message = RegisterJettonPayload { wallet, master };
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
+                AdditionalTONOutboundData {
+                    target,
+                    max_fee: REGISTER_TON_MAX_FEE.into(),
+                },
+            )?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(5)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_network_with_existing_asset())]
+        pub fn register_sidechain_asset(
+            origin: OriginFor<T>,
+            master: TonAddress,
+            wallet: TonAddress,
+            symbol: AssetSymbolOf<T>,
+            name: AssetNameOf<T>,
+            decimals: u8,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            let (network_id, target) = AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
+            let asset_id = T::AssetRegistry::register_asset(
+                GenericNetworkId::TON(network_id),
+                name.clone(),
+                symbol.clone(),
+            )?;
+            Self::register_asset_inner(asset_id, master, AssetKind::Sidechain, decimals)?;
+
+            let message = RegisterJettonPayload { master, wallet };
+            // let message = RegisterSoraJettonSimplePayload {
+            //     name: name.as_ref().to_vec(),
+            //     symbol: symbol.as_ref().to_vec(),
+            // };
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
+                AdditionalTONOutboundData {
+                    target,
+                    max_fee: REGISTER_TON_MAX_FEE.into(),
+                },
+            )?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(6)]
+        #[pallet::weight(<T as Config>::WeightInfo::register_network_with_existing_asset())]
+        pub fn register_thischain_asset(
+            origin: OriginFor<T>,
+            asset_id: AssetIdOf<T>,
+        ) -> DispatchResult {
+            ensure_root(origin)?;
+            let (network_id, target) = AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
+
+            let info = T::AssetRegistry::get_raw_info(asset_id.clone());
+            let asset_id = T::AssetIdConverter::convert(asset_id);
+
+            let message = RegisterSoraJettonSimplePayload {
+                name: AsRef::<[u8]>::as_ref(&info.name).to_vec(),
+                symbol: AsRef::<[u8]>::as_ref(&info.symbol).to_vec(),
+                asset_id,
+            };
+
+            T::OutboundChannel::submit(
+                network_id,
+                &RawOrigin::Root,
+                &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
+                AdditionalTONOutboundData {
+                    target,
+                    max_fee: REGISTER_TON_MAX_FEE.into(),
+                },
+            )?;
+
+            Ok(())
+        }
+
+        #[pallet::call_index(7)]
+        #[pallet::weight(<T as Config>::WeightInfo::mint())]
+        pub fn finish_asset_registration(
+            origin: OriginFor<T>,
+            master: TonAddressWithPrefix,
+            asset_id: MainnetAssetId,
+        ) -> DispatchResult {
+            let CallOriginOutput {
+                network_id: GenericNetworkId::TON(network_id),
+                additional: GenericAdditionalInboundData::TON(additional),
+                ..
+            } = T::CallOrigin::ensure_origin(origin.clone())? else {
+                fail!(DispatchError::BadOrigin);
+            };
+            let (app_network_id, app_address) =
+                AppInfo::<T>::get().ok_or(Error::<T>::AppIsNotRegistered)?;
+
+            if additional.source != app_address || network_id != app_network_id {
+                return Err(DispatchError::BadOrigin);
+            }
+
+            let master = master.address().ok_or(Error::<T>::WrongAccountPrefix)?;
+            let asset_id = T::AssetIdConverter::convert_back(asset_id);
+
+            Self::register_asset_inner(asset_id, master, AssetKind::Thischain, 18)?;
 
             Ok(())
         }
@@ -634,22 +774,10 @@ pub mod pallet {
             Default::default()
         }
 
-        fn transfer_info(network_id: GenericNetworkId) -> bridge_types::types::BridgeDispatchInfo {
-            match network_id {
-                GenericNetworkId::TON(_) => {
-                    bridge_types::types::BridgeDispatchInfo::from_ton_fee(TRANSFER_MAX_FEE)
-                }
-                _ => Default::default(),
-            }
-        }
-    }
-}
-
-impl<T: crate::Config> GetBridgeDispatchInfo for Call<T> {
-    fn get_bridge_dispatch_info(&self) -> bridge_types::types::BridgeDispatchInfo {
-        match self {
-            Call::burn { .. } => BridgeDispatchInfo::from_ton_fee(TRANSFER_MAX_FEE),
-            _ => Default::default(),
+        fn transfer_fee(
+            network_id: GenericNetworkId,
+        ) -> Result<(AssetIdOf<T>, BalanceOf<T>), DispatchError> {
+            T::NetworkManager::submit_fee(network_id, TonBalance::new(TRANSFER_MAX_FEE))
         }
     }
 }

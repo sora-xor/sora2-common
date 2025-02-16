@@ -31,15 +31,17 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use bridge_types::{
-    multisig::{MultiSignature, MultiSignatures, MultiSigners},
+    multisig::{MultiSignature, MultiSignatures},
     substrate::BridgeSignerCall,
     GenericNetworkId,
 };
-use codec::Encode;
 use frame_support::{ensure, weights::Weight};
 pub use pallet::*;
 use sp_core::Get;
-use sp_runtime::DispatchResult;
+use sp_runtime::{
+    traits::{Hash, Keccak256},
+    DispatchResult,
+};
 
 #[cfg(test)]
 mod mock;
@@ -543,11 +545,7 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
     ) -> DispatchResult {
         let this_network_id = T::ThisNetworkId::get();
         let peers = Peers::<T>::get(network_id).ok_or(Error::<T>::NetworkNotSupported)?;
-        let message_to_hash = (network_id, this_network_id, commitment_hash).encode();
-        let message_hash = match peers {
-            MultiSigners::Ecdsa(_) => sp_io::hashing::keccak_256(&message_to_hash),
-            MultiSigners::Ed25519(_) => sp_io::hashing::sha2_256(&message_to_hash),
-        };
+        let message_hash = Keccak256::hash_of(&(network_id, this_network_id, commitment_hash));
         ensure!(
             proof.verify(&peers, message_hash.into()),
             Error::<T>::InvalidProof

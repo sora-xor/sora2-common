@@ -67,7 +67,7 @@ frame_support::construct_runtime!(
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        JettonApp: jetton_app::{Pallet, Call, Config<T>, Storage, Event<T>},
+        JettonApp: jetton_app::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -267,7 +267,9 @@ impl jetton_app::Config for Test {
     type MessageStatusNotifier = ();
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
     type AssetRegistry = BridgeAssetRegistryImpl;
-    type AssetIdConverter = sp_runtime::traits::ConvertInto;
+    type AssetIdConverter = sp_runtime::traits::Identity;
+    type NetworkManager = ();
+    type AppRegistry = ();
     type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
 }
 
@@ -310,17 +312,16 @@ impl ExtBuilder {
         .assimilate_storage(&mut storage)
         .unwrap();
 
-        GenesisBuild::<Test>::assimilate_storage(
-            &jetton_app::GenesisConfig {
-                app: self.app,
-                assets: self.assets,
-            },
-            &mut storage,
-        )
-        .unwrap();
-
         let mut ext: sp_io::TestExternalities = storage.into();
-        ext.execute_with(|| System::set_block_number(1));
+        ext.execute_with(|| {
+            if let Some((network_id, address)) = self.app {
+                crate::AppInfo::<Test>::put((network_id, address));
+            }
+            for (asset, address, kind, precision) in self.assets {
+                JettonApp::register_asset_inner(asset, address, kind, precision).unwrap();
+            }
+            System::set_block_number(1);
+        });
         ext.register_extension(sp_keystore::KeystoreExt(std::sync::Arc::new(
             sp_keystore::testing::KeyStore::new(),
         )));

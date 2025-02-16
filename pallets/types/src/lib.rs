@@ -254,6 +254,7 @@ pub enum GenericAssetId {
     XCM(substrate::ParachainAssetId),
     EVM(H160),
     Liberland(LiberlandAssetId),
+    Ton(TonAddress),
 }
 
 impl TryInto<LiberlandAssetId> for GenericAssetId {

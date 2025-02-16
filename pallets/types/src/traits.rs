@@ -36,16 +36,14 @@ use crate::multisig::MultiSigner;
 use crate::substrate::SubstrateBridgeMessageEncode;
 use crate::types::AssetKind;
 use crate::types::AuxiliaryDigestItem;
-use crate::types::BridgeDispatchInfo;
-use crate::EVMChainId;
 use crate::GenericTimepoint;
 use crate::H256;
-use crate::U256;
 use crate::{
     types::{BridgeAppInfo, BridgeAssetInfo, MessageStatus, RawAssetInfo},
     GenericAccount, GenericNetworkId,
 };
 use codec::FullCodec;
+use codec::MaxEncodedLen;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use frame_support::weights::Weight;
@@ -57,7 +55,6 @@ use frame_system::{Config, RawOrigin};
 use scale_info::TypeInfo;
 use sp_runtime::traits::AtLeast32BitUnsigned;
 use sp_runtime::traits::MaybeSerializeDeserialize;
-use sp_std::collections::btree_map::BTreeMap;
 use sp_std::prelude::*;
 
 /// A trait for verifying messages.
@@ -87,10 +84,6 @@ pub trait OutboundChannel<NetworkId, AccountId, Additional> {
     ) -> Result<H256, DispatchError>;
 
     fn submit_weight() -> Weight;
-}
-
-pub trait EVMOutboundChannel {
-    fn submit_gas(chain_id: EVMChainId) -> Result<U256, DispatchError>;
 }
 
 /// Dispatch a message
@@ -154,7 +147,7 @@ pub trait BridgeApp<AccountId, Recipient, AssetId, Balance> {
 
     fn is_asset_supported_weight() -> Weight;
 
-    fn transfer_info(network_id: GenericNetworkId) -> BridgeDispatchInfo;
+    fn transfer_fee(network_id: GenericNetworkId) -> Result<(AssetId, Balance), DispatchError>;
 }
 
 pub trait CommitmentHandler<NetworkId, Commitment> {
@@ -179,24 +172,6 @@ pub trait OutboundQueueVerifier<NetworkId, Queue, Message> {
 impl<NetworkId, Queue, Message> OutboundQueueVerifier<NetworkId, Queue, Message> for () {
     fn verify_queue(_network_id: &NetworkId, _queue: &Queue, _message: &Message) -> DispatchResult {
         Ok(())
-    }
-}
-
-pub trait EVMBridgeWithdrawFee<AccountId, AssetId> {
-    fn withdraw_transfer_fee(
-        who: &AccountId,
-        chain_id: EVMChainId,
-        asset_id: AssetId,
-    ) -> DispatchResult;
-}
-
-impl<AccountId, AssetId> EVMBridgeWithdrawFee<AccountId, AssetId> for () {
-    fn withdraw_transfer_fee(
-        _who: &AccountId,
-        _chain_id: EVMChainId,
-        _asset_id: AssetId,
-    ) -> DispatchResult {
-        Err(DispatchError::Unavailable)
     }
 }
 
@@ -247,8 +222,8 @@ impl<AccountId, Recipient, AssetId, Balance> BridgeApp<AccountId, Recipient, Ass
         Default::default()
     }
 
-    fn transfer_info(_network_id: GenericNetworkId) -> BridgeDispatchInfo {
-        Default::default()
+    fn transfer_fee(_network_id: GenericNetworkId) -> Result<(AssetId, Balance), DispatchError> {
+        Err(DispatchError::Unavailable)
     }
 }
 
@@ -338,8 +313,8 @@ pub trait BridgeOriginOutput: Sized {
 }
 
 pub trait BridgeAssetRegistry<AccountId, AssetId> {
-    type AssetName: Parameter;
-    type AssetSymbol: Parameter;
+    type AssetName: Parameter + AsRef<[u8]>;
+    type AssetSymbol: Parameter + AsRef<[u8]>;
 
     fn register_asset(
         network_id: GenericNetworkId,
@@ -416,8 +391,12 @@ pub trait TimepointProvider {
 }
 
 pub trait BridgeAssetLocker<AccountId> {
-    type AssetId: Parameter + MaybeSerializeDeserialize;
-    type Balance: Parameter + AtLeast32BitUnsigned + MaybeSerializeDeserialize;
+    type AssetId: Parameter + MaybeSerializeDeserialize + MaxEncodedLen;
+    type Balance: Parameter
+        + AtLeast32BitUnsigned
+        + MaybeSerializeDeserialize
+        + Default
+        + MaxEncodedLen;
 
     fn lock_asset(
         network_id: GenericNetworkId,
@@ -489,17 +468,33 @@ impl<AssetId, Balance> BridgeAssetLockChecker<AssetId, Balance> for () {
     }
 }
 
-pub trait GetBridgeDispatchInfo {
-    fn get_bridge_dispatch_info(&self) -> BridgeDispatchInfo;
+pub trait NetworkManager<AccountId, AssetId, Balance, SidechainBalance> {
+    fn submit_fee(
+        network_id: GenericNetworkId,
+        message_fee: SidechainBalance,
+    ) -> Result<(AssetId, Balance), DispatchError>;
+
+    fn on_withdraw_submit_fee(
+        network_id: GenericNetworkId,
+        message_fee: SidechainBalance,
+    ) -> DispatchResult;
 }
 
-pub trait NetworkManager<AssetId, Balance> {
-    fn calculate_fees(info: &BridgeDispatchInfo) -> BTreeMap<AssetId, Balance>;
-}
+impl<AccountId, AssetId, Balance, SidechainBalance>
+    NetworkManager<AccountId, AssetId, Balance, SidechainBalance> for ()
+{
+    fn submit_fee(
+        _network_id: GenericNetworkId,
+        _message_fee: SidechainBalance,
+    ) -> Result<(AssetId, Balance), DispatchError> {
+        Err(DispatchError::Unavailable)
+    }
 
-impl<AssetId, Balance> NetworkManager<AssetId, Balance> for () {
-    fn calculate_fees(_info: &BridgeDispatchInfo) -> BTreeMap<AssetId, Balance> {
-        Default::default()
+    fn on_withdraw_submit_fee(
+        _network_id: GenericNetworkId,
+        _message_fee: SidechainBalance,
+    ) -> DispatchResult {
+        Ok(())
     }
 }
 

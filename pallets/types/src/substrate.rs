@@ -151,11 +151,17 @@ impl SubstrateBridgeMessageEncode for FAAppCall {
 /// Message to FAApp pallet
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum JettonAppCall {
+    // 0x0600
     Transfer {
         token: TonAddressWithPrefix,
         sender: TonAddressWithPrefix,
         recipient: MainnetAccountId,
         amount: TonBalance,
+    },
+    // 0x0601
+    SoraJettonRegistered {
+        token: TonAddressWithPrefix,
+        asset_id: MainnetAssetId,
     },
 }
 
@@ -221,9 +227,13 @@ impl SubstrateBridgeMessageEncode for MultisigVerifierCall {
 /// Message to BridgeSigner
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeSignerCall {
+    // 0x0700
     AddPeer { peer: MultiSigner },
+    // 0x0701
     RemovePeer { peer: MultiSigner },
+    // 0x0702
     FinishRemovePeer,
+    // 0x0703
     FinishAddPeer,
 }
 
@@ -251,9 +261,15 @@ impl SubstrateBridgeMessageEncode for EvmBridgeCall {
 /// Message to BridgeSigner
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum TonBridgeCall {
+    // 0x0900
     RegisterRelayer {
         relayer: TonAddressWithPrefix,
         account: MainnetAccountId,
+    },
+    // 0x0901
+    CommitmentSubmitted {
+        relayer: TonAddressWithPrefix,
+        fee: TonBalance,
     },
 }
 
@@ -266,15 +282,25 @@ impl SubstrateBridgeMessageEncode for TonBridgeCall {
 /// Substrate bridge message payload
 #[derive(Clone, RuntimeDebug, Encode, Decode, PartialEq, Eq, scale_info::TypeInfo)]
 pub enum BridgeCall {
+    // 0x00
     ParachainApp(ParachainAppCall),
+    // 0x01
     XCMApp(XCMAppCall),
+    // 0x02
     DataSigner(DataSignerCall),
+    // 0x03
     MultisigVerifier(MultisigVerifierCall),
+    // 0x04
     SubstrateApp(SubstrateAppCall),
+    // 0x05
     FAApp(FAAppCall),
+    // 0x06
     JettonApp(JettonAppCall),
+    // 0x07
     BridgeSigner(BridgeSignerCall),
+    // 0x08
     EvmBridge(EvmBridgeCall),
+    // 0x09
     TonBridge(TonBridgeCall),
 }
 

@@ -64,7 +64,7 @@ pub enum TonNetworkId {
 }
 
 // TON encodes integers as big-endian and we use uint128 in our contracts
-#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo)]
+#[derive(Encode, Decode, Clone, Copy, PartialEq, Eq, scale_info::TypeInfo, Default)]
 pub struct TonBalance([u8; 16]);
 
 impl TonBalance {
@@ -300,7 +300,7 @@ pub struct TonAppInfo {
 pub enum Commitment<MaxMessages: Get<u32>, MaxPayload: Get<u32>> {
     #[cfg_attr(feature = "std", serde(rename = "inbound"))]
     Inbound(InboundCommitment<MaxPayload>),
-    #[cfg_attr(feature = "std", serde(rename = "inbound"))]
+    #[cfg_attr(feature = "std", serde(rename = "outbound"))]
     Outbound(OutboundCommitment<MaxMessages, MaxPayload>),
 }
 
@@ -424,6 +424,16 @@ impl PayloadBuilder {
 
     pub fn write_id(mut self, id: u32) -> Self {
         self.inner.extend_from_bitslice(id.view_bits::<Msb0>());
+        self
+    }
+
+    pub fn write_u8(mut self, value: u8) -> Self {
+        self.inner.extend_from_bitslice(value.view_bits::<Msb0>());
+        self
+    }
+
+    pub fn write_bytes(mut self, value: &[u8]) -> Self {
+        self.inner.extend_from_raw_slice(value);
         self
     }
 

@@ -28,38 +28,33 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+use bridge_types::test_utils::BridgeAssetLockerImpl;
+use bridge_types::ton::{AdditionalTONOutboundData, TonBalance, TonNetworkId};
+use bridge_types::traits::OutboundChannel;
 use bridge_types::traits::{AppRegistry, BalancePrecisionConverter, BridgeAssetRegistry};
-use bridge_types::traits::{EVMOutboundChannel, OutboundChannel};
-use currencies::BasicCurrencyAdapter;
-
-// Mock runtime
-use bridge_types::evm::AdditionalEVMOutboundData;
 use bridge_types::types::GenericAdditionalInboundData;
 use bridge_types::H160;
 use bridge_types::H256;
-use bridge_types::{EVMChainId, GenericNetworkId, U256};
+use bridge_types::{EVMChainId, GenericNetworkId};
+use currencies::BasicCurrencyAdapter;
 use frame_support::dispatch::DispatchResult;
 use frame_support::parameter_types;
 use frame_support::traits::Everything;
+use frame_support::traits::GenesisBuild;
 use frame_system as system;
-use sp_core::{ConstU128, ConstU64};
 use sp_keyring::sr25519::Keyring;
 use sp_runtime::testing::Header;
 use sp_runtime::traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Keccak256, Verify};
 use sp_runtime::{DispatchError, MultiSignature};
 use traits::parameter_type_with_key;
 
-use crate as fungible_app;
+use crate as ton_bridge;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 type AssetId = H256;
 type Balance = u128;
 type Amount = i128;
-
-pub const XOR: AssetId = H256::repeat_byte(1);
-pub const DAI: AssetId = H256::repeat_byte(2);
-pub const ETH: AssetId = H256::repeat_byte(3);
 
 frame_support::construct_runtime!(
     pub enum Test where
@@ -72,15 +67,13 @@ frame_support::construct_runtime!(
         Currencies: currencies::{Pallet, Call, Storage},
         Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
         Dispatch: dispatch::{Pallet, Call, Storage, Origin<T>, Event<T>},
-        FungibleApp: fungible_app::{Pallet, Call, Storage, Event<T>},
+        TonBridge: ton_bridge::{Pallet, Call, Storage, Event<T>},
     }
 );
 
 pub type Signature = MultiSignature;
 
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-pub const BASE_NETWORK_ID: EVMChainId = EVMChainId::zero();
 
 parameter_types! {
     pub const BlockHashCount: u64 = 250;
@@ -198,21 +191,21 @@ impl AppRegistry<EVMChainId, H160> for AppRegistryImpl {
 
 pub struct BalancePrecisionConverterImpl;
 
-impl BalancePrecisionConverter<AssetId, Balance, U256> for BalancePrecisionConverterImpl {
+impl BalancePrecisionConverter<AssetId, Balance, TonBalance> for BalancePrecisionConverterImpl {
     fn from_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
-        amount: U256,
-    ) -> Option<(Balance, U256)> {
-        Some((amount.try_into().ok()?, amount))
+        amount: TonBalance,
+    ) -> Option<(Balance, TonBalance)> {
+        Some((amount.balance() * 100, amount))
     }
 
     fn to_sidechain(
         _asset_id: &AssetId,
         _sidechain_precision: u8,
         amount: Balance,
-    ) -> Option<(Balance, U256)> {
-        Some((amount, amount.into()))
+    ) -> Option<(Balance, TonBalance)> {
+        Some((amount, TonBalance::new(amount / 100)))
     }
 }
 
@@ -227,8 +220,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
         _name: Self::AssetName,
         _symbol: Self::AssetSymbol,
     ) -> Result<AssetId, DispatchError> {
-        let owner =
-            bridge_types::test_utils::BridgeAssetLockerImpl::<()>::bridge_account(network_id);
+        let owner = BridgeAssetLockerImpl::<()>::bridge_account(network_id);
         frame_system::Pallet::<Test>::inc_providers(&owner);
         Ok(H256::random())
     }
@@ -237,8 +229,7 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
         network_id: GenericNetworkId,
         _asset_id: AssetId,
     ) -> frame_support::pallet_prelude::DispatchResult {
-        let manager =
-            bridge_types::test_utils::BridgeAssetLockerImpl::<()>::bridge_account(network_id);
+        let manager = BridgeAssetLockerImpl::<()>::bridge_account(network_id);
         frame_system::Pallet::<Test>::inc_providers(&manager);
         Ok(())
     }
@@ -258,12 +249,12 @@ impl BridgeAssetRegistry<AccountId, AssetId> for BridgeAssetRegistryImpl {
 
 pub struct OutboundChannelImpl;
 
-impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData> for OutboundChannelImpl {
+impl OutboundChannel<TonNetworkId, AccountId, AdditionalTONOutboundData> for OutboundChannelImpl {
     fn submit(
-        _network_id: EVMChainId,
+        _network_id: TonNetworkId,
         _who: &system::RawOrigin<AccountId>,
         _payload: &[u8],
-        _additional: AdditionalEVMOutboundData,
+        _additional: AdditionalTONOutboundData,
     ) -> Result<H256, DispatchError> {
         Ok(H256::random())
     }
@@ -273,13 +264,7 @@ impl OutboundChannel<EVMChainId, AccountId, AdditionalEVMOutboundData> for Outbo
     }
 }
 
-impl EVMOutboundChannel for OutboundChannelImpl {
-    fn submit_gas(_chain_id: EVMChainId) -> Result<U256, DispatchError> {
-        Ok(U256::one())
-    }
-}
-
-impl fungible_app::Config for Test {
+impl ton_bridge::Config for Test {
     type RuntimeEvent = RuntimeEvent;
     type OutboundChannel = OutboundChannelImpl;
     type CallOrigin = dispatch::EnsureAccount<
@@ -288,16 +273,11 @@ impl fungible_app::Config for Test {
     type WeightInfo = ();
     type MessageStatusNotifier = ();
     type BalancePrecisionConverter = BalancePrecisionConverterImpl;
-    type AppRegistry = AppRegistryImpl;
-    type AssetRegistry = BridgeAssetRegistryImpl;
     type AssetIdConverter = sp_runtime::traits::ConvertInto;
-    type BridgeAssetLocker = bridge_types::test_utils::BridgeAssetLockerImpl<Currencies>;
-    type BaseFeeLifetime = ConstU64<100>;
-    type MaxGasPerCommit = MaxTotalGasLimit;
-    type MaxGasPerMessage = MaxGasPerMessage;
+    type BridgeAssetLocker = BridgeAssetLockerImpl<Currencies>;
 }
 
-pub fn new_tester() -> sp_io::TestExternalities {
+pub fn new_test_ext() -> sp_io::TestExternalities {
     let mut storage = system::GenesisConfig::default()
         .build_storage::<Test>()
         .unwrap();
@@ -309,6 +289,13 @@ pub fn new_tester() -> sp_io::TestExternalities {
     .assimilate_storage(&mut storage)
     .unwrap();
 
+    let fee_account = BridgeAssetLockerImpl::<()>::bridge_fee_account(TonNetworkId::Testnet.into());
+    tokens::GenesisConfig::<Test> {
+        balances: vec![(fee_account, TON, 1_000_000_000_000_000_000u128)],
+    }
+    .assimilate_storage(&mut storage)
+    .unwrap();
+
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| System::set_block_number(1));
     ext.register_extension(sp_keystore::KeystoreExt(std::sync::Arc::new(
@@ -316,3 +303,13 @@ pub fn new_tester() -> sp_io::TestExternalities {
     )));
     ext
 }
+
+pub fn alice() -> AccountId {
+    Keyring::Alice.into()
+}
+
+pub fn bob() -> AccountId {
+    Keyring::Bob.into()
+}
+
+pub const TON: AssetId = H256([0x02; 32]);
