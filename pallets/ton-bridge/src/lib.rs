@@ -38,6 +38,7 @@
 //!
 //! - `burn`: Burn an ERC20 token balance.
 #![cfg_attr(not(feature = "std"), no_std)]
+#![doc = include_str!("../README.md")]
 
 pub const SUBMIT_BASE_FEE: u128 = 100_000_000;
 pub const ADD_PEER_MAX_FEE: u128 = 100_000_000;

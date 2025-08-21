@@ -48,6 +48,7 @@
 //! - `register_network`: Register TON network with new asset connected to native TON asset
 //! - `register_network_with_existing_asset`: Register TON network with existing asset connected to native TON asset
 #![cfg_attr(not(feature = "std"), no_std)]
+#![doc = include_str!("../README.md")]
 
 pub mod weights;
 

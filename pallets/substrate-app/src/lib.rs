@@ -39,6 +39,7 @@
 //! - `burn`: Burn an backed substrate or thischain token balance.
 //!
 #![cfg_attr(not(feature = "std"), no_std)]
+#![doc = include_str!("../README.md")]
 
 pub const TRANSFER_MAX_GAS: u64 = 100_000;
 
