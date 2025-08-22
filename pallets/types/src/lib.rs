@@ -360,6 +360,14 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> GenericMessageQueue<MaxMessage
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        match self {
+            Self::EVM(queue) => queue.is_empty(),
+            Self::TON(queue) => queue.is_empty(),
+            Self::Sub(queue) => queue.is_empty(),
+        }
+    }
+
     pub fn average_payload_size(&self) -> usize {
         let sum: usize = match self {
             Self::TON(queue) => queue.iter().map(|m| m.payload.len()).sum(),

@@ -103,7 +103,7 @@ fn it_fails_register_network_alredy_initialized() {
         assert_ok!(BridgeSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            test_peers().0.try_into().unwrap(),
+            test_peers().0,
             Default::default()
         ));
 
@@ -111,7 +111,7 @@ fn it_fails_register_network_alredy_initialized() {
             BridgeSigner::register_network(
                 RuntimeOrigin::root(),
                 network_id,
-                test_peers().0.try_into().unwrap(),
+                test_peers().0,
                 Default::default()
             ),
             Error::<Test>::PalletInitialized
@@ -129,7 +129,7 @@ fn it_works_approve() {
         assert_ok!(BridgeSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
             bounded_vec![sender.clone()]
         ));
 
@@ -411,7 +411,7 @@ fn it_fails_finish_remove_peer_no_updates() {
         assert_ok!(BridgeSigner::register_network(
             RuntimeOrigin::root(),
             network_id,
-            peers.clone(),
+            peers,
             Default::default()
         ));
 

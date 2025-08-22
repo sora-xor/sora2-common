@@ -148,6 +148,7 @@ parameter_types! {
     pub const MaxMessagePayloadSize: u32 = 128;
     pub const MaxMessagesPerCommit: u32 = 5;
     pub const ThisNetworkId: GenericNetworkId = GenericNetworkId::Sub(SubNetworkId::Mainnet);
+    pub const MessageIntervalConst: u64 = 10;
 }
 
 pub struct GenericTimepointProvider;
@@ -169,6 +170,7 @@ impl bridge_outbound_channel::Config for Test {
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
     type ThisNetworkId = ThisNetworkId;
+    type MessageInterval = MessageIntervalConst;
 }
 
 impl pallet_timestamp::Config for Test {

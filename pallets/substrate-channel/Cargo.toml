@@ -53,6 +53,7 @@ std = [
     "sp-std/std",
     "sp-io/std",
     "bridge-types/std",
+    "frame-benchmarking/std",
 ]
 runtime-benchmarks = [
     "bridge-types/runtime-benchmarks",

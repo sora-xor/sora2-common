@@ -547,10 +547,7 @@ impl<T: Config> bridge_types::traits::Verifier for Pallet<T> {
         let this_network_id = T::ThisNetworkId::get();
         let peers = Peers::<T>::get(network_id).ok_or(Error::<T>::NetworkNotSupported)?;
         let message_hash = Keccak256::hash_of(&(network_id, this_network_id, commitment_hash));
-        ensure!(
-            proof.verify(&peers, message_hash.into()),
-            Error::<T>::InvalidProof
-        );
+        ensure!(proof.verify(&peers, message_hash), Error::<T>::InvalidProof);
         Ok(())
     }
 

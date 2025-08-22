@@ -63,8 +63,8 @@ impl MultiSignature {
 
     pub fn public(&self) -> MultiSigner {
         match self {
-            Self::Ecdsa(pub_key, _) => MultiSigner::Ecdsa(pub_key.clone()),
-            Self::Ed25519(pub_key, _) => MultiSigner::Ed25519(pub_key.clone()),
+            Self::Ecdsa(pub_key, _) => MultiSigner::Ecdsa(*pub_key),
+            Self::Ed25519(pub_key, _) => MultiSigner::Ed25519(*pub_key),
         }
     }
 }
@@ -124,11 +124,11 @@ impl<MaxSigs: Get<u32>> MultiSignatures<MaxSigs> {
         match self {
             MultiSignatures::Ecdsa(sigs) => sigs
                 .iter()
-                .map(|(pk, sig)| MultiSignature::Ecdsa(pk.clone(), sig.clone()))
+                .map(|(pk, sig)| MultiSignature::Ecdsa(*pk, sig.clone()))
                 .collect(),
             MultiSignatures::Ed25519(sigs) => sigs
                 .iter()
-                .map(|(pk, sig)| MultiSignature::Ed25519(pk.clone(), sig.clone()))
+                .map(|(pk, sig)| MultiSignature::Ed25519(*pk, sig.clone()))
                 .collect(),
         }
     }
@@ -164,12 +164,12 @@ impl<MaxPeers: Get<u32>> MultiSigners<MaxPeers> {
     pub fn add_peer(&mut self, pub_key: MultiSigner) -> bool {
         match (self, pub_key) {
             (Self::Ecdsa(pub_keys), MultiSigner::Ecdsa(pub_key)) => {
-                return pub_keys.try_insert(pub_key).unwrap_or(false);
+                pub_keys.try_insert(pub_key).unwrap_or(false)
             }
             (Self::Ed25519(pub_keys), MultiSigner::Ed25519(pub_key)) => {
-                return pub_keys.try_insert(pub_key).unwrap_or(false);
+                pub_keys.try_insert(pub_key).unwrap_or(false)
             }
-            _ => return false,
+            _ => false,
         }
     }
 

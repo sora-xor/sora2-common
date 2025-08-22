@@ -414,10 +414,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
-                AdditionalTONOutboundData {
-                    target: contract,
-                    max_fee: REGISTER_TON_MAX_FEE.into(),
-                },
+                AdditionalTONOutboundData { target: contract, max_fee: REGISTER_TON_MAX_FEE },
             )?;
             Ok(())
         }
@@ -461,10 +458,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
-                AdditionalTONOutboundData {
-                    target: contract,
-                    max_fee: REGISTER_TON_MAX_FEE.into(),
-                },
+                AdditionalTONOutboundData { target: contract, max_fee: REGISTER_TON_MAX_FEE },
             )?;
 
             Ok(())
@@ -504,10 +498,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
-                AdditionalTONOutboundData {
-                    target,
-                    max_fee: REGISTER_TON_MAX_FEE.into(),
-                },
+                AdditionalTONOutboundData { target, max_fee: REGISTER_TON_MAX_FEE },
             )?;
 
             Ok(())
@@ -542,10 +533,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
-                AdditionalTONOutboundData {
-                    target,
-                    max_fee: REGISTER_TON_MAX_FEE.into(),
-                },
+                AdditionalTONOutboundData { target, max_fee: REGISTER_TON_MAX_FEE },
             )?;
 
             Ok(())
@@ -573,10 +561,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Root,
                 &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
-                AdditionalTONOutboundData {
-                    target,
-                    max_fee: REGISTER_TON_MAX_FEE.into(),
-                },
+                AdditionalTONOutboundData { target, max_fee: REGISTER_TON_MAX_FEE },
             )?;
 
             Ok(())
@@ -675,10 +660,7 @@ pub mod pallet {
                 network_id,
                 &RawOrigin::Signed(who.clone()),
                 &message.encode().ok_or(Error::<T>::CallEncodeFailed)?,
-                AdditionalTONOutboundData {
-                    target,
-                    max_fee: TRANSFER_MAX_FEE.into(),
-                },
+                AdditionalTONOutboundData { target, max_fee: TRANSFER_MAX_FEE },
             )?;
             T::MessageStatusNotifier::outbound_request(
                 GenericNetworkId::TON(network_id),

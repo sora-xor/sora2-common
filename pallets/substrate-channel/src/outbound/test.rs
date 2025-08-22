@@ -207,3 +207,30 @@ fn test_on_finalize() {
         );
     });
 }
+
+#[test]
+fn test_on_finalize_respects_interval_constant() {
+    new_tester().execute_with(|| {
+        // By default, MessageIntervalConst is 10; override to 3 and ensure only multiples trigger.
+        assert_ok!(BridgeOutboundChannel::update_interval(
+            RawOrigin::Root.into(),
+            3u64
+        ));
+
+        // Queue a message for a chain.
+        assert_ok!(BridgeOutboundChannel::submit(
+            SubNetworkId::Alphanet,
+            &RawOrigin::Root,
+            &[7, 7, 7],
+            ()
+        ));
+
+        // Not a multiple of 3 — should not commit.
+        BridgeOutboundChannel::on_finalize(2);
+        assert_eq!(LatestCommitment::<Test>::get(SubNetworkId::Alphanet), None);
+
+        // Multiple of 3 — should commit now.
+        BridgeOutboundChannel::on_finalize(3);
+        assert!(LatestCommitment::<Test>::get(SubNetworkId::Alphanet).is_some());
+    });
+}

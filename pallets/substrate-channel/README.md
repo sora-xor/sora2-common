@@ -1,4 +1,4 @@
-# substrate-channel
+# substrate-bridge-channel
 
 Channel primitives specialized for Substrate networks.
 
@@ -6,6 +6,6 @@ Channel primitives specialized for Substrate networks.
 - Provides abstractions for message lanes and channel state between Substrate networks.
 
 ## Testing
-- Run: `cargo test -p substrate-channel --features runtime-benchmarks`
+- Run: `cargo test -p substrate-bridge-channel --features runtime-benchmarks`
 
 See root `AGENTS.md` for contribution rules (tests per function and doc-sync).

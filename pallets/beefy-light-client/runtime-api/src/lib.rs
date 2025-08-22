@@ -42,3 +42,17 @@ sp_api::decl_runtime_apis! {
         fn get_random_bitfield(network_id: SubNetworkId, prior: Bitfield, num_of_validators: u32) -> Bitfield;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use bridge_types::SubNetworkId;
+    use codec::{Decode, Encode};
+
+    #[test]
+    fn subnetworkid_codec_roundtrip() {
+        let id = SubNetworkId::Mainnet;
+        let enc = id.encode();
+        let dec = SubNetworkId::decode(&mut &enc[..]).unwrap();
+        assert_eq!(id, dec);
+    }
+}

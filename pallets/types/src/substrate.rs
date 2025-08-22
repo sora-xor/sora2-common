@@ -347,6 +347,10 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> MessageQueue<MaxMessages, MaxP
         self.queue.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &BridgeMessage<MaxPayload>> {
         self.queue.iter()
     }

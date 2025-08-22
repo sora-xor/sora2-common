@@ -20,4 +20,4 @@ bridge-types = { path = "../../types", default-features = false }
 
 [features]
 default = ["std"]
-std = ["codec/std", "serde", "sp-api/std", "sp-runtime/std", "sp-std/std"]
+std = ["codec/std", "serde", "sp-api/std", "sp-runtime/std", "sp-std/std", "bridge-types/std"]

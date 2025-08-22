@@ -410,15 +410,15 @@ pub mod pallet {
                 (
                     GenericNetworkId::EVM(evm_network_id),
                     bridge_types::GenericCommitment::EVM(evm_commitment),
-                ) => Self::handle_evm_commitment(evm_network_id, &evm_commitment)?,
+                ) => Self::handle_evm_commitment(evm_network_id, evm_commitment)?,
                 (
                     GenericNetworkId::Sub(sub_network_id),
                     bridge_types::GenericCommitment::Sub(sub_commitment),
-                ) => Self::handle_sub_commitment(sub_network_id, &sub_commitment)?,
+                ) => Self::handle_sub_commitment(sub_network_id, sub_commitment)?,
                 (
                     GenericNetworkId::TON(ton_network_id),
                     bridge_types::GenericCommitment::TON(ton_commitment),
-                ) => Self::handle_ton_commitment(ton_network_id, &ton_commitment)?,
+                ) => Self::handle_ton_commitment(ton_network_id, ton_commitment)?,
                 _ => {
                     frame_support::fail!(Error::<T>::InvalidCommitment);
                 }

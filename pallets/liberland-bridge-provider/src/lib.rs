@@ -493,3 +493,203 @@ impl<T: Config>
         Transactions::<T>::insert((&network_id, &source), message_id, bridge_request);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bridge_types::{GenericAccount, GenericNetworkId};
+    use frame_support::{assert_ok, parameter_types};
+    use frame_support::traits::AsEnsureOriginWithArg;
+    use frame_system as system;
+    use sp_runtime::traits::IdentityLookup;
+
+    type UncheckedExtrinsic = system::mocking::MockUncheckedExtrinsic<Test>;
+    type Block = system::mocking::MockBlock<Test>;
+
+    frame_support::construct_runtime!(
+        pub enum Test where
+            Block = Block,
+            NodeBlock = Block,
+            UncheckedExtrinsic = UncheckedExtrinsic,
+        {
+            System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+            Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
+            Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
+            LiberlandBridge: pallet::{Pallet, Storage, Event<T>},
+        }
+    );
+
+    parameter_types! {
+        pub const BlockHashCount: u64 = 250;
+        pub const ExistentialDeposit: u128 = 0;
+        pub const AssetDeposit: u64 = 0;
+        pub const ApprovalDeposit: u64 = 0;
+        pub const StringLimit: u32 = 32;
+        pub const MetadataDepositBase: u64 = 0;
+        pub const MetadataDepositPerByte: u64 = 0;
+        pub const MinBalanceConst: u128 = 0;
+        pub SoraTechAcc: AccountId32 = AccountId32::from([9u8;32]);
+    }
+
+    impl system::Config for Test {
+        type BaseCallFilter = frame_support::traits::Everything;
+        type BlockWeights = ();
+        type BlockLength = ();
+        type RuntimeOrigin = RuntimeOrigin;
+        type RuntimeCall = RuntimeCall;
+        type Index = u64;
+        type BlockNumber = u64;
+        type Hash = sp_core::H256;
+        type Hashing = sp_runtime::traits::BlakeTwo256;
+        type AccountId = AccountId32;
+        type Lookup = IdentityLookup<Self::AccountId>;
+        type Header = sp_runtime::testing::Header;
+        type RuntimeEvent = RuntimeEvent;
+        type BlockHashCount = BlockHashCount;
+        type DbWeight = ();
+        type Version = ();
+        type PalletInfo = PalletInfo;
+        type AccountData = pallet_balances::AccountData<u128>;
+        type OnNewAccount = ();
+        type OnKilledAccount = ();
+        type SystemWeightInfo = ();
+        type SS58Prefix = ();
+        type OnSetCode = ();
+        type MaxConsumers = frame_support::traits::ConstU32<16>;
+    }
+
+    impl pallet_balances::Config for Test {
+        type Balance = u128;
+        type RuntimeEvent = RuntimeEvent;
+        type DustRemoval = ();
+        type ExistentialDeposit = ExistentialDeposit;
+        type AccountStore = System;
+        type WeightInfo = ();
+        type MaxLocks = ();
+        type MaxReserves = ();
+        type ReserveIdentifier = ();
+    }
+
+    impl pallet_assets::Config for Test {
+        type RuntimeEvent = RuntimeEvent;
+        type Balance = u128;
+        type AssetId = u32;
+        type AssetIdParameter = codec::Compact<u32>;
+        type Currency = Balances;
+        type ForceOrigin = frame_system::EnsureRoot<AccountId32>;
+        type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<AccountId32>>;
+        type ApprovalDeposit = ApprovalDeposit;
+        type AssetDeposit = AssetDeposit;
+        type MetadataDepositBase = MetadataDepositBase;
+        type MetadataDepositPerByte = MetadataDepositPerByte;
+        type StringLimit = StringLimit;
+        type Freezer = ();
+        type Extra = ();
+        type CallbackHandle = (); 
+        type WeightInfo = ();
+        type RemoveItemsLimit = frame_support::traits::ConstU32<1000>;
+        type AssetAccountDeposit = frame_support::traits::ConstU128<0>;
+    }
+
+    pub struct DummySoraApp;
+    impl bridge_types::traits::BridgeApp<AccountId32, GenericAccount, LiberlandAssetId, u128>
+        for DummySoraApp
+    {
+        fn is_asset_supported(_network_id: GenericNetworkId, _asset_id: LiberlandAssetId) -> bool {
+            true
+        }
+        fn transfer(
+            _network_id: GenericNetworkId,
+            _asset_id: LiberlandAssetId,
+            _sender: AccountId32,
+            _recipient: GenericAccount,
+            _amount: u128,
+        ) -> Result<H256, DispatchError> {
+            Err(DispatchError::Unavailable)
+        }
+        fn refund(
+            _network_id: GenericNetworkId,
+            _message_id: H256,
+            _recipient: AccountId32,
+            _asset_id: LiberlandAssetId,
+            _amount: u128,
+        ) -> DispatchResult {
+            Ok(())
+        }
+        fn list_supported_assets(_: GenericNetworkId) -> Vec<bridge_types::types::BridgeAssetInfo> {
+            vec![]
+        }
+        fn list_apps() -> Vec<bridge_types::types::BridgeAppInfo> {
+            vec![]
+        }
+        fn transfer_weight() -> frame_support::weights::Weight {
+            Default::default()
+        }
+        fn refund_weight() -> frame_support::weights::Weight {
+            Default::default()
+        }
+        fn is_asset_supported_weight() -> frame_support::weights::Weight {
+            Default::default()
+        }
+        fn transfer_fee(
+            _network_id: GenericNetworkId,
+        ) -> Result<(LiberlandAssetId, u128), DispatchError> {
+            Err(DispatchError::Unavailable)
+        }
+    }
+
+    pub struct IdentityConv;
+    impl sp_runtime::traits::Convert<AccountId32, AccountId32> for IdentityConv {
+        fn convert(a: AccountId32) -> AccountId32 {
+            a
+        }
+    }
+
+    pub struct DummyTimepointProvider;
+    impl bridge_types::traits::TimepointProvider for DummyTimepointProvider {
+        fn get_timepoint() -> bridge_types::GenericTimepoint {
+            bridge_types::GenericTimepoint::Pending
+        }
+    }
+
+    impl pallet::Config for Test {
+        type RuntimeEvent = RuntimeEvent;
+        type MinBalance = MinBalanceConst;
+        type AssetId = u32;
+        type Balances = Balances;
+        type SoraApp = DummySoraApp;
+        type AccountIdConverter = IdentityConv;
+        type TimepointProvider = DummyTimepointProvider; // Not used in these tests
+        type SoraMainnetTechAcc = SoraTechAcc;
+    }
+
+    fn new_ext() -> sp_io::TestExternalities {
+        let t = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+        let mut ext = sp_io::TestExternalities::new(t);
+        ext.execute_with(|| System::set_block_number(1));
+        ext
+    }
+
+    #[test]
+    fn refund_emits_event() {
+        new_ext().execute_with(|| {
+            let message_id = H256::repeat_byte(5);
+            let beneficiary = GenericAccount::Liberland(AccountId32::from([1u8; 32]));
+            assert_ok!(Pallet::<Test>::refund(
+                GenericNetworkId::Sub(Default::default()),
+                message_id,
+                beneficiary,
+                LiberlandAssetId::LLD,
+                10u128,
+            ));
+            // Expect RefundInvoked event recorded
+            let ev = System::events().into_iter().find(|e| matches!(
+                e.event,
+                RuntimeEvent::LiberlandBridge(pallet::Event::RefundInvoked(id, amt)) if id == message_id && amt == 10u128
+            ));
+            assert!(ev.is_some());
+        });
+    }
+}

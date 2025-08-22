@@ -11,11 +11,14 @@ This document reflects the current, practical status of the codebase so engineer
 - GitHub Actions: cargo fmt check and clippy (with `runtime-benchmarks`).
 - Jenkins: runs `housekeeping/tests.sh` which executes `cargo test --release --features runtime-benchmarks`.
 - Toolchain: `rust-toolchain.toml` is present; Substrate deps are pinned to `polkadot-v0.9.38`.
+- Runtime benchmarks: local builds for benchmarked pallets succeed (enabled `frame-benchmarking/std` in `std` features).
+- Clippy: workspace is clean (no warnings) with `--features runtime-benchmarks` at this commit.
 
 ## Testing Snapshot
 Counts below reflect simple grep of `#[test]` and `mod tests` at commit time.
 - Good coverage: `bridge-signer`, `data-signer`, `parachain-app`, `substrate-app`, `ton-bridge`, `channel`, `multisig-verifier`, `evm-fungible-app`.
-- Minimal/none: `leaf-provider` (pallet), `leaf-provider` runtime-api, `leaf-provider` rpc, `liberland-bridge-provider`, `beefy-light-client` runtime-api/rpc.
+- Improved: `leaf-provider` (pallet) now has baseline tests; `leaf-provider` runtime-api has codec/invariant tests; `liberland-bridge-provider` has refund test; `beefy-light-client` runtime-api/rpc have serialization tests.
+- Partial: `leaf-provider` rpc has serialization test; request-routing mock can be added later if needed.
 - Targeted unit tests exist in `bridge-common` and `types` modules.
 
 Note: Policy requires at least one unit test per newly added function going forward; legacy gaps remain and are tracked in the roadmap.
@@ -25,9 +28,7 @@ Note: Policy requires at least one unit test per newly added function going forw
 - Some pallets have inline module docs for extrinsics/storage; others rely mainly on the README. Expanding rustdoc for extrinsics/storage per pallet is beneficial.
 
 ## Known TODOs/FIXMEs (by file)
-- `pallets/substrate-channel/src/outbound/mod.rs:117` — TODO: Select interval (requires a configurable constant or runtime parameter).
-- `pallets/beefy-light-client/src/tests.rs:92` — TODO: Heavy test disabled until #372 is done (consider optimization/bench gating).
-- `pallets/parachain-app/src/lib.rs:263,317,336,490` — TODO: make benchmarks (add proper `frame-benchmarking` benches for extrinsics).
+- `pallets/leaf-provider/rpc/src/lib.rs` — Optional: add full ProvideRuntimeApi mock to exercise request routing.
 
 ## Dependencies
 - Substrate and ORML crates pinned to `polkadot-v0.9.38`. An upgrade plan to newer Substrate/Polkadot releases should be considered (API churn expected).
@@ -43,4 +44,3 @@ Note: Policy requires at least one unit test per newly added function going forw
 - Codebase composes and tests across many pallets with good coverage in core areas.
 - Documentation and contribution guidelines are now consistent.
 - Technical debt is manageable; prioritized remediation is in the roadmap.
-

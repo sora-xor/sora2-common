@@ -207,6 +207,7 @@ parameter_types! {
     pub const MaxMessagesPerCommit: u32 = 5;
     pub const MaxTotalGasLimit: u64 = 5_000_000;
     pub const Decimals: u32 = 12;
+    pub const MessageIntervalConst: u64 = 10;
 }
 
 parameter_types! {
@@ -233,6 +234,7 @@ impl substrate_bridge_channel::outbound::Config for Test {
     type WeightInfo = ();
     type TimepointProvider = GenericTimepointProvider;
     type ThisNetworkId = ThisNetworkId;
+    type MessageInterval = MessageIntervalConst;
 }
 
 impl pallet_timestamp::Config for Test {

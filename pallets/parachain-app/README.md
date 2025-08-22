@@ -1,4 +1,4 @@
-# parachain-app
+# parachain-bridge-app
 
 Pallet for bridging parachain/relaychain assets with SORA.
 
@@ -10,6 +10,6 @@ Pallet for bridging parachain/relaychain assets with SORA.
 - `std`, `runtime-benchmarks`, `try-runtime`.
 
 ## Testing
-- Run: `cargo test -p parachain-app --features runtime-benchmarks`
+- Run: `cargo test -p parachain-bridge-app --features runtime-benchmarks`
 
 See root `AGENTS.md` for contribution rules (tests per function and doc-sync).

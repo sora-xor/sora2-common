@@ -54,6 +54,26 @@ where
     fn latest_digest(&self, at: Option<BlockHash>) -> Result<Option<AuxiliaryDigest>>;
 }
 
+#[cfg(test)]
+mod tests {
+    use bridge_types::{types::AuxiliaryDigestItem, GenericNetworkId, H256};
+    use leaf_provider_runtime_api::AuxiliaryDigest;
+
+    #[test]
+    fn auxiliary_digest_serializes_roundtrip() {
+        let digest = AuxiliaryDigest {
+            logs: vec![AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(Default::default()),
+                H256::repeat_byte(1),
+            )],
+        };
+        let json = serde_json::to_string(&digest).expect("json serialization");
+        let back: AuxiliaryDigest = serde_json::from_str(&json).expect("json deserialization");
+        assert_eq!(digest.logs.len(), 1);
+        assert_eq!(digest, back);
+    }
+}
+
 pub struct LeafProviderClient<C, B> {
     client: Arc<C>,
     _marker: std::marker::PhantomData<B>,

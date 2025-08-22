@@ -1,4 +1,4 @@
-# substrate-app
+# substrate-bridge-app
 
 Pallet for bridging Substrate-based assets with SORA.
 
@@ -10,6 +10,6 @@ Pallet for bridging Substrate-based assets with SORA.
 - `std`, `runtime-benchmarks`, `try-runtime`.
 
 ## Testing
-- Run: `cargo test -p substrate-app --features runtime-benchmarks`
+- Run: `cargo test -p substrate-bridge-app --features runtime-benchmarks`
 
 See root `AGENTS.md` for contribution rules (tests per function and doc-sync).

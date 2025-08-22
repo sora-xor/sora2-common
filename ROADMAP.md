@@ -20,6 +20,17 @@ This roadmap lists prioritized tasks to close known gaps, finish unfinished work
   - substrate-channel/outbound: replace “TODO: Select interval” with a `#[pallet::constant]` config param (e.g., `MessageInterval`) and use it in scheduling.
   - beefy-light-client: evaluate and re-enable the heavy test by optimizing fixture generation or gating under `expensive_tests`.
 
+Status (P0):
+- DONE: leaf-provider pallet baseline tests added.
+- DONE: leaf-provider runtime-api codec/invariant tests added.
+- PARTIAL: leaf-provider-rpc added serialization test; mock routing can be extended with a full ProvideRuntimeApi mock if needed.
+- DONE: liberland-bridge-provider refund helper test added.
+- DONE: beefy-light-client runtime-api and rpc serialization-focused tests added.
+- DONE: parachain-app benches present and integrated.
+- DONE: substrate-channel interval now `MessageInterval` constant with tests.
+- DONE: beefy-light-client heavy tests gated under `expensive_tests` feature.
+- DONE: runtime-benchmarks compile fixed by enabling `frame-benchmarking/std` in `std` feature for benchmarked pallets.
+
 ## P1 — Near Term
 - Docs: Expand rustdoc for pallets
   - For each pallet, document extrinsics and storage items explicitly (purpose, parameters, errors, events, and invariants).
@@ -57,4 +68,3 @@ This roadmap lists prioritized tasks to close known gaps, finish unfinished work
   - Action: Wrap expensive test with `#[cfg(feature = "expensive_tests")]` or reduce fixture size. Ensure default CI remains fast.
 
 Keep this roadmap current: check off items in PRs and add new ones as you identify gaps.
-

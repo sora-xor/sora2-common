@@ -127,3 +127,139 @@ pub mod pallet {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bridge_types::{types::AuxiliaryDigestItem, GenericNetworkId, H256};
+    use frame_support::{parameter_types, traits::Randomness};
+    use frame_system as system;
+    use sp_core::H256 as Hash256;
+    use sp_runtime::traits::BlakeTwo256;
+
+    type UncheckedExtrinsic = system::mocking::MockUncheckedExtrinsic<Test>;
+    type Block = system::mocking::MockBlock<Test>;
+
+    frame_support::construct_runtime!(
+        pub enum Test where
+            Block = Block,
+            NodeBlock = Block,
+            UncheckedExtrinsic = UncheckedExtrinsic,
+        {
+            System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+            LeafProvider: pallet::{Pallet, Storage, Event<T>},
+        }
+    );
+
+    parameter_types! {
+        pub const BlockHashCount: u64 = 250;
+    }
+
+    pub struct TestRandomness;
+    impl frame_support::traits::Randomness<Hash256, u64> for TestRandomness {
+        fn random(_subject: &[u8]) -> (Hash256, u64) {
+            (Hash256::repeat_byte(42), 0)
+        }
+    }
+
+    impl system::Config for Test {
+        type BaseCallFilter = frame_support::traits::Everything;
+        type BlockWeights = ();
+        type BlockLength = ();
+        type RuntimeOrigin = RuntimeOrigin;
+        type RuntimeCall = RuntimeCall;
+        type Index = u64;
+        type BlockNumber = u64;
+        type Hash = Hash256;
+        type Hashing = BlakeTwo256;
+        type AccountId = u64;
+        type Lookup = sp_runtime::traits::IdentityLookup<Self::AccountId>;
+        type Header = sp_runtime::testing::Header;
+        type RuntimeEvent = RuntimeEvent;
+        type BlockHashCount = BlockHashCount;
+        type DbWeight = ();
+        type Version = ();
+        type PalletInfo = PalletInfo;
+        type AccountData = ();
+        type OnNewAccount = ();
+        type OnKilledAccount = ();
+        type SystemWeightInfo = ();
+        type SS58Prefix = ();
+        type OnSetCode = ();
+        type MaxConsumers = frame_support::traits::ConstU32<16>;
+    }
+
+    impl pallet::Config for Test {
+        type RuntimeEvent = RuntimeEvent;
+        type Hashing = BlakeTwo256;
+        type Hash = Hash256;
+        type Randomness = TestRandomness;
+    }
+
+    fn new_ext() -> sp_io::TestExternalities {
+        let t = system::GenesisConfig::default()
+            .build_storage::<Test>()
+            .unwrap();
+        let mut ext = sp_io::TestExternalities::new(t);
+        ext.execute_with(|| System::set_block_number(1));
+        ext
+    }
+
+    #[test]
+    fn on_initialize_clears_latest_digest() {
+        new_ext().execute_with(|| {
+            // Seed with a digest item
+            pallet::LatestDigest::<Test>::put(vec![AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(Default::default()),
+                H256::repeat_byte(1),
+            )]);
+            // Call hook
+            <pallet::Pallet<Test> as frame_support::traits::Hooks<u64>>::on_initialize(1);
+            assert_eq!(pallet::LatestDigest::<Test>::get(), None);
+        });
+    }
+
+    #[test]
+    fn add_item_appends_to_latest_digest() {
+        new_ext().execute_with(|| {
+            let item = AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(Default::default()),
+                H256::repeat_byte(2),
+            );
+            <pallet::Pallet<Test> as bridge_types::traits::AuxiliaryDigestHandler>::add_item(item);
+            let stored = pallet::LatestDigest::<Test>::get().unwrap();
+            assert_eq!(stored.len(), 1);
+            assert_eq!(stored[0], item);
+        });
+    }
+
+    #[test]
+    fn extra_data_produces_expected_hash_and_seed() {
+        new_ext().execute_with(|| {
+            // Seed two items
+            let i1 = AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(Default::default()),
+                H256::repeat_byte(3),
+            );
+            let i2 = AuxiliaryDigestItem::Commitment(
+                GenericNetworkId::Sub(Default::default()),
+                H256::repeat_byte(4),
+            );
+            pallet::LatestDigest::<Test>::put(vec![i1, i2]);
+
+            let extra = <pallet::Pallet<Test> as sp_beefy::mmr::BeefyDataProvider<
+                bridge_types::types::LeafExtraData<Hash256, Hash256>,
+            >>::extra_data();
+
+            // Compute expected digest hash
+            use codec::Encode;
+            let digest = bridge_types::types::AuxiliaryDigest { logs: vec![i1, i2] };
+            let expected_hash = <BlakeTwo256 as sp_runtime::traits::Hash>::hash(&digest.encode());
+            assert_eq!(extra.digest_hash, expected_hash);
+
+            // Randomness is deterministic in this test
+            let (seed, _bn) = <Test as pallet::Config>::Randomness::random(RANDOMNESS_SUBJECT);
+            assert_eq!(extra.random_seed, seed);
+        });
+    }
+}

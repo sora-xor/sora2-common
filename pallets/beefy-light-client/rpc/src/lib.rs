@@ -55,6 +55,19 @@ pub trait BeefyLightClientAPI<BHash, Bitfield> {
     ) -> Result<Bitfield>;
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn subnetworkid_json_roundtrip() {
+        let id = SubNetworkId::Mainnet;
+        let s = serde_json::to_string(&id).unwrap();
+        let back: SubNetworkId = serde_json::from_str(&s).unwrap();
+        assert_eq!(id, back);
+    }
+}
+
 pub struct BeefyLightClientClient<C, B> {
     client: Arc<C>,
     _marker: std::marker::PhantomData<B>,

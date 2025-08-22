@@ -40,3 +40,41 @@ sp_api::decl_runtime_apis! {
         fn latest_digest() -> Option<AuxiliaryDigest>;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bridge_types::{types::AuxiliaryDigestItem, GenericNetworkId, H256};
+    use codec::{Decode, Encode};
+    use sp_runtime::{Digest, DigestItem};
+
+    #[test]
+    fn auxiliary_digest_codec_roundtrip() {
+        let item = AuxiliaryDigestItem::Commitment(
+            GenericNetworkId::Sub(Default::default()),
+            H256::repeat_byte(9),
+        );
+        let aux = AuxiliaryDigest { logs: vec![item] };
+        let bytes = aux.encode();
+        let decoded = AuxiliaryDigest::decode(&mut &bytes[..]).unwrap();
+        assert_eq!(aux, decoded);
+    }
+
+    #[test]
+    fn auxiliary_digest_from_runtime_digest_filters_non_other() {
+        let other = AuxiliaryDigestItem::Commitment(
+            GenericNetworkId::Sub(Default::default()),
+            H256::repeat_byte(7),
+        );
+        let digest = Digest {
+            logs: vec![
+                DigestItem::Other(other.encode()),
+                // This one should be ignored by conversion
+                DigestItem::PreRuntime([1u8, 2, 3, 4], vec![0]),
+            ],
+        };
+        let aux: AuxiliaryDigest = digest.into();
+        assert_eq!(aux.logs.len(), 1);
+        assert_eq!(aux.logs[0], other);
+    }
+}

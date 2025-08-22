@@ -19,3 +19,5 @@ sp-runtime = { git = "https://github.com/paritytech/substrate.git", branch = "po
 sp-std = { git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.38" }
 
 leaf-provider-runtime-api = { path = "../runtime-api" }
+serde_json = "1"
+bridge-types = { path = "../../types" }

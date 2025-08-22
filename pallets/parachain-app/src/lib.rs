@@ -259,8 +259,6 @@ pub mod pallet {
     #[pallet::call]
     impl<T: Config> Pallet<T> {
         // Internal calls to be used from Parachain side.
-
-        // TODO: make benchmarks
         #[pallet::call_index(0)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn mint(
@@ -314,7 +312,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
         #[pallet::call_index(1)]
         #[pallet::weight(<T as Config>::WeightInfo::finalize_asset_registration())]
         pub fn finalize_asset_registration(
@@ -331,9 +328,7 @@ pub mod pallet {
             Ok(())
         }
 
-        // Common exstrinsics
-
-        // TODO: make benchmarks
+        // Common extrinsics
         #[pallet::call_index(2)]
         #[pallet::weight(<T as Config>::WeightInfo::burn())]
         pub fn burn(
@@ -487,7 +482,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // TODO: make benchmarks
         #[pallet::call_index(8)]
         #[pallet::weight(<T as Config>::WeightInfo::mint())]
         pub fn set_minimum_xcm_incoming_asset_count(

@@ -399,6 +399,10 @@ impl<MaxMessages: Get<u32>, MaxPayload: Get<u32>> MessageQueue<MaxMessages, MaxP
         self.queue.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Message<MaxPayload>> {
         self.queue.iter()
     }
@@ -462,7 +466,7 @@ impl PayloadBuilder {
     }
 
     pub fn write_balance(mut self, amount: TonBalance) -> Self {
-        self.inner.extend_from_bitslice(&amount.0.as_bits::<Msb0>());
+        self.inner.extend_from_bitslice(amount.0.as_bits::<Msb0>());
         self
     }
 
@@ -472,5 +476,11 @@ impl PayloadBuilder {
             return None;
         }
         Some(self.inner.encode())
+    }
+}
+
+impl Default for PayloadBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }

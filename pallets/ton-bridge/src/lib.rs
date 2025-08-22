@@ -396,10 +396,7 @@ impl<T: Config> AppRegistry<TonNetworkId, TonAddress> for Pallet<T> {
             &abi::RegisterAppPayload { app }
                 .encode()
                 .ok_or(Error::<T>::CallEncodeFailed)?,
-            AdditionalTONOutboundData {
-                max_fee: REGISTER_APP_MAX_FEE.into(),
-                target: config.channel,
-            },
+            AdditionalTONOutboundData { max_fee: REGISTER_APP_MAX_FEE, target: config.channel },
         )?;
         Ok(())
     }
@@ -413,10 +410,7 @@ impl<T: Config> AppRegistry<TonNetworkId, TonAddress> for Pallet<T> {
             &abi::RemoveAppPayload { app }
                 .encode()
                 .ok_or(Error::<T>::CallEncodeFailed)?,
-            AdditionalTONOutboundData {
-                max_fee: REMOVE_APP_MAX_FEE.into(),
-                target: config.channel,
-            },
+            AdditionalTONOutboundData { max_fee: REMOVE_APP_MAX_FEE, target: config.channel },
         )?;
         Ok(())
     }
@@ -464,10 +458,7 @@ impl<T: Config> PeerManager<TonNetworkId, ed25519::Public> for Pallet<T> {
             &abi::AddPeerPayload { peer }
                 .encode()
                 .ok_or(Error::<T>::CallEncodeFailed)?,
-            AdditionalTONOutboundData {
-                max_fee: ADD_PEER_MAX_FEE.into(),
-                target: config.channel,
-            },
+            AdditionalTONOutboundData { max_fee: ADD_PEER_MAX_FEE, target: config.channel },
         )?;
         Ok(())
     }
@@ -481,10 +472,7 @@ impl<T: Config> PeerManager<TonNetworkId, ed25519::Public> for Pallet<T> {
             &abi::RemovePeerPayload { peer }
                 .encode()
                 .ok_or(Error::<T>::CallEncodeFailed)?,
-            AdditionalTONOutboundData {
-                max_fee: REMOVE_PEER_MAX_FEE.into(),
-                target: config.channel,
-            },
+            AdditionalTONOutboundData { max_fee: REMOVE_PEER_MAX_FEE, target: config.channel },
         )?;
         Ok(())
     }

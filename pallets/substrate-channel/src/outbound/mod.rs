@@ -104,6 +104,12 @@ pub mod pallet {
 
         /// Weight information for extrinsics in this pallet
         type WeightInfo: WeightInfo;
+
+        /// Default interval between committing messages.
+        ///
+        /// Used as the initial value for `Interval` and for tests to drive scheduling behavior.
+        #[pallet::constant]
+        type MessageInterval: Get<Self::BlockNumber>;
     }
 
     /// Interval between committing messages.
@@ -114,8 +120,7 @@ pub mod pallet {
 
     #[pallet::type_value]
     pub(crate) fn DefaultInterval<T: Config>() -> T::BlockNumber {
-        // TODO: Select interval
-        10u32.into()
+        T::MessageInterval::get()
     }
 
     /// Messages waiting to be committed. To update the queue, use `append_message_queue` and `take_message_queue` methods
